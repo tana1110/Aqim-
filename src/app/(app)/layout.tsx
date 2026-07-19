@@ -6,7 +6,6 @@ import { Logo } from "@/components/Logo";
 import { SplashScreen } from "@/components/SplashScreen";
 import { Welcome } from "@/components/Welcome";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import { useLang } from "@/components/LanguageProvider";
 
 // Responsive app shell: mobile bottom tab bar, desktop top nav; content widens
 // on larger screens.
@@ -15,7 +14,6 @@ export default function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { t } = useLang();
   return (
     <div className="min-h-dvh flex flex-col">
       <SplashScreen />
@@ -31,15 +29,7 @@ export default function AppLayout({
 
           <TopNav />
 
-          <div className="flex items-center gap-3 shrink-0">
-            <LanguageToggle />
-            <Link
-              href="/"
-              className="hidden sm:inline text-[11px] md:text-sm text-muted hover:text-foreground transition-colors"
-            >
-              {t("nav.about")}
-            </Link>
-          </div>
+          <LanguageToggle />
         </div>
       </header>
 

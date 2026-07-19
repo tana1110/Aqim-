@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { ComponentType } from "react";
+import { useLayoutEffect, type ComponentType } from "react";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
@@ -24,7 +25,20 @@ export function LandingClient({
   ayahTranslation: string | null;
 }) {
   const { t, lang } = useLang();
+  const router = useRouter();
   const Arrow = lang === "ar" ? ArrowLeft : ArrowRight;
+
+  // The marketing landing is for BROWSER visitors. When running as the
+  // installed app (standalone), go straight into the app — this also rescues
+  // phones whose installed icon still carries an old cached start_url of "/".
+  useLayoutEffect(() => {
+    try {
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (navigator as unknown as { standalone?: boolean }).standalone === true;
+      if (standalone) router.replace("/home");
+    } catch {}
+  }, [router]);
 
   return (
     <div className="min-h-dvh overflow-x-hidden">

@@ -4,13 +4,14 @@ import { useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpenText, Repeat } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLang } from "@/components/LanguageProvider";
 
 const FLAG = "aqim-onboarded";
 
-// First-run welcome (WhatsApp-style onboarding): shown ONCE per device, right
-// after install / first visit to the app. Ends at the memorization picker.
-// Subsequent opens go straight to the dashboard — this never appears again.
+// The app's welcome (first-run onboarding), shown ONCE per device — like a
+// native app's intro. Ends at the memorization picker. Later opens go straight
+// to the dashboard and never see this again.
 export function Welcome() {
   const { t } = useLang();
   const router = useRouter();
@@ -35,8 +36,13 @@ export function Welcome() {
 
   const slides = [
     {
-      art: <Logo variant="icon" size={104} />,
-      title: t("welcome.title"),
+      art: (
+        <div className="flex flex-col items-center gap-5">
+          <Logo variant="icon" size={92} />
+          <Logo variant={2} size={56} />
+        </div>
+      ),
+      title: t("landing.slogan"),
       body: t("welcome.intro"),
     },
     {
@@ -63,8 +69,9 @@ export function Welcome() {
 
   return (
     <div className="fixed inset-0 z-40 bg-background flex flex-col">
-      {/* Skip */}
-      <div className="flex justify-end p-4">
+      {/* Top bar: language + skip */}
+      <div className="flex items-center justify-between p-4 pt-5">
+        <LanguageToggle />
         <button
           onClick={() => finish(false)}
           className="text-sm text-muted hover:text-foreground px-3 py-1.5"
@@ -74,12 +81,15 @@ export function Welcome() {
       </div>
 
       {/* Slide */}
-      <div className="flex-1 flex flex-col items-center justify-center text-center px-8 gap-6 animate-rise" key={step}>
+      <div
+        className="flex-1 flex flex-col items-center justify-center text-center px-8 gap-6 animate-rise"
+        key={step}
+      >
         {s.art}
-        <h1 className="font-heading text-3xl font-bold text-foreground">
+        <h1 className="font-heading text-[1.9rem] md:text-4xl font-bold text-primary leading-snug max-w-md">
           {s.title}
         </h1>
-        <p className="text-[15px] text-muted leading-relaxed max-w-sm">
+        <p className="text-[15px] md:text-base text-muted leading-relaxed max-w-sm">
           {s.body}
         </p>
       </div>
@@ -90,7 +100,7 @@ export function Welcome() {
           {slides.map((_, i) => (
             <span
               key={i}
-              className={`h-2 rounded-full transition-all ${
+              className={`h-2 rounded-full transition-all duration-300 ${
                 i === step ? "w-6 bg-primary" : "w-2 bg-border"
               }`}
             />
