@@ -7,7 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "أقم — Aqim",
     short_name: "أقم",
     description: "اقرأ بخشوع، لا بعادة",
-    start_url: "/home",
+    // Open on the landing page; users enter the app via the "Start now" button.
+    start_url: "/",
     display: "standalone",
     background_color: "#f3eee3",
     theme_color: "#33546a",
