@@ -18,6 +18,20 @@ interface SelectionSettings {
   maxAyahShort: number;
 }
 
+// A candidate passage carries its approximate recitation length (word count),
+// used to balance passage lengths across the rak'ahs of one prayer.
+interface Candidate extends Passage {
+  words: number;
+}
+
+function countWords(text: string): number {
+  return text
+    .replace(/^﻿/, "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
 // ---------------------------------------------------------------------------
 // Candidate generation
 // ---------------------------------------------------------------------------
@@ -54,7 +68,7 @@ async function buildCandidates(
   userId: number,
   mode: Mode,
   settings: SelectionSettings,
-): Promise<Passage[]> {
+): Promise<Candidate[]> {
   const [memorization, surahs] = await Promise.all([
     prisma.memorization.findMany({ where: { userId } }),
     prisma.surah.findMany(),
@@ -62,17 +76,37 @@ async function buildCandidates(
 
   const ayahCountBySurah = new Map(surahs.map((s) => [s.number, s.ayahCount]));
 
+  // Load per-ayah word counts for just the memorized surahs, so each candidate
+  // can be sized by recitation length (words), not raw ayah count.
+  const memoSurahNums = [...new Set(memorization.map((m) => m.surahNumber))];
+  const ayahRows = memoSurahNums.length
+    ? await prisma.quranText.findMany({
+        where: { surahNumber: { in: memoSurahNums } },
+        select: { surahNumber: true, ayahNumber: true, arabicText: true },
+      })
+    : [];
+  const wordsByAyah = new Map<string, number>();
+  for (const r of ayahRows) {
+    wordsByAyah.set(`${r.surahNumber}:${r.ayahNumber}`, countWords(r.arabicText));
+  }
+
   // Fara'id/Nafl favour short-to-medium; Qiyam allows longer passages.
   const maxLen = mode === "qiyam" ? 30 : settings.maxAyahShort;
 
-  const candidates: Passage[] = [];
+  const candidates: Candidate[] = [];
   for (const m of memorization) {
     const count = ayahCountBySurah.get(m.surahNumber);
     if (!count) continue; // unknown surah, skip defensively
     const to = Math.min(m.toAyah, count);
     const from = Math.max(1, m.fromAyah);
     if (from > to) continue;
-    candidates.push(...chunkRange(m.surahNumber, from, to, count, maxLen));
+    for (const ch of chunkRange(m.surahNumber, from, to, count, maxLen)) {
+      let words = 0;
+      for (let a = ch.fromAyah; a <= ch.toAyah; a++) {
+        words += wordsByAyah.get(`${ch.surahNumber}:${a}`) ?? 0;
+      }
+      candidates.push({ ...ch, words: Math.max(1, words) });
+    }
   }
   return candidates;
 }
@@ -147,38 +181,70 @@ export async function selectPassages(
   const excludeKeys = new Set(exclude.map(passageKey));
 
   // De-duplicate candidate passages by key.
-  const byKey = new Map<string, Passage>();
+  const byKey = new Map<string, Candidate>();
   for (const c of candidates) byKey.set(passageKey(c), c);
   const uniqueCandidates = [...byKey.values()];
 
-  const chosen: Passage[] = [];
+  const chosen: Candidate[] = [];
   const chosenKeys = new Set<string>(excludeKeys);
   let relaxed = false;
 
-  while (chosen.length < count) {
-    // Tier 1: not used in the recent window and not already chosen/excluded.
-    let pool = uniqueCandidates.filter(
-      (c) => !recent.has(passageKey(c)) && !chosenKeys.has(passageKey(c)),
+  const isFresh = (c: Candidate) => !recent.has(passageKey(c));
+  const available = () =>
+    uniqueCandidates.filter((c) => !chosenKeys.has(passageKey(c)));
+  const lru = (a: Candidate, b: Candidate) =>
+    (lastUsedAt.get(passageKey(a)) ?? 0) - (lastUsedAt.get(passageKey(b)) ?? 0);
+  // Pick randomly among the passages whose length is closest to `target`, so a
+  // later rak'ah stays comparable in recitation length to the first.
+  const pickClosest = (pool: Candidate[], target: number) => {
+    const sorted = [...pool].sort(
+      (a, b) => Math.abs(a.words - target) - Math.abs(b.words - target),
     );
+    return pickRandom(sorted.slice(0, Math.min(3, sorted.length)));
+  };
 
-    // Tier 2 (relaxed): allow recently-used, prefer least-recently-used first.
-    if (pool.length === 0) {
+  // --- First rak'ah: free choice (fresh random, else least-recently-used). ---
+  {
+    const fresh = available().filter(isFresh);
+    let pick: Candidate | undefined;
+    if (fresh.length) pick = pickRandom(fresh);
+    else {
       relaxed = true;
-      pool = uniqueCandidates.filter((c) => !chosenKeys.has(passageKey(c)));
-      if (pool.length === 0) break; // genuinely no more distinct candidates
-      // Sort by last-used ascending (never-used = 0 sorts first).
-      pool.sort(
-        (a, b) =>
-          (lastUsedAt.get(passageKey(a)) ?? 0) -
-          (lastUsedAt.get(passageKey(b)) ?? 0),
-      );
-      const pick = pool[0];
-      chosen.push(pick);
-      chosenKeys.add(passageKey(pick));
-      continue;
+      const pool = available().sort(lru);
+      pick = pool[0];
     }
+    if (!pick) return { passages: [], relaxed, exhausted: true };
+    chosen.push(pick);
+    chosenKeys.add(passageKey(pick));
+  }
 
-    const pick = pickRandom(pool);
+  // Target recitation length for the rest of this prayer's rak'ahs.
+  const target = chosen[0].words;
+  const inBand = (c: Candidate) =>
+    c.words >= target * 0.55 && c.words <= target * 1.85;
+
+  // --- Remaining rak'ahs: same/adjacent length band, else closest length. ---
+  while (chosen.length < count) {
+    const pool = available();
+    if (pool.length === 0) break; // no more distinct candidates
+
+    const fresh = pool.filter(isFresh);
+    let pick: Candidate;
+    const freshInBand = fresh.filter(inBand);
+    if (freshInBand.length) {
+      // Comparable length AND not recently used — the ideal case.
+      pick = pickRandom(freshInBand);
+    } else if (fresh.length) {
+      // No comparable-length fresh option: take the closest length available.
+      pick = pickClosest(fresh, target);
+    } else {
+      // Everything left was recently used — relax anti-repeat, keep length close.
+      relaxed = true;
+      const relaxedInBand = pool.filter(inBand);
+      pick = relaxedInBand.length
+        ? pickClosest(relaxedInBand, target)
+        : pickClosest(pool, target);
+    }
     chosen.push(pick);
     chosenKeys.add(passageKey(pick));
   }
@@ -194,7 +260,11 @@ export async function selectPassages(
   );
 
   return {
-    passages: chosen,
+    passages: chosen.map(({ surahNumber, fromAyah, toAyah }) => ({
+      surahNumber,
+      fromAyah,
+      toAyah,
+    })),
     relaxed,
     exhausted: chosen.length < count,
   };
