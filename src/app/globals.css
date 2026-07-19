@@ -1,26 +1,213 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ---------------------------------------------------------------------------
+   Aqim — visual identity
+   Inspired by the tilework of the Dome of the Rock: deep muted tile-blue,
+   teal-green, warm ivory, muted mustard-gold. Matte, calm, understated.
+   No gradients, no gloss, no high-saturation color. Colors are theme tokens.
+--------------------------------------------------------------------------- */
+
+@theme {
+  /* --- Core palette (light) --- */
+  --color-background: #f3eee3; /* warm ivory */
+  --color-text-primary: #26333d; /* deep muted charcoal-navy */
+  --color-primary: #33546a; /* muted deep tile-blue */
+  --color-primary-hover: #28414f; /* darker tile-blue */
+  --color-secondary: #5f8a78; /* muted teal-green */
+  --color-accent: #b99257; /* muted mustard-gold */
+  --color-border: #d8d1c0; /* soft blue-gray divider */
+
+  /* --- Supporting neutrals / soft tints (desaturated) --- */
+  --color-foreground: #26333d; /* alias of text-primary for utilities */
+  --color-surface: #faf7ef; /* card surface */
+  --color-surface-2: #ece6d7; /* nested surface */
+  --color-muted: #66727c; /* secondary text */
+  --color-primary-soft: #dfe6ea; /* faint tile-blue wash */
+  --color-secondary-soft: #e3eae6; /* faint teal wash */
+  --color-accent-soft: #efe7d8; /* faint gold wash */
+
+  /* --- Typography --- */
+  --font-heading: var(--font-amiri), "Lateef", serif;
+  --font-quran: var(--font-amiri-quran), "Scheherazade New",
+    "KFGQPC Uthmanic Script HAFS", serif;
+  --font-ui: var(--font-cairo), "IBM Plex Sans Arabic", var(--font-inter),
+    system-ui, sans-serif;
+  --font-sans: var(--font-ui);
+
+  /* --- Shape / depth (matte: tiny, low-opacity shadow only) --- */
+  --radius-card: 0.875rem; /* 14px */
+  --radius-btn: 0.625rem; /* 10px, moderate — not pill */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* --- Dark mode: deep muted navy, same desaturated relationships --- */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --color-background: #1c2830;
+    --color-text-primary: #e6eae9;
+    --color-primary: #6e93a8;
+    --color-primary-hover: #7fa3b7;
+    --color-secondary: #7fa894;
+    --color-accent: #c9a671;
+    --color-border: #33454f;
+
+    --color-foreground: #e6eae9;
+    --color-surface: #22303a;
+    --color-surface-2: #2a3a45;
+    --color-muted: #93a2ac;
+    --color-primary-soft: #253742;
+    --color-secondary-soft: #24342e;
+    --color-accent-soft: #322b1e;
   }
 }
 
+:root {
+  --shadow-soft: 0 1px 2px rgba(38, 51, 61, 0.06),
+    0 1px 1px rgba(38, 51, 61, 0.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-background);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Arabic headers in the classical manuscript face. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+}
+
+/* Quranic verse text: larger than UI, full tashkeel, comfortable line-height. */
+.quran-text {
+  font-family: var(--font-quran);
+  font-size: clamp(1.5rem, 1.4rem + 1.4vw, 2rem); /* ~24–32px */
+  line-height: 2.2;
+  word-spacing: 0.05em;
+  text-align: center;
+  color: var(--color-text-primary);
+}
+
+.ayah-mark {
+  font-family: var(--font-quran);
+  color: var(--color-accent);
+  font-size: 0.62em;
+  margin: 0 0.1em;
+  white-space: nowrap;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Flat primary button — moderate radius, very subtle depth, no gloss. */
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-radius: var(--radius-btn);
+  font-weight: 600;
+  box-shadow: var(--shadow-soft);
+  transition: background-color 0.12s ease, transform 0.1s ease;
+}
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+}
+.btn-primary:active {
+  transform: translateY(1px);
+}
+
+/* Accent (mustard-gold) button — for "used it" confirmation / key CTAs. */
+.btn-accent {
+  background: var(--color-accent);
+  color: #fff;
+  border-radius: var(--radius-btn);
+  font-weight: 600;
+  box-shadow: var(--shadow-soft);
+  transition: filter 0.12s ease, transform 0.1s ease;
+}
+.btn-accent:active {
+  transform: translateY(1px);
+}
+
+/* Toggle pill — moderate radius (calm, not playful). */
+.pill {
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  transition: background-color 0.12s ease, color 0.12s ease,
+    border-color 0.12s ease;
+}
+.pill[data-on="true"] {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+  color: #fff;
+}
+
+/* Safe-area helpers for the app-like bottom nav. */
+.pb-safe {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+}
+.h-nav {
+  height: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-rise {
+  animation: rise 0.4s ease both;
+}
+
+/* Splash screen: logo pops in, wordmark rises after it. */
+@keyframes splashPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.animate-splash-pop {
+  animation: splashPop 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes splashRise {
+  0%,
+  35% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-splash-rise {
+  animation: splashRise 0.9s ease both;
 }

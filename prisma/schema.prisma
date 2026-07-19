@@ -1,0 +1,119 @@
+// Aqim — Prisma schema (PostgreSQL)
+// Quranic text and tafsir are seeded once from a trusted source (Tanzil via
+// api.alquran.cloud) and stored locally. They are NEVER generated at runtime.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Reference data (read-only after seeding, sourced from Tanzil / al-Quran Cloud)
+// ---------------------------------------------------------------------------
+
+model Surah {
+  number         Int     @id // 1..114
+  nameArabic     String
+  nameEnglish    String
+  nameTranslit   String
+  revelationType String // "Meccan" | "Medinan"
+  ayahCount      Int
+
+  ayahs  QuranText[]
+  tafsir TafsirText[]
+
+  @@map("surah")
+}
+
+model QuranText {
+  id         Int    @id @default(autoincrement())
+  surahNumber Int   @map("surah_number")
+  ayahNumber  Int   @map("ayah_number")
+  arabicText  String @map("arabic_text")
+  juzNumber   Int   @map("juz_number")
+  pageNumber  Int   @map("page_number")
+
+  surah Surah @relation(fields: [surahNumber], references: [number])
+
+  @@unique([surahNumber, ayahNumber])
+  @@index([juzNumber])
+  @@map("quran_text")
+}
+
+model TafsirText {
+  id          Int    @id @default(autoincrement())
+  surahNumber Int    @map("surah_number")
+  ayahNumber  Int    @map("ayah_number")
+  tafsirSource String @map("tafsir_source") // e.g. "Tafsir al-Muyassar (King Fahd Complex)"
+  sourceUrl    String? @map("source_url")   // link to open the full tafsir
+  summaryText  String @map("summary_text")  // condensed 2-3 lines (from existing tafsir)
+  fullText     String @map("full_text")     // original tafsir text, unmodified
+
+  surah Surah @relation(fields: [surahNumber], references: [number])
+
+  @@unique([surahNumber, ayahNumber, tafsirSource])
+  @@map("tafsir_text")
+}
+
+// ---------------------------------------------------------------------------
+// User data
+// ---------------------------------------------------------------------------
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  memorization      Memorization[]
+  recitationHistory RecitationHistory[]
+  settings          Settings?
+
+  @@map("users")
+}
+
+model Memorization {
+  id          Int @id @default(autoincrement())
+  userId      Int @map("user_id")
+  surahNumber Int @map("surah_number")
+  fromAyah    Int @map("from_ayah")
+  toAyah      Int @map("to_ayah")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("memorization")
+}
+
+model RecitationHistory {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  prayerType  String   @map("prayer_type") // fajr | dhuhr | asr | maghrib | isha | witr | qiyam | nafl
+  mode        String // faraid | nafl | qiyam
+  rakahNumber Int      @map("rakah_number")
+  surahNumber Int      @map("surah_number")
+  fromAyah    Int      @map("from_ayah")
+  toAyah      Int      @map("to_ayah")
+  usedAt      DateTime @default(now()) @map("used_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, usedAt])
+  @@map("recitation_history")
+}
+
+model Settings {
+  userId          Int     @id @map("user_id")
+  witrRakahs      Int     @default(1) @map("witr_rakahs")
+  noRepeatWindow  Int     @default(5) @map("no_repeat_window") // prayers
+  qiyamRepeatWindow Int   @default(7) @map("qiyam_repeat_window") // sessions
+  tafsirSource    String  @default("ar.muyassar") @map("tafsir_source")
+  font            String  @default("amiri-quran")
+  maxAyahShort    Int     @default(10) @map("max_ayah_short") // "short/medium" surah threshold for faraid
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("settings")
+}
