@@ -1,19 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { Logo } from "@/components/Logo";
 
-// A ~2s loading/splash screen shown when the app first opens. The logo animates
-// in, holds briefly, then the whole screen fades out to reveal the app. It only
-// mounts with the (app) shell, so it appears on entering the app — not when
-// moving between the in-app tabs.
+const SESSION_KEY = "aqim-splashed";
+
+// Brand splash shown when entering the app — at most ONCE per browser session,
+// and NOT when launched as an installed app (standalone), since the OS already
+// shows its own launch splash there; stacking a second one felt messy.
 export function SplashScreen() {
-  const [visible, setVisible] = useState(true);
+  const [visible, setVisible] = useState(false);
   const [fading, setFading] = useState(false);
 
-  useEffect(() => {
-    const startFade = setTimeout(() => setFading(true), 1600);
-    const remove = setTimeout(() => setVisible(false), 2100);
+  useLayoutEffect(() => {
+    try {
+      const standalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        // iOS Safari legacy flag
+        (navigator as unknown as { standalone?: boolean }).standalone === true;
+      if (standalone || sessionStorage.getItem(SESSION_KEY)) return;
+      sessionStorage.setItem(SESSION_KEY, "1");
+    } catch {
+      // storage unavailable — show it this once
+    }
+    setVisible(true);
+    const startFade = setTimeout(() => setFading(true), 1400);
+    const remove = setTimeout(() => setVisible(false), 1900);
     return () => {
       clearTimeout(startFade);
       clearTimeout(remove);
