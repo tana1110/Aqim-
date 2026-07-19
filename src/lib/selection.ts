@@ -183,6 +183,16 @@ export async function selectPassages(
     chosenKeys.add(passageKey(pick));
   }
 
+  // Recitation order within a single prayer must follow the Mushaf: a later
+  // rak'ah's surah number must be >= an earlier rak'ah's (never backward), and
+  // within the same surah, earlier ayahs come first. Sorting the chosen set
+  // ascending guarantees this when they're assigned to rak'ahs in order. This
+  // only orders passages within THIS suggestion; anti-repetition across prayers
+  // is unaffected (it already ran above).
+  chosen.sort(
+    (a, b) => a.surahNumber - b.surahNumber || a.fromAyah - b.fromAyah,
+  );
+
   return {
     passages: chosen,
     relaxed,
