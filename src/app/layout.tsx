@@ -67,7 +67,10 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html:
-              "try{var l=localStorage.getItem('aqim-lang');if(l==='en'){document.documentElement.lang='en';document.documentElement.dir='ltr';}}catch(e){}",
+              "try{var l=localStorage.getItem('aqim-lang');if(l==='en'){document.documentElement.lang='en';document.documentElement.dir='ltr';}}catch(e){}" +
+              // First run: raise a paint-blocking cover BEFORE anything renders,
+              // so the Welcome appears without the home page flashing first.
+              "try{if(!localStorage.getItem('aqim-onboarded')){document.documentElement.setAttribute('data-welcome','1');}}catch(e){}",
           }}
         />
       </head>

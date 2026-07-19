@@ -20,7 +20,12 @@ export function Welcome() {
 
   useLayoutEffect(() => {
     try {
-      if (!localStorage.getItem(FLAG)) setVisible(true);
+      if (!localStorage.getItem(FLAG)) {
+        setVisible(true);
+      } else {
+        // Already onboarded — make sure the paint-blocking cover is down.
+        document.documentElement.removeAttribute("data-welcome");
+      }
     } catch {}
   }, []);
 
@@ -30,6 +35,7 @@ export function Welcome() {
     try {
       localStorage.setItem(FLAG, "1");
     } catch {}
+    document.documentElement.removeAttribute("data-welcome");
     setVisible(false);
     if (goSetup) router.push("/setup");
   }

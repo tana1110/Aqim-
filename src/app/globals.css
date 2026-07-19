@@ -196,6 +196,17 @@ h3 {
   height: calc(4.25rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* First-run cover: raised by a blocking <head> script when the Welcome is due,
+   hiding the app underneath until the Welcome overlay (z-40) mounts. Sits above
+   header (z-20) and bottom nav (z-30), below Welcome (z-40) and splash (z-50). */
+html[data-welcome="1"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: var(--color-background);
+}
+
 @keyframes rise {
   from {
     opacity: 0;
