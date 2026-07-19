@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import Link from "next/link";
-import { Sunrise, Star, MoonStar, Sparkles, RefreshCw, Check } from "lucide-react";
+import { Sparkles, RefreshCw, Check, Layers, BookMarked } from "lucide-react";
 import { PassageCard } from "@/components/PassageCard";
+import { Logo } from "@/components/Logo";
+import { MosqueIcon, NafilahIcon, QiyamIcon } from "@/components/ModeIcons";
 import { useLang } from "@/components/LanguageProvider";
+import { surahName, cleanAyah } from "@/lib/quranDisplay";
 import type { Mode, PassageContent, ResolvedPlan } from "@/lib/types";
 
 const FARAID_PRAYERS = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
@@ -16,11 +19,29 @@ const NAFL_PRAYERS = [
   "witr",
   "free",
 ];
-const MODES: { key: Mode; Icon: typeof Sunrise }[] = [
-  { key: "faraid", Icon: Sunrise },
-  { key: "nafl", Icon: Star },
-  { key: "qiyam", Icon: MoonStar },
+const MODES: {
+  key: Mode;
+  Icon: ComponentType<{ size?: number; className?: string }>;
+}[] = [
+  { key: "faraid", Icon: MosqueIcon },
+  { key: "nafl", Icon: NafilahIcon },
+  { key: "qiyam", Icon: QiyamIcon },
 ];
+
+interface DailyAyah {
+  surahNumber: number;
+  ayahNumber: number;
+  arabicText: string;
+  surahNameArabic: string;
+  surahNameTranslit: string;
+  translation: string | null;
+}
+
+interface WeekStats {
+  totalRecitations: number;
+  distinctPassages: number;
+  distinctSurahs: number;
+}
 
 export default function HomePage() {
   const { t, lang } = useLang();
@@ -34,6 +55,8 @@ export default function HomePage() {
   const [plan, setPlan] = useState<ResolvedPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [daily, setDaily] = useState<DailyAyah | null>(null);
+  const [week, setWeek] = useState<WeekStats | null>(null);
 
   useEffect(() => {
     fetch("/api/status")
@@ -42,7 +65,27 @@ export default function HomePage() {
         setStatus({ seeded: d.seeded, hasMemorization: d.hasMemorization }),
       )
       .catch(() => setStatus({ seeded: false, hasMemorization: false }));
+    fetch("/api/daily-ayah")
+      .then((r) => r.json())
+      .then((d) => setDaily(d.ayah))
+      .catch(() => {});
+    fetch("/api/history/stats")
+      .then((r) => r.json())
+      .then((d) => setWeek(d.week))
+      .catch(() => {});
   }, []);
+
+  // Hijri date for the greeting.
+  const hijri = (() => {
+    try {
+      return new Intl.DateTimeFormat(
+        lang === "ar" ? "ar-SA-u-ca-islamic-umalqura" : "en-u-ca-islamic-umalqura",
+        { day: "numeric", month: "long", year: "numeric" },
+      ).format(new Date());
+    } catch {
+      return "";
+    }
+  })();
 
   useEffect(() => {
     if (mode === "faraid") setPrayer("fajr");
@@ -96,13 +139,20 @@ export default function HomePage() {
     <div className="pt-2 lg:grid lg:grid-cols-[minmax(340px,400px)_1fr] lg:gap-8 lg:items-start">
       {/* Controls column */}
       <div className="space-y-5 lg:sticky lg:top-20">
+        {/* Greeting */}
         <section className="card overflow-hidden animate-rise">
-          <div className="p-5 bg-primary-soft">
-            <p className="text-xs text-muted mb-1">{t("home.greeting")}</p>
-            <h1 className="font-heading text-[1.7rem] leading-tight text-foreground">
-              {t("home.title")}
-            </h1>
-            <p className="text-sm text-muted mt-1.5">{t("home.subtitle")}</p>
+          <div className="p-5 bg-primary-soft flex items-start justify-between gap-4">
+            <div>
+              <p className="text-xs text-muted mb-1">
+                {t("home.greeting")}
+                {hijri ? ` · ${hijri}` : ""}
+              </p>
+              <h1 className="font-heading text-[1.65rem] leading-tight text-foreground">
+                {t("home.title")}
+              </h1>
+              <p className="text-sm text-muted mt-1.5">{t("home.subtitle")}</p>
+            </div>
+            <Logo variant="icon" size={44} className="shrink-0 mt-1 opacity-90" />
           </div>
         </section>
 
@@ -114,6 +164,53 @@ export default function HomePage() {
             <Sparkles size={18} className="text-accent shrink-0" />
             <span className="text-sm">{t("home.setMemoFirst")}</span>
           </Link>
+        )}
+
+        {/* Ayah of the day */}
+        {daily && (
+          <section className="card p-4 border-s-4 border-s-accent animate-rise">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-accent mb-2">
+              <Sparkles size={13} />
+              {t("home.dailyAyah")}
+            </div>
+            <p className="font-quran text-lg leading-[2] text-foreground" dir="rtl">
+              {cleanAyah(daily.arabicText)}
+            </p>
+            {lang === "en" && daily.translation && (
+              <p className="text-xs text-muted italic mt-1.5" dir="ltr">
+                “{daily.translation}”
+              </p>
+            )}
+            <p className="text-[11px] text-muted mt-2">
+              {t("passage.surah")}{" "}
+              {surahName(lang, daily.surahNameArabic, daily.surahNameTranslit)} ·{" "}
+              {t("passage.ayah")} {daily.ayahNumber}
+            </p>
+          </section>
+        )}
+
+        {/* This week */}
+        {week && (
+          <section>
+            <SectionLabel>{t("home.thisWeek")}</SectionLabel>
+            <div className="grid grid-cols-3 gap-2.5">
+              <MiniStat
+                Icon={Sparkles}
+                value={week.totalRecitations}
+                label={t("home.recitations")}
+              />
+              <MiniStat
+                Icon={Layers}
+                value={week.distinctPassages}
+                label={t("home.passages")}
+              />
+              <MiniStat
+                Icon={BookMarked}
+                value={week.distinctSurahs}
+                label={t("home.surahs")}
+              />
+            </div>
+          </section>
         )}
 
         {/* Mode */}
@@ -131,9 +228,8 @@ export default function HomePage() {
                   }`}
                 >
                   <m.Icon
-                    size={22}
+                    size={24}
                     className={on ? "text-primary" : "text-muted"}
-                    strokeWidth={on ? 2.4 : 2}
                   />
                   <span className="text-sm font-bold leading-none">
                     {t(`mode.${m.key}`)}
@@ -176,7 +272,7 @@ export default function HomePage() {
         <button
           onClick={aqim}
           disabled={loading}
-          className="btn-primary w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-60"
+          className="btn-cta w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-60"
         >
           {loading ? (
             <RefreshCw size={20} className="animate-spin" />
@@ -208,6 +304,24 @@ export default function HomePage() {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return <div className="text-xs font-bold text-muted mb-2 px-1">{children}</div>;
+}
+
+function MiniStat({
+  Icon,
+  value,
+  label,
+}: {
+  Icon: ComponentType<{ size?: number; className?: string }>;
+  value: number;
+  label: string;
+}) {
+  return (
+    <div className="card p-3 text-center">
+      <Icon size={16} className="text-secondary mx-auto mb-1" />
+      <div className="text-xl font-bold tabular-nums leading-none">{value}</div>
+      <div className="text-[10px] text-muted mt-1 leading-tight">{label}</div>
+    </div>
+  );
 }
 
 function Stepper({

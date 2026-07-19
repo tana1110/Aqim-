@@ -36,7 +36,7 @@ const prisma = new PrismaClient({ adapter });
 
 // Bump this whenever the seed's derived data (e.g. tafsir summary format)
 // changes, so deploys regenerate it even though row counts are unchanged.
-const SEED_VERSION = "2";
+const SEED_VERSION = "3";
 
 const API = "https://api.alquran.cloud/v1";
 const TEXT_EDITION = "quran-uthmani";
@@ -281,28 +281,27 @@ async function main() {
   );
 }
 
-// Condense the existing tafsir into a concise 2-4 sentence paragraph that ends
-// at a clean sentence boundary. This only TRUNCATES the sourced text — it never
-// rewrites or invents content. ۔ = Arabic full stop, ، = Arabic comma.
+// Condense the existing tafsir to its FIRST sentence — in Tafsir al-Muyassar
+// the opening sentence states the ayah's core idea, which is exactly what a
+// quick glance needs. This only TRUNCATES the sourced text — it never rewrites
+// or invents content. ۔ = Arabic full stop, ، = Arabic comma.
 function condense(full: string): string {
   const t = full.replace(/^﻿/, "").trim();
-  const MAX = 400;
-  if (t.length <= MAX) return t; // short/medium tafsir kept whole (a few sentences)
+  const MAX = 220;
+  if (t.length <= MAX) return t; // already short — keep whole
 
-  // Prefer ending at a sentence boundary (. or Arabic full stop) past ~180 chars.
-  const window = t.slice(0, MAX + 80);
-  let cut = -1;
+  // First sentence boundary (., Arabic full stop) at a sensible position.
   const re = /[.۔]/g;
   let m: RegExpExecArray | null;
-  while ((m = re.exec(window))) {
-    if (m.index >= 180 && m.index <= MAX) cut = m.index;
+  while ((m = re.exec(t))) {
+    if (m.index >= 40 && m.index <= MAX) return t.slice(0, m.index + 1).trim();
+    if (m.index > MAX) break;
   }
-  if (cut > -1) return t.slice(0, cut + 1).trim();
 
-  // Otherwise end at an Arabic comma near the limit, then hard-cut, with ellipsis.
+  // No sentence end in range: cut at the last Arabic comma before the limit.
   const comma = t.lastIndexOf("،", MAX);
-  if (comma >= 180) return t.slice(0, comma).trim() + "…";
-  return t.slice(0, MAX).trim() + "…";
+  if (comma >= 60) return t.slice(0, comma).trim() + "…";
+  return t.slice(0, 180).trim() + "…";
 }
 
 main()

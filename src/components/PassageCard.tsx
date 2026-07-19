@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { BookOpen } from "lucide-react";
 import type { PassageContent } from "@/lib/types";
 import { useLang } from "@/components/LanguageProvider";
@@ -20,6 +21,7 @@ export function PassageCard({
   fixedLabel?: string;
 }) {
   const { t, lang } = useLang();
+  const [expanded, setExpanded] = useState(false);
 
   const range =
     content.fromAyah === content.toAyah
@@ -100,15 +102,33 @@ export function PassageCard({
                 ? t("passage.translation")
                 : t("passage.meaningSimple")}
             </div>
-            <p
-              className="text-sm leading-relaxed text-foreground/90"
-              dir={showTranslation ? "ltr" : "rtl"}
-            >
-              {content.ayahs
+            {(() => {
+              const meaningText = content.ayahs
                 .map((a) => (showTranslation ? a.translation : a.tafsirSummary))
                 .filter((s): s is string => !!s)
-                .join(" ")}
-            </p>
+                .join(" ");
+              const clampable = meaningText.length > 160;
+              return (
+                <>
+                  <p
+                    className={`text-sm leading-relaxed text-foreground/90 ${
+                      clampable && !expanded ? "line-clamp-3" : ""
+                    }`}
+                    dir={showTranslation ? "ltr" : "rtl"}
+                  >
+                    {meaningText}
+                  </p>
+                  {clampable && (
+                    <button
+                      onClick={() => setExpanded(!expanded)}
+                      className="mt-1.5 text-xs font-bold text-accent hover:opacity-80"
+                    >
+                      {expanded ? t("passage.less") : t("passage.more")}
+                    </button>
+                  )}
+                </>
+              );
+            })()}
             {(showTranslation
               ? content.translationSource
               : content.tafsirSource) && (
