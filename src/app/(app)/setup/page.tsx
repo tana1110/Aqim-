@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
+import { useLang } from "@/components/LanguageProvider";
+import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
 
 interface JuzSegment {
@@ -15,13 +18,15 @@ interface Juz {
 }
 
 export default function SetupPage() {
+  const { t, lang } = useLang();
+  const router = useRouter();
   const [surahs, setSurahs] = useState<SurahMeta[]>([]);
   const [juzList, setJuzList] = useState<Juz[]>([]);
   const [selectedSurahs, setSelectedSurahs] = useState<Set<number>>(new Set());
   const [selectedJuz, setSelectedJuz] = useState<Set<number>>(new Set());
   const [tab, setTab] = useState<"surah" | "juz">("surah");
   const [loading, setLoading] = useState(true);
-  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [seeded, setSeeded] = useState(true);
 
   useEffect(() => {
@@ -56,16 +61,13 @@ export default function SetupPage() {
   );
 
   function toggleSurah(n: number) {
-    setSaved(false);
     setSelectedSurahs((prev) => {
       const next = new Set(prev);
       next.has(n) ? next.delete(n) : next.add(n);
       return next;
     });
   }
-
   function toggleJuz(j: number) {
-    setSaved(false);
     setSelectedJuz((prev) => {
       const next = new Set(prev);
       next.has(j) ? next.delete(j) : next.add(j);
@@ -95,12 +97,18 @@ export default function SetupPage() {
   }
 
   async function save() {
-    await fetch("/api/memorization", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ranges: buildRanges() }),
-    });
-    setSaved(true);
+    setSaving(true);
+    try {
+      await fetch("/api/memorization", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ranges: buildRanges() }),
+      });
+      // Head to the home screen so they can start choosing recitations.
+      router.push("/home");
+    } catch {
+      setSaving(false);
+    }
   }
 
   const selectedCount = selectedSurahs.size + selectedJuz.size;
@@ -110,8 +118,7 @@ export default function SetupPage() {
   if (!seeded) {
     return (
       <div className="card p-6 text-center text-sm text-muted mt-6">
-        قاعدة البيانات غير مهيأة. شغّل{" "}
-        <code dir="ltr">npm run db:seed</code>.
+        {t("setup.notSeeded")}
       </div>
     );
   }
@@ -119,25 +126,20 @@ export default function SetupPage() {
   return (
     <div className="space-y-5 pt-2 pb-4">
       <div>
-        <h1 className="text-xl font-bold mb-1">ماذا تحفظ؟</h1>
-        <p className="text-sm text-muted">
-          اختر بالسور أو بالأجزاء — سنقترح من محفوظاتك فقط.
-        </p>
+        <h1 className="text-xl font-bold mb-1">{t("setup.title")}</h1>
+        <p className="text-sm text-muted">{t("setup.subtitle")}</p>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-2 p-1 bg-surface-2 rounded-2xl">
-        {(["surah", "juz"] as const).map((t) => (
+        {(["surah", "juz"] as const).map((tb) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
+            key={tb}
+            onClick={() => setTab(tb)}
             className={`flex-1 rounded-xl py-2 text-sm font-bold transition ${
-              tab === t
-                ? "bg-surface text-primary shadow-sm"
-                : "text-muted"
+              tab === tb ? "bg-surface text-primary shadow-sm" : "text-muted"
             }`}
           >
-            {t === "surah" ? "بالسور" : "بالأجزاء"}
+            {tb === "surah" ? t("setup.bySurah") : t("setup.byJuz")}
           </button>
         ))}
       </div>
@@ -150,7 +152,7 @@ export default function SetupPage() {
               <button
                 key={s.number}
                 onClick={() => toggleSurah(s.number)}
-                className={`text-right rounded-2xl border p-3 transition active:scale-[0.98] ${
+                className={`text-start rounded-2xl border p-3 transition active:scale-[0.98] ${
                   on
                     ? "border-primary/50 bg-primary-soft"
                     : "border-border bg-surface hover:border-primary/30"
@@ -166,10 +168,18 @@ export default function SetupPage() {
                     {on && <Check size={12} strokeWidth={3} />}
                   </span>
                 </div>
-                <div className="font-quran text-lg leading-tight">
-                  {s.nameArabic}
+                <div
+                  className={
+                    lang === "ar"
+                      ? "font-quran text-lg leading-tight"
+                      : "text-sm font-semibold leading-tight"
+                  }
+                >
+                  {surahName(lang, s.nameArabic, s.nameTranslit)}
                 </div>
-                <div className="text-[11px] text-muted">{s.ayahCount} آية</div>
+                <div className="text-[11px] text-muted">
+                  {s.ayahCount} {t("setup.ayahs")}
+                </div>
               </button>
             );
           })}
@@ -191,7 +201,7 @@ export default function SetupPage() {
                 }`}
               >
                 <div className="text-center leading-tight">
-                  <div className="text-[9px] opacity-70">جزء</div>
+                  <div className="text-[9px] opacity-70">{t("setup.juz")}</div>
                   <div className="text-lg font-bold">{j.juz}</div>
                 </div>
               </button>
@@ -200,22 +210,24 @@ export default function SetupPage() {
         </div>
       )}
 
-      {/* Save bar — floating above the tab bar on mobile, inline on desktop */}
       <div className="fixed inset-x-0 bottom-24 z-20 px-4 md:static md:px-0 md:mt-2">
         <div className="mx-auto max-w-md md:max-w-none card flex items-center justify-between gap-3 p-2.5 pr-4">
           <span className="text-sm text-muted">
-            {selectedCount > 0 ? `${selectedCount} محدّد` : "لم تختر بعد"}
+            {selectedCount > 0
+              ? t("setup.selected", { n: selectedCount })
+              : t("setup.noneSelected")}
           </span>
           <button
             onClick={save}
-            className="btn-primary px-6 py-2.5 text-sm flex items-center gap-1.5"
+            disabled={saving}
+            className="btn-primary px-6 py-2.5 text-sm flex items-center gap-1.5 disabled:opacity-70"
           >
-            {saved ? (
+            {saving ? (
               <>
-                <Check size={16} /> حُفظت
+                <Check size={16} /> {t("common.saved")}
               </>
             ) : (
-              "حفظ"
+              t("common.save")
             )}
           </button>
         </div>
@@ -229,10 +241,7 @@ function Loading() {
   return (
     <div className="space-y-3 pt-4">
       {[...Array(4)].map((_, i) => (
-        <div
-          key={i}
-          className="h-16 rounded-2xl bg-surface-2 animate-pulse"
-        />
+        <div key={i} className="h-16 rounded-2xl bg-surface-2 animate-pulse" />
       ))}
     </div>
   );

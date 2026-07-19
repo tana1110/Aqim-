@@ -5,6 +5,7 @@ export interface AyahContent {
   ayahNumber: number;
   arabicText: string;
   tafsirSummary: string | null;
+  translation: string | null; // English translation of the meaning
 }
 
 export interface PassageContent {
@@ -17,10 +18,12 @@ export interface PassageContent {
   ayahs: AyahContent[];
   tafsirSource: string | null;
   tafsirSourceUrl: string | null;
+  translationSource: string | null;
 }
 
-// Fetch the verified Arabic text (Uthmani) and tafsir summaries for a passage.
-// Text is read ONLY from the locally-seeded, source-verified tables.
+// Fetch the verified Arabic text (Uthmani), tafsir summaries, and English
+// translation for a passage. Text is read ONLY from the locally-seeded,
+// source-verified tables.
 export async function getPassageContent(
   passage: Passage,
   tafsirSource: string,
@@ -30,26 +33,25 @@ export async function getPassageContent(
   });
   if (!surah) return null;
 
-  const [ayahs, tafsirRows] = await Promise.all([
-    prisma.quranText.findMany({
-      where: {
-        surahNumber: passage.surahNumber,
-        ayahNumber: { gte: passage.fromAyah, lte: passage.toAyah },
-      },
+  const range = {
+    surahNumber: passage.surahNumber,
+    ayahNumber: { gte: passage.fromAyah, lte: passage.toAyah },
+  };
+
+  const [ayahs, tafsirRows, translationRows] = await Promise.all([
+    prisma.quranText.findMany({ where: range, orderBy: { ayahNumber: "asc" } }),
+    prisma.tafsirText.findMany({
+      where: range,
       orderBy: { ayahNumber: "asc" },
     }),
-    prisma.tafsirText.findMany({
-      where: {
-        surahNumber: passage.surahNumber,
-        ayahNumber: { gte: passage.fromAyah, lte: passage.toAyah },
-      },
+    prisma.translationText.findMany({
+      where: range,
       orderBy: { ayahNumber: "asc" },
     }),
   ]);
 
   // Prefer the requested tafsir edition if present; otherwise use whatever is
-  // stored (currently a single source). `tafsirSource` may be an edition id
-  // (e.g. "ar.muyassar") or the stored human label, so match loosely.
+  // stored. `tafsirSource` may be an edition id or the stored label.
   const preferred = tafsirRows.filter(
     (t) =>
       t.tafsirSource === tafsirSource ||
@@ -58,7 +60,9 @@ export async function getPassageContent(
   const chosen = preferred.length > 0 ? preferred : tafsirRows;
 
   const tafsirByAyah = new Map(chosen.map((t) => [t.ayahNumber, t]));
-  const first = chosen[0];
+  const translationByAyah = new Map(
+    translationRows.map((t) => [t.ayahNumber, t]),
+  );
 
   return {
     surahNumber: surah.number,
@@ -71,8 +75,10 @@ export async function getPassageContent(
       ayahNumber: a.ayahNumber,
       arabicText: a.arabicText,
       tafsirSummary: tafsirByAyah.get(a.ayahNumber)?.summaryText ?? null,
+      translation: translationByAyah.get(a.ayahNumber)?.text ?? null,
     })),
-    tafsirSource: first?.tafsirSource ?? null,
-    tafsirSourceUrl: first?.sourceUrl ?? null,
+    tafsirSource: chosen[0]?.tafsirSource ?? null,
+    tafsirSourceUrl: chosen[0]?.sourceUrl ?? null,
+    translationSource: translationRows[0]?.source ?? null,
   };
 }

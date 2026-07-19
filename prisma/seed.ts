@@ -42,6 +42,9 @@ const TAFSIR_EDITION = "ar.muyassar";
 const TAFSIR_SOURCE_LABEL =
   "Tafsir al-Muyassar (King Fahd Complex) - via Tanzil / al-Quran Cloud";
 const TAFSIR_SOURCE_URL = "https://quran.com/1?tafsirs=ar-tafsir-muyassar";
+// English translation of the meaning (for non-Arabic speakers).
+const TRANSLATION_EDITION = "en.sahih";
+const TRANSLATION_SOURCE_LABEL = "Saheeh International (en.sahih)";
 
 interface ApiAyah {
   number: number;
@@ -85,29 +88,34 @@ function normalizeArabic(s: string): string {
 }
 
 async function main() {
-  // Idempotency guard: skip if the reference data is already fully loaded, so
-  // this is safe to run on every deploy build.
-  const [alreadySurahs, alreadyAyahs] = await Promise.all([
+  // Idempotency guard: skip only if ALL reference data — including the English
+  // translation — is already loaded, so this is safe to run on every deploy
+  // build and will backfill translations on the first run after they're added.
+  const [alreadySurahs, alreadyAyahs, alreadyTranslations] = await Promise.all([
     prisma.surah.count().catch(() => 0),
     prisma.quranText.count().catch(() => 0),
+    prisma.translationText.count().catch(() => 0),
   ]);
-  if (alreadySurahs === 114 && alreadyAyahs >= 6000) {
+  if (alreadySurahs === 114 && alreadyAyahs >= 6000 && alreadyTranslations >= 6000) {
     console.log(
-      `Already seeded (${alreadySurahs} surahs, ${alreadyAyahs} ayahs) — skipping.`,
+      `Already seeded (${alreadySurahs} surahs, ${alreadyAyahs} ayahs, ${alreadyTranslations} translations) — skipping.`,
     );
     return;
   }
 
-  console.log("Fetching Quran text, verification edition, and tafsir...");
-  const [text, verify, tafsir] = await Promise.all([
+  console.log("Fetching Quran text, verification edition, tafsir, translation...");
+  const [text, verify, tafsir, translation] = await Promise.all([
     fetchQuran(TEXT_EDITION),
     fetchQuran(VERIFY_EDITION),
     fetchQuran(TAFSIR_EDITION),
+    fetchQuran(TRANSLATION_EDITION),
   ]);
 
   if (!text) throw new Error(`Primary edition ${TEXT_EDITION} failed to fetch`);
   if (!tafsir)
     throw new Error(`Tafsir edition ${TAFSIR_EDITION} failed to fetch`);
+  if (!translation)
+    throw new Error(`Translation edition ${TRANSLATION_EDITION} failed to fetch`);
 
   // --- Integrity cross-checks -------------------------------------------
   // Structural checks are the HARD gate (abort on failure). The textual check
@@ -187,8 +195,10 @@ async function main() {
 
   // --- Write reference data ------------------------------------------------
   const tafsirBySurah = new Map(tafsir.map((s) => [s.number, s]));
+  const translationBySurah = new Map(translation.map((s) => [s.number, s]));
 
   // Clear existing reference data for idempotent re-seeding.
+  await prisma.translationText.deleteMany();
   await prisma.tafsirText.deleteMany();
   await prisma.quranText.deleteMany();
   await prisma.surah.deleteMany();
@@ -230,14 +240,27 @@ async function main() {
         })),
       });
     }
+
+    const trsurah = translationBySurah.get(s.number);
+    if (trsurah) {
+      await prisma.translationText.createMany({
+        data: trsurah.ayahs.map((a) => ({
+          surahNumber: s.number,
+          ayahNumber: a.numberInSurah,
+          source: TRANSLATION_SOURCE_LABEL,
+          text: a.text, // verbatim English translation of the meaning
+        })),
+      });
+    }
     if (s.number % 20 === 0) console.log(`  ...surah ${s.number}/114`);
   }
 
   const surahCount = await prisma.surah.count();
   const ayahCount = await prisma.quranText.count();
   const tafsirCount = await prisma.tafsirText.count();
+  const translationCount = await prisma.translationText.count();
   console.log(
-    `Seeded ${surahCount} surahs, ${ayahCount} ayahs, ${tafsirCount} tafsir entries.`,
+    `Seeded ${surahCount} surahs, ${ayahCount} ayahs, ${tafsirCount} tafsir, ${translationCount} translations.`,
   );
 }
 

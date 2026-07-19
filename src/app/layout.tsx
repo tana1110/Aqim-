@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Amiri, Amiri_Quran, Cairo, Inter } from "next/font/google";
+import { LanguageProvider } from "@/components/LanguageProvider";
 import "./globals.css";
 
 // Headers (Arabic): Amiri — classical, manuscript-like.
@@ -60,7 +61,19 @@ export default function RootLayout({
       dir="rtl"
       className={`${amiri.variable} ${amiriQuran.variable} ${cairo.variable} ${inter.variable} h-full antialiased`}
     >
-      <body className="min-h-full">{children}</body>
+      <head>
+        {/* Apply the saved language before paint to avoid a flash of the wrong
+            direction. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{var l=localStorage.getItem('aqim-lang');if(l==='en'){document.documentElement.lang='en';document.documentElement.dir='ltr';}}catch(e){}",
+          }}
+        />
+      </head>
+      <body className="min-h-full">
+        <LanguageProvider>{children}</LanguageProvider>
+      </body>
     </html>
   );
 }

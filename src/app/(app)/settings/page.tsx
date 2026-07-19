@@ -2,9 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { Check, Info } from "lucide-react";
+import { useLang } from "@/components/LanguageProvider";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import type { AppSettings } from "@/lib/types";
 
 export default function SettingsPage() {
+  const { t } = useLang();
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -36,47 +39,51 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-5 pt-2 max-w-2xl">
-      <h1 className="text-xl font-bold">الإعدادات</h1>
+      <h1 className="text-xl font-bold">{t("settings.title")}</h1>
 
       <div className="card divide-y divide-border overflow-hidden">
+        <div className="flex items-center justify-between p-4">
+          <span className="text-sm font-medium">{t("settings.language")}</span>
+          <LanguageToggle />
+        </div>
         <NumberField
-          label="عدد ركعات الوتر"
-          hint="الركعة الأخيرة تبقى بالإخلاص."
+          label={t("settings.witr")}
+          hint={t("settings.witr.hint")}
           value={settings.witrRakahs}
           min={1}
           max={11}
           onChange={(v) => update("witrRakahs", v)}
         />
         <NumberField
-          label="نافذة عدم التكرار"
-          hint="لا يتكرر المقطع ضمن آخر N مقاطع."
+          label={t("settings.noRepeat")}
+          hint={t("settings.noRepeat.hint")}
           value={settings.noRepeatWindow}
           min={1}
           max={100}
           onChange={(v) => update("noRepeatWindow", v)}
         />
         <NumberField
-          label="نافذة قيام الليل"
-          hint="نافذة أوسع للجلسات الليلية."
+          label={t("settings.qiyamWindow")}
+          hint={t("settings.qiyamWindow.hint")}
           value={settings.qiyamRepeatWindow}
           min={1}
           max={100}
           onChange={(v) => update("qiyamRepeatWindow", v)}
         />
         <NumberField
-          label="حدّ السورة القصيرة (آيات)"
-          hint="لاختيار الفرائض من مقاطع أقصر."
+          label={t("settings.shortSurah")}
+          hint={t("settings.shortSurah.hint")}
           value={settings.maxAyahShort}
           min={3}
           max={50}
           onChange={(v) => update("maxAyahShort", v)}
         />
-        <div className="flex items-center justify-between p-4">
-          <span className="text-sm font-medium">مصدر التفسير</span>
-          <span className="text-xs text-muted text-left">
-            تفسير الميسّر
-            <br />
-            مجمع الملك فهد
+        <div className="flex items-center justify-between p-4 gap-4">
+          <span className="text-sm font-medium">
+            {t("settings.tafsirSource")}
+          </span>
+          <span className="text-xs text-muted text-end">
+            {t("settings.tafsirSource.value")}
           </span>
         </div>
       </div>
@@ -84,8 +91,7 @@ export default function SettingsPage() {
       <div className="card p-4 flex gap-3 bg-accent-soft border-accent/25">
         <Info size={18} className="text-accent shrink-0 mt-0.5" />
         <p className="text-xs text-foreground/80 leading-relaxed">
-          الخيارات الفقهية (مثل عدد ركعات الوتر) قابلة للضبط وتعكس ما هو شائع —
-          يُرجى مراجعة أهل العلم للتأكد مما يناسبك.
+          {t("settings.fiqhNote")}
         </p>
       </div>
 
@@ -95,10 +101,10 @@ export default function SettingsPage() {
       >
         {saved ? (
           <>
-            <Check size={18} /> حُفظت الإعدادات
+            <Check size={18} /> {t("settings.settingsSaved")}
           </>
         ) : (
-          "حفظ الإعدادات"
+          t("settings.saveSettings")
         )}
       </button>
     </div>
@@ -130,7 +136,7 @@ function NumberField({
         <button
           onClick={() => onChange(Math.max(min, value - 1))}
           className="w-9 h-9 rounded-full bg-surface-2 border border-border grid place-items-center text-lg active:scale-90 transition"
-          aria-label="أنقص"
+          aria-label="-"
         >
           −
         </button>
@@ -138,7 +144,7 @@ function NumberField({
         <button
           onClick={() => onChange(Math.min(max, value + 1))}
           className="w-9 h-9 rounded-full bg-primary text-white grid place-items-center text-lg active:scale-90 transition"
-          aria-label="زد"
+          aria-label="+"
         >
           +
         </button>

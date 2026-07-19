@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Sparkles, Layers, BookMarked } from "lucide-react";
+import { useLang } from "@/components/LanguageProvider";
+import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
 
 interface Stats {
@@ -30,6 +32,7 @@ interface HistoryRow {
 }
 
 export default function HistoryPage() {
+  const { t, lang } = useLang();
   const [stats, setStats] = useState<Stats | null>(null);
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [surahMap, setSurahMap] = useState<Map<number, SurahMeta>>(new Map());
@@ -51,8 +54,8 @@ export default function HistoryPage() {
   return (
     <div className="space-y-5 pt-2 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start lg:space-y-0">
       <div className="lg:col-span-2">
-        <h1 className="text-xl font-bold mb-1">سجلّك</h1>
-        <p className="text-sm text-muted">تابع تنوّعك في القراءة هذا الأسبوع.</p>
+        <h1 className="text-xl font-bold mb-1">{t("history.title")}</h1>
+        <p className="text-sm text-muted">{t("history.subtitle")}</p>
       </div>
 
       {stats && (
@@ -60,43 +63,46 @@ export default function HistoryPage() {
           <div className="grid grid-cols-3 gap-2.5">
             <Stat
               Icon={Sparkles}
-              label="تلاوات الأسبوع"
+              label={t("history.week")}
               value={stats.week.totalRecitations}
             />
             <Stat
               Icon={Layers}
-              label="مقاطع مختلفة"
+              label={t("history.distinctPassages")}
               value={stats.week.distinctPassages}
             />
             <Stat
               Icon={BookMarked}
-              label="سور مختلفة"
+              label={t("history.distinctSurahs")}
               value={stats.week.distinctSurahs}
             />
           </div>
 
           {stats.week.bySurah.length > 0 && (
             <div className="card p-4">
-              <div className="text-sm font-bold mb-3">الأكثر تكراراً</div>
+              <div className="text-sm font-bold mb-3">
+                {t("history.mostRepeated")}
+              </div>
               <div className="space-y-2.5">
                 {stats.week.bySurah.map((b) => (
                   <div key={b.surahNumber} className="flex items-center gap-3">
-                    <span className="font-quran text-base w-24 truncate">
-                      {b.nameArabic}
+                    <span
+                      className={`w-24 truncate ${lang === "ar" ? "font-quran text-base" : "text-sm font-medium"}`}
+                    >
+                      {surahName(lang, b.nameArabic, b.nameEnglish)}
                     </span>
                     <div className="flex-1 h-2.5 rounded-full bg-surface-2 overflow-hidden">
                       <div
                         className="h-full rounded-full bg-secondary"
                         style={{
                           width: `${
-                            (b.count /
-                              Math.max(1, stats.week.bySurah[0].count)) *
+                            (b.count / Math.max(1, stats.week.bySurah[0].count)) *
                             100
                           }%`,
                         }}
                       />
                     </div>
-                    <span className="text-xs text-muted w-5 text-left tabular-nums">
+                    <span className="text-xs text-muted w-5 text-end tabular-nums">
                       {b.count}
                     </span>
                   </div>
@@ -108,29 +114,36 @@ export default function HistoryPage() {
       )}
 
       <div>
-        <div className="text-sm font-bold mb-2 px-1">آخر ما استُخدم</div>
+        <div className="text-sm font-bold mb-2 px-1">{t("history.recent")}</div>
         {rows.length === 0 ? (
           <div className="card p-8 text-center text-sm text-muted">
-            لا يوجد سجل بعد — ابدأ بالقراءة.
+            {t("history.empty")}
           </div>
         ) : (
           <div className="card divide-y divide-border overflow-hidden">
             {rows.map((r) => {
               const s = surahMap.get(r.surahNumber);
+              const name = s
+                ? surahName(lang, s.nameArabic, s.nameTranslit)
+                : `${r.surahNumber}`;
               return (
                 <div
                   key={r.id}
-                  className="flex items-center justify-between p-3.5"
+                  className="flex items-center justify-between p-3.5 gap-3"
                 >
-                  <span className="font-quran text-base">
-                    {s?.nameArabic ?? `سورة ${r.surahNumber}`}{" "}
+                  <span
+                    className={lang === "ar" ? "font-quran text-base" : "text-sm font-medium"}
+                  >
+                    {name}{" "}
                     <span className="text-xs text-muted">
                       ({r.fromAyah}–{r.toAyah})
                     </span>
                   </span>
-                  <span className="text-xs text-muted">
-                    {prayerLabel(r.prayerType)} ·{" "}
-                    {new Date(r.usedAt).toLocaleDateString("ar")}
+                  <span className="text-xs text-muted whitespace-nowrap">
+                    {t(`prayer.${r.prayerType}`)} ·{" "}
+                    {new Date(r.usedAt).toLocaleDateString(
+                      lang === "ar" ? "ar" : "en",
+                    )}
                   </span>
                 </div>
               );
@@ -160,22 +173,4 @@ function Stat({
       <div className="text-[10px] text-muted mt-0.5 leading-tight">{label}</div>
     </div>
   );
-}
-
-function prayerLabel(key: string): string {
-  const map: Record<string, string> = {
-    fajr: "الفجر",
-    dhuhr: "الظهر",
-    asr: "العصر",
-    maghrib: "المغرب",
-    isha: "العشاء",
-    witr: "الوتر",
-    "fajr-sunnah": "سنة الفجر",
-    "dhuhr-nafl": "سنن الظهر",
-    "maghrib-sunnah": "سنة المغرب",
-    "isha-shaf": "الشفع",
-    free: "نافلة",
-    qiyam: "قيام",
-  };
-  return map[key] ?? key;
 }

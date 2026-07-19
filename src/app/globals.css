@@ -106,6 +106,18 @@ h3 {
   white-space: nowrap;
 }
 
+/* Bismillah shown as its own distinct line above the verse text. */
+.bismillah-line {
+  font-family: var(--font-quran);
+  font-size: clamp(1.15rem, 1rem + 1vw, 1.5rem);
+  line-height: 2;
+  text-align: center;
+  color: var(--color-primary);
+  padding-bottom: 0.6rem;
+  margin-bottom: 0.8rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);

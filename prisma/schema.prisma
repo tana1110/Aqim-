@@ -22,8 +22,9 @@ model Surah {
   revelationType String // "Meccan" | "Medinan"
   ayahCount      Int
 
-  ayahs  QuranText[]
-  tafsir TafsirText[]
+  ayahs        QuranText[]
+  tafsir       TafsirText[]
+  translations TranslationText[]
 
   @@map("surah")
 }
@@ -56,6 +57,19 @@ model TafsirText {
 
   @@unique([surahNumber, ayahNumber, tafsirSource])
   @@map("tafsir_text")
+}
+
+model TranslationText {
+  id          Int    @id @default(autoincrement())
+  surahNumber Int    @map("surah_number")
+  ayahNumber  Int    @map("ayah_number")
+  source      String // e.g. "Saheeh International (en.sahih)"
+  text        String
+
+  surah Surah @relation(fields: [surahNumber], references: [number])
+
+  @@unique([surahNumber, ayahNumber, source])
+  @@map("translation_text")
 }
 
 // ---------------------------------------------------------------------------

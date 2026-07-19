@@ -1,15 +1,20 @@
+"use client";
+
 import Link from "next/link";
 import { BottomNav, TopNav } from "@/components/BottomNav";
 import { Logo } from "@/components/Logo";
 import { SplashScreen } from "@/components/SplashScreen";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useLang } from "@/components/LanguageProvider";
 
-// Responsive app shell.
-//  - Mobile: sticky header + fixed bottom tab bar, comfortable single column.
-//  - Desktop (md+): header holds inline nav tabs, content widens and pages lay
-//    out in multiple columns. No bottom bar.
+// Responsive app shell: mobile bottom tab bar, desktop top nav; content widens
+// on larger screens.
 export default function AppLayout({
   children,
-}: Readonly<{ children: React.ReactNode }>) {
+}: {
+  children: React.ReactNode;
+}) {
+  const { t } = useLang();
   return (
     <div className="min-h-dvh flex flex-col">
       <SplashScreen />
@@ -24,12 +29,15 @@ export default function AppLayout({
 
           <TopNav />
 
-          <Link
-            href="/"
-            className="text-[11px] md:text-sm text-muted hover:text-foreground transition-colors shrink-0"
-          >
-            عن التطبيق
-          </Link>
+          <div className="flex items-center gap-3 shrink-0">
+            <LanguageToggle />
+            <Link
+              href="/"
+              className="hidden sm:inline text-[11px] md:text-sm text-muted hover:text-foreground transition-colors"
+            >
+              {t("nav.about")}
+            </Link>
+          </div>
         </div>
       </header>
 

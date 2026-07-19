@@ -5,6 +5,7 @@ export interface AyahContent {
   ayahNumber: number;
   arabicText: string;
   tafsirSummary: string | null;
+  translation: string | null;
 }
 
 export interface PassageContent {
@@ -17,6 +18,7 @@ export interface PassageContent {
   ayahs: AyahContent[];
   tafsirSource: string | null;
   tafsirSourceUrl: string | null;
+  translationSource: string | null;
 }
 
 export type Mode = "faraid" | "nafl" | "qiyam";
