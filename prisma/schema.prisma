@@ -59,6 +59,16 @@ model TafsirText {
   @@map("tafsir_text")
 }
 
+// Small key/value store — used to track the seed version so the seed can
+// re-run (and regenerate derived data like tafsir summaries) when its logic
+// changes, even though the row counts are unchanged.
+model Meta {
+  key   String @id
+  value String
+
+  @@map("meta")
+}
+
 model TranslationText {
   id          Int    @id @default(autoincrement())
   surahNumber Int    @map("surah_number")

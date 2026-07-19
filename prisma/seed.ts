@@ -34,6 +34,10 @@ const connectionString =
 const adapter = new PrismaPg({ connectionString });
 const prisma = new PrismaClient({ adapter });
 
+// Bump this whenever the seed's derived data (e.g. tafsir summary format)
+// changes, so deploys regenerate it even though row counts are unchanged.
+const SEED_VERSION = "2";
+
 const API = "https://api.alquran.cloud/v1";
 const TEXT_EDITION = "quran-uthmani";
 // Second, independently-maintained Uthmani-script edition for text cross-check.
@@ -91,14 +95,21 @@ async function main() {
   // Idempotency guard: skip only if ALL reference data — including the English
   // translation — is already loaded, so this is safe to run on every deploy
   // build and will backfill translations on the first run after they're added.
-  const [alreadySurahs, alreadyAyahs, alreadyTranslations] = await Promise.all([
-    prisma.surah.count().catch(() => 0),
-    prisma.quranText.count().catch(() => 0),
-    prisma.translationText.count().catch(() => 0),
-  ]);
-  if (alreadySurahs === 114 && alreadyAyahs >= 6000 && alreadyTranslations >= 6000) {
+  const [alreadySurahs, alreadyAyahs, alreadyTranslations, versionRow] =
+    await Promise.all([
+      prisma.surah.count().catch(() => 0),
+      prisma.quranText.count().catch(() => 0),
+      prisma.translationText.count().catch(() => 0),
+      prisma.meta.findUnique({ where: { key: "seedVersion" } }).catch(() => null),
+    ]);
+  if (
+    alreadySurahs === 114 &&
+    alreadyAyahs >= 6000 &&
+    alreadyTranslations >= 6000 &&
+    versionRow?.value === SEED_VERSION
+  ) {
     console.log(
-      `Already seeded (${alreadySurahs} surahs, ${alreadyAyahs} ayahs, ${alreadyTranslations} translations) — skipping.`,
+      `Already seeded (v${SEED_VERSION}: ${alreadySurahs} surahs, ${alreadyAyahs} ayahs, ${alreadyTranslations} translations) — skipping.`,
     );
     return;
   }
@@ -255,24 +266,43 @@ async function main() {
     if (s.number % 20 === 0) console.log(`  ...surah ${s.number}/114`);
   }
 
+  await prisma.meta.upsert({
+    where: { key: "seedVersion" },
+    create: { key: "seedVersion", value: SEED_VERSION },
+    update: { value: SEED_VERSION },
+  });
+
   const surahCount = await prisma.surah.count();
   const ayahCount = await prisma.quranText.count();
   const tafsirCount = await prisma.tafsirText.count();
   const translationCount = await prisma.translationText.count();
   console.log(
-    `Seeded ${surahCount} surahs, ${ayahCount} ayahs, ${tafsirCount} tafsir, ${translationCount} translations.`,
+    `Seeded v${SEED_VERSION}: ${surahCount} surahs, ${ayahCount} ayahs, ${tafsirCount} tafsir, ${translationCount} translations.`,
   );
 }
 
-// Condense existing tafsir to ~2-3 lines by taking the leading sentence(s).
-// This truncates the sourced text; it never rewrites or invents content.
-// ۔ is the Arabic full stop.
+// Condense the existing tafsir into a concise 2-4 sentence paragraph that ends
+// at a clean sentence boundary. This only TRUNCATES the sourced text — it never
+// rewrites or invents content. ۔ = Arabic full stop, ، = Arabic comma.
 function condense(full: string): string {
-  const trimmed = full.trim();
-  if (trimmed.length <= 220) return trimmed;
-  const boundary = trimmed.slice(0, 240).search(/[.۔\n]/);
-  if (boundary > 80) return trimmed.slice(0, boundary + 1).trim();
-  return trimmed.slice(0, 200).trim() + "…";
+  const t = full.replace(/^﻿/, "").trim();
+  const MAX = 400;
+  if (t.length <= MAX) return t; // short/medium tafsir kept whole (a few sentences)
+
+  // Prefer ending at a sentence boundary (. or Arabic full stop) past ~180 chars.
+  const window = t.slice(0, MAX + 80);
+  let cut = -1;
+  const re = /[.۔]/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(window))) {
+    if (m.index >= 180 && m.index <= MAX) cut = m.index;
+  }
+  if (cut > -1) return t.slice(0, cut + 1).trim();
+
+  // Otherwise end at an Arabic comma near the limit, then hard-cut, with ellipsis.
+  const comma = t.lastIndexOf("،", MAX);
+  if (comma >= 180) return t.slice(0, comma).trim() + "…";
+  return t.slice(0, MAX).trim() + "…";
 }
 
 main()

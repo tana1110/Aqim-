@@ -100,20 +100,15 @@ export function PassageCard({
                 ? t("passage.translation")
                 : t("passage.meaningSimple")}
             </div>
-            <div className="space-y-1.5 text-sm leading-relaxed text-foreground/90">
-              {content.ayahs.map((a) => {
-                const meaning = showTranslation ? a.translation : a.tafsirSummary;
-                if (!meaning) return null;
-                return (
-                  <p key={a.ayahNumber} dir={showTranslation ? "ltr" : "rtl"}>
-                    <span className="text-accent font-bold">
-                      {num(a.ayahNumber, lang)}.
-                    </span>{" "}
-                    {meaning}
-                  </p>
-                );
-              })}
-            </div>
+            <p
+              className="text-sm leading-relaxed text-foreground/90"
+              dir={showTranslation ? "ltr" : "rtl"}
+            >
+              {content.ayahs
+                .map((a) => (showTranslation ? a.translation : a.tafsirSummary))
+                .filter((s): s is string => !!s)
+                .join(" ")}
+            </p>
             {(showTranslation
               ? content.translationSource
               : content.tafsirSource) && (
