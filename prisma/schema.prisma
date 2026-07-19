@@ -88,6 +88,8 @@ model TranslationText {
 
 model User {
   id        Int      @id @default(autoincrement())
+  // Anonymous per-device identity (from the aqim-uid cookie).
+  uid       String   @unique
   name      String
   createdAt DateTime @default(now()) @map("created_at")
 
