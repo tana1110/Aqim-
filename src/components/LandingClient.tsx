@@ -37,15 +37,7 @@ export function LandingClient({
               AQIM
             </span>
           </Link>
-          <div className="flex items-center gap-2">
-            <LanguageToggle />
-            <Link
-              href="/home"
-              className="btn-primary px-4 py-2 text-sm whitespace-nowrap"
-            >
-              {t("nav.openApp")}
-            </Link>
-          </div>
+          <LanguageToggle />
         </div>
       </header>
 
@@ -80,10 +72,10 @@ export function LandingClient({
         <div className="mt-8 px-2">
           <Link
             href="/home"
-            className="btn-primary flex w-full sm:w-auto sm:inline-flex items-center justify-center gap-2 px-10 py-4 text-lg"
+            className="btn-cta flex w-full sm:w-auto sm:inline-flex items-center justify-center gap-2.5 px-12 py-4 text-xl"
           >
             {t("common.startNow")}
-            <Arrow size={20} />
+            <Arrow size={22} />
           </Link>
         </div>
       </section>
@@ -171,10 +163,10 @@ export function LandingClient({
             <div className="mt-6 px-2">
               <Link
                 href="/home"
-                className="btn-primary flex w-full sm:w-auto sm:inline-flex items-center justify-center gap-2 px-10 py-3.5"
+                className="btn-cta flex w-full sm:w-auto sm:inline-flex items-center justify-center gap-2.5 px-12 py-4 text-lg"
               >
                 {t("common.startNow")}
-                <Arrow size={18} />
+                <Arrow size={20} />
               </Link>
             </div>
           </div>
