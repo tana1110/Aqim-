@@ -122,6 +122,17 @@ const ar: Dict = {
   "history.recent": "آخر ما استُخدم",
   "history.empty": "لا يوجد سجل بعد — ابدأ بالقراءة.",
 
+  // welcome (first-run onboarding)
+  "welcome.title": "أهلاً بك في أقِم",
+  "welcome.intro": "رفيقك لتقرأ في صلاتك بخشوع، لا بعادة.",
+  "welcome.s2.title": "حدّد ما تحفظه",
+  "welcome.s2.body": "اختر السور أو الأجزاء التي تحفظها — مرة واحدة فقط.",
+  "welcome.s3.title": "اضغط «أقِم» قبل كل صلاة",
+  "welcome.s3.body": "يقترح لك آيات من محفوظاتك، بمعناها، دون تكرار السورة نفسها كل مرة.",
+  "welcome.next": "التالي",
+  "welcome.start": "لنبدأ — حدّد محفوظاتك",
+  "welcome.skip": "تخطّي",
+
   // landing
   "landing.slogan": "اقرأ بخشوع، لا بعادة",
   "landing.description":
@@ -256,6 +267,16 @@ const en: Dict = {
   "history.mostRepeated": "Most repeated",
   "history.recent": "Recently used",
   "history.empty": "No history yet — start reciting.",
+
+  "welcome.title": "Welcome to Aqim",
+  "welcome.intro": "Your companion to recite with devotion, not by habit.",
+  "welcome.s2.title": "Set what you've memorized",
+  "welcome.s2.body": "Pick the surahs or juz you know — just once.",
+  "welcome.s3.title": "Tap “Aqim” before each prayer",
+  "welcome.s3.body": "It suggests verses from your memorization, with their meaning, without repeating the same surah every time.",
+  "welcome.next": "Next",
+  "welcome.start": "Let's start — set my memorization",
+  "welcome.skip": "Skip",
 
   "landing.slogan": "Recite with devotion, not by habit",
   "landing.description":
