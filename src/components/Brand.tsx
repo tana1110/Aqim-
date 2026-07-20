@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Logo, LogoLoader } from "@/components/Logo";
 
 // THE one brand-loading system. Every branded loading surface in the app uses
@@ -39,7 +40,16 @@ export function BrandOverlay({
   );
 }
 
-export function PageLoader() {
+// Deliberately DELAYED: fast loads (under ~0.4s — the normal case) show
+// content directly with no loader at all, so the app doesn't feel like it's
+// "always loading". The mark only appears for genuinely slow fetches.
+export function PageLoader({ delay = 400 }: { delay?: number }) {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setShow(true), delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+  if (!show) return null;
   return (
     <div className="grid place-items-center py-24 text-primary">
       <LogoLoader size={64} />
