@@ -18,6 +18,33 @@ interface Juz {
   segments: JuzSegment[];
 }
 
+// The saved memorization = every fully-selected surah, plus the segments of
+// each selected juz (minus surahs already covered in full).
+function buildRangesFrom(
+  selectedSurahs: Set<number>,
+  selectedJuz: Set<number>,
+  juzList: Juz[],
+  ayahCountBySurah: Map<number, number>,
+): JuzSegment[] {
+  const ranges: JuzSegment[] = [];
+  for (const n of selectedSurahs) {
+    ranges.push({
+      surahNumber: n,
+      fromAyah: 1,
+      toAyah: ayahCountBySurah.get(n) ?? 1,
+    });
+  }
+  for (const j of selectedJuz) {
+    const juz = juzList.find((x) => x.juz === j);
+    if (!juz) continue;
+    for (const seg of juz.segments) {
+      if (selectedSurahs.has(seg.surahNumber)) continue;
+      ranges.push(seg);
+    }
+  }
+  return ranges;
+}
+
 export default function SetupPage() {
   const { t, lang } = useLang();
   const router = useRouter();
@@ -78,24 +105,7 @@ export default function SetupPage() {
   }
 
   function buildRanges(): JuzSegment[] {
-    const fullSurahs = new Set(selectedSurahs);
-    const ranges: JuzSegment[] = [];
-    for (const n of fullSurahs) {
-      ranges.push({
-        surahNumber: n,
-        fromAyah: 1,
-        toAyah: ayahCountBySurah.get(n) ?? 1,
-      });
-    }
-    for (const j of selectedJuz) {
-      const juz = juzList.find((x) => x.juz === j);
-      if (!juz) continue;
-      for (const seg of juz.segments) {
-        if (fullSurahs.has(seg.surahNumber)) continue;
-        ranges.push(seg);
-      }
-    }
-    return ranges;
+    return buildRangesFrom(selectedSurahs, selectedJuz, juzList, ayahCountBySurah);
   }
 
   async function save() {
@@ -116,6 +126,57 @@ export default function SetupPage() {
 
   const selectedCount = selectedSurahs.size + selectedJuz.size;
 
+  // Live summary of the current selection: full surahs, complete juz, total
+  // ayat — computed from merged coverage so overlaps never double-count.
+  const summary = useMemo(() => {
+    const ranges = buildRangesFrom(
+      selectedSurahs,
+      selectedJuz,
+      juzList,
+      ayahCountBySurah,
+    );
+    const bySurah = new Map<number, [number, number][]>();
+    for (const r of ranges) {
+      const list = bySurah.get(r.surahNumber) ?? [];
+      list.push([r.fromAyah, r.toAyah]);
+      bySurah.set(r.surahNumber, list);
+    }
+    // merge intervals per surah
+    const merged = new Map<number, [number, number][]>();
+    for (const [s, list] of bySurah) {
+      list.sort((a, b) => a[0] - b[0]);
+      const out: [number, number][] = [];
+      for (const iv of list) {
+        const last = out[out.length - 1];
+        if (last && iv[0] <= last[1] + 1) last[1] = Math.max(last[1], iv[1]);
+        else out.push([...iv]);
+      }
+      merged.set(s, out);
+    }
+    const covered = (s: number, from: number, to: number) =>
+      (merged.get(s) ?? []).some(([a, b]) => a <= from && to <= b);
+
+    let totalAyat = 0;
+    let fullSurahs = 0;
+    for (const [s, list] of merged) {
+      for (const [a, b] of list) totalAyat += b - a + 1;
+      const count = ayahCountBySurah.get(s);
+      if (count && list.length === 1 && list[0][0] === 1 && list[0][1] >= count)
+        fullSurahs++;
+    }
+    let fullJuz = 0;
+    for (const j of juzList) {
+      if (
+        j.segments.length > 0 &&
+        j.segments.every((seg) =>
+          covered(seg.surahNumber, seg.fromAyah, seg.toAyah),
+        )
+      )
+        fullJuz++;
+    }
+    return { totalAyat, fullSurahs, fullJuz };
+  }, [selectedSurahs, selectedJuz, juzList, ayahCountBySurah]);
+
   if (loading) return <Loading />;
 
   if (!seeded) {
@@ -135,6 +196,40 @@ export default function SetupPage() {
         <h1 className="text-xl font-bold mb-1">{t("setup.title")}</h1>
         <p className="text-sm text-muted">{t("setup.subtitle")}</p>
       </div>
+
+      {/* Live summary of the memorization (updates as you toggle) */}
+      <section className="card p-4">
+        <div className="text-xs font-bold text-muted mb-3">
+          {t("setup.summary")}
+        </div>
+        <div className="grid grid-cols-3 divide-x divide-border rtl:divide-x-reverse text-center">
+          <div className="px-2">
+            <div className="text-2xl font-bold text-primary tabular-nums">
+              {summary.fullSurahs}
+            </div>
+            <div className="text-[10px] text-muted mt-0.5">
+              {t("setup.fullSurahs")}
+            </div>
+          </div>
+          <div className="px-2">
+            <div className="text-2xl font-bold text-primary tabular-nums">
+              {summary.fullJuz}
+              <span className="text-sm text-muted font-normal"> / 30</span>
+            </div>
+            <div className="text-[10px] text-muted mt-0.5">
+              {t("setup.fullJuz")}
+            </div>
+          </div>
+          <div className="px-2">
+            <div className="text-2xl font-bold text-primary tabular-nums">
+              {summary.totalAyat}
+            </div>
+            <div className="text-[10px] text-muted mt-0.5">
+              {t("setup.totalAyat")}
+            </div>
+          </div>
+        </div>
+      </section>
 
       <div className="flex gap-2 p-1 bg-surface-2 rounded-2xl">
         {(["surah", "juz"] as const).map((tb) => (

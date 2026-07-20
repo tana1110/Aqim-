@@ -13,6 +13,13 @@ export async function POST(request: Request) {
     prayer?: string;
     rakahs?: number;
     exclude?: Passage[];
+    focus?: {
+      surahNumber: number;
+      fromAyah: number | null;
+      toAyah: number | null;
+      repeat: boolean;
+      chunk: number;
+    } | null;
   };
 
   const mode = (body.mode ?? "faraid") as Mode;
@@ -25,6 +32,16 @@ export async function POST(request: Request) {
     prayer: body.prayer,
     rakahs: body.rakahs,
     exclude: Array.isArray(body.exclude) ? body.exclude : [],
+    focus:
+      body.focus && Number.isInteger(body.focus.surahNumber)
+        ? {
+            surahNumber: body.focus.surahNumber,
+            fromAyah: body.focus.fromAyah ?? null,
+            toAyah: body.focus.toAyah ?? null,
+            repeat: !!body.focus.repeat,
+            chunk: Math.min(30, Math.max(1, body.focus.chunk ?? 5)),
+          }
+        : null,
   };
 
   const plan = await buildSuggestion(user.id, req);

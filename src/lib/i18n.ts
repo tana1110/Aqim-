@@ -42,7 +42,10 @@ const ar: Dict = {
   "home.dailyAyah": "آية اليوم",
   "home.nextPrayer": "صلاتك القادمة",
   "home.remaining": "المتبقي",
+  "home.selectedPrayer": "الصلاة المحددة",
   "home.pickVerses": "اختر آيات صلاتك",
+  "home.locCta": "فعّل الموقع لعرض وقت صلاتك القادمة بدقة",
+  "home.locCta.btn": "تفعيل الموقع",
   "home.thisWeek": "هذا الأسبوع",
   "home.recitations": "تلاوة",
   "home.passages": "مقطع مختلف",
@@ -155,6 +158,28 @@ const ar: Dict = {
   "settings.settingsSaved": "حُفظت الإعدادات",
 
   // history
+  // memorization summary
+  "setup.summary": "محفوظاتك",
+  "setup.fullSurahs": "سورة كاملة",
+  "setup.fullJuz": "جزء كامل",
+  "setup.totalAyat": "آية محفوظة",
+
+  // focus mode
+  "focus.title": "وضع التركيز",
+  "focus.desc":
+    "سلّط الضوء مؤقتاً على سورة أو نطاق تريد مراجعته — الاقتراحات ستنحاز إليه دون تغيير محفوظاتك.",
+  "focus.surah": "السورة",
+  "focus.range": "نطاق الآيات",
+  "focus.from": "من",
+  "focus.to": "إلى",
+  "focus.repeat": "تكرار مقصود",
+  "focus.repeat.hint": "اسمح بتكرار آيات التركيز حتى لو قُرئت مؤخراً.",
+  "focus.chunk": "آيات لكل مقطع",
+  "focus.enable": "تفعيل التركيز",
+  "focus.disable": "إيقاف التركيز",
+  "focus.active": "وضع التركيز مفعّل على",
+  "focus.pickSurah": "اختر سورة من محفوظاتك",
+
   "history.title": "سجلّك",
   "history.subtitle": "تابع تنوّعك في القراءة هذا الأسبوع.",
   "history.week": "تلاوات الأسبوع",
@@ -236,7 +261,10 @@ const en: Dict = {
   "home.dailyAyah": "Ayah of the day",
   "home.nextPrayer": "Your next prayer",
   "home.remaining": "Remaining",
+  "home.selectedPrayer": "Selected prayer",
   "home.pickVerses": "Pick your prayer's verses",
+  "home.locCta": "Enable location to see your next prayer time precisely",
+  "home.locCta.btn": "Enable location",
   "home.thisWeek": "This week",
   "home.recitations": "recitations",
   "home.passages": "distinct passages",
@@ -341,6 +369,26 @@ const en: Dict = {
     "Fiqh choices (like the number of Witr rak'ahs) are configurable and reflect common practice — please consult a scholar for what's correct for you.",
   "settings.saveSettings": "Save settings",
   "settings.settingsSaved": "Settings saved",
+
+  "setup.summary": "Your memorization",
+  "setup.fullSurahs": "full surahs",
+  "setup.fullJuz": "complete juz",
+  "setup.totalAyat": "ayat memorized",
+
+  "focus.title": "Focus mode",
+  "focus.desc":
+    "Temporarily spotlight a surah or range you want to review — suggestions lean into it without changing your memorization.",
+  "focus.surah": "Surah",
+  "focus.range": "Ayah range",
+  "focus.from": "From",
+  "focus.to": "To",
+  "focus.repeat": "Intentional repetition",
+  "focus.repeat.hint": "Allow focus ayat to repeat even if recently recited.",
+  "focus.chunk": "Ayat per passage",
+  "focus.enable": "Enable focus",
+  "focus.disable": "Turn off focus",
+  "focus.active": "Focus mode is active on",
+  "focus.pickSurah": "Pick a surah from your memorization",
 
   "history.title": "Your history",
   "history.subtitle": "Track your variety this week.",

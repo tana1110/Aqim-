@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { getPassageContent, type PassageContent } from "@/lib/content";
-import { selectPassages, type Passage } from "@/lib/selection";
+import {
+  selectPassages,
+  type FocusSpec,
+  type Passage,
+} from "@/lib/selection";
 import {
   DHUHR_NAFL,
   FAJR_SUNNAH,
@@ -41,6 +45,8 @@ export interface SuggestionRequest {
   rakahs?: number; // for nafl "free" and qiyam
   // passages the caller already committed to elsewhere (kept distinct)
   exclude?: Passage[];
+  // Temporary review spotlight (focus mode) — never edits memorization.
+  focus?: FocusSpec | null;
 }
 
 async function getSettings(userId: number) {
@@ -97,6 +103,7 @@ export async function buildSuggestion(
     suggestSlots.length,
     settings,
     req.exclude ?? [],
+    req.focus ?? null,
   );
 
   // Map each suggest slot to one selected passage (in order).

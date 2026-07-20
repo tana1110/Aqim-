@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles, RefreshCw, Check } from "lucide-react";
+import { BookOpen, MapPin, RefreshCw, Check, Sparkles, X } from "lucide-react";
 import { LogoLoader } from "@/components/Logo";
+import { PageLoader } from "@/components/Brand";
 import { ContentCard } from "@/components/ContentCard";
 import { PassageCard } from "@/components/PassageCard";
-import { computeTimes, loadReminderConfig } from "@/lib/reminder";
+import {
+  computeTimes,
+  loadReminderConfig,
+  saveReminderConfig,
+} from "@/lib/reminder";
+import { focusPayload } from "@/lib/focus";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, cleanAyah } from "@/lib/quranDisplay";
 import type { Mode, PassageContent, ResolvedPlan } from "@/lib/types";
@@ -62,17 +68,22 @@ export default function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [daily, setDaily] = useState<DailyAyah | null>(null);
 
+  // Everything renders at once, in a fixed order, only after the core data
+  // has settled — no sections popping in one by one.
+  const [booted, setBooted] = useState(false);
   useEffect(() => {
-    fetch("/api/status")
-      .then((r) => r.json())
-      .then((d) =>
-        setStatus({ seeded: d.seeded, hasMemorization: d.hasMemorization }),
-      )
-      .catch(() => setStatus({ seeded: false, hasMemorization: false }));
-    fetch("/api/daily-ayah")
-      .then((r) => r.json())
-      .then((d) => setDaily(d.ayah))
-      .catch(() => {});
+    Promise.allSettled([
+      fetch("/api/status")
+        .then((r) => r.json())
+        .then((d) =>
+          setStatus({ seeded: d.seeded, hasMemorization: d.hasMemorization }),
+        )
+        .catch(() => setStatus({ seeded: false, hasMemorization: false })),
+      fetch("/api/daily-ayah")
+        .then((r) => r.json())
+        .then((d) => setDaily(d.ayah))
+        .catch(() => {}),
+    ]).finally(() => setBooted(true));
   }, []);
 
   // Hijri date for the greeting.
@@ -87,60 +98,118 @@ export default function HomePage() {
     }
   })();
 
-  // Next prayer for the info card. With a saved location we compute exact
-  // times on-device (adhan); otherwise fall back to a time-of-day heuristic.
-  const [heroKey, setHeroKey] = useState<string>("fajr");
-  const [nextAt, setNextAt] = useState<number | null>(null);
+  // Prayer times (today + tomorrow), computed on-device when a location is
+  // saved. The countdown follows whichever prayer tab is SELECTED — pick العصر
+  // and you see time until Asr, even if Dhuhr is chronologically next.
+  const [times, setTimes] = useState<{
+    today: ReturnType<typeof computeTimes>;
+    tomorrow: ReturnType<typeof computeTimes>;
+  } | null>(null);
+  const [nextKey, setNextKey] = useState<string | null>(null);
+  const [hasLocation, setHasLocation] = useState(true); // assume until checked
+  const [locCtaDismissed, setLocCtaDismissed] = useState(true);
   const [now, setNow] = useState(() => Date.now());
 
-  useEffect(() => {
-    const p = defaultPrayer();
-    setHeroKey(p);
-    setPrayer(p);
-    setMode(CHIPS.find((c) => c.key === p)?.mode ?? "faraid");
-
+  function loadTimes() {
     const cfg = loadReminderConfig();
-    if (cfg.lat == null || cfg.lng == null) return;
-
-    function computeNext() {
-      const nowMs = Date.now();
-      for (const off of [0, 1]) {
-        const d = new Date();
-        d.setDate(d.getDate() + off);
-        const times = computeTimes(cfg.lat!, cfg.lng!, cfg.method, d);
-        for (const k of ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const) {
-          const t = times[k].getTime();
-          if (t > nowMs) {
-            setHeroKey(k);
-            setNextAt(t);
-            setPrayer(k);
-            setMode("faraid");
-            return;
-          }
+    if (cfg.lat == null || cfg.lng == null) {
+      setHasLocation(false);
+      return false;
+    }
+    setHasLocation(true);
+    const today = computeTimes(cfg.lat, cfg.lng, cfg.method, new Date());
+    const tm = new Date();
+    tm.setDate(tm.getDate() + 1);
+    const tomorrow = computeTimes(cfg.lat, cfg.lng, cfg.method, tm);
+    setTimes({ today, tomorrow });
+    // Chronologically next prayer → initial tab selection.
+    const nowMs = Date.now();
+    for (const day of [today, tomorrow]) {
+      for (const k of ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const) {
+        if (day[k].getTime() > nowMs) {
+          setNextKey(k);
+          setPrayer(k);
+          setMode("faraid");
+          return true;
         }
       }
     }
-    computeNext();
-    const iv = setInterval(computeNext, 60_000);
-    return () => clearInterval(iv);
+    return true;
+  }
+
+  useEffect(() => {
+    const p = defaultPrayer();
+    setPrayer(p);
+    setMode(CHIPS.find((c) => c.key === p)?.mode ?? "faraid");
+    loadTimes();
+    try {
+      setLocCtaDismissed(localStorage.getItem("aqim-loccta") === "1");
+    } catch {
+      setLocCtaDismissed(false);
+    }
   }, []);
 
-  // Live 1s tick for the countdown (only when we know the exact time).
+  // Live 1s tick while we can show a countdown.
   useEffect(() => {
-    if (nextAt == null) return;
+    if (!times) return;
     const iv = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(iv);
-  }, [nextAt]);
+  }, [times]);
+
+  // Which real prayer time the selected chip maps to (sunnahs → their prayer).
+  const TIME_KEY: Record<string, keyof ReturnType<typeof computeTimes> | null> =
+    {
+      fajr: "fajr",
+      dhuhr: "dhuhr",
+      asr: "asr",
+      maghrib: "maghrib",
+      isha: "isha",
+      "fajr-sunnah": "fajr",
+      "dhuhr-nafl": "dhuhr",
+      "maghrib-sunnah": "maghrib",
+      "isha-shaf": "isha",
+      witr: "isha",
+      free: null,
+      qiyam: "fajr", // night prayer ends at Fajr — count down to it
+    };
 
   const countdown = (() => {
-    if (nextAt == null) return null;
-    const ms = Math.max(0, nextAt - now);
+    if (!times) return null;
+    const k = TIME_KEY[prayer];
+    if (!k) return null;
+    const todayAt = times.today[k].getTime();
+    const target = todayAt > now ? todayAt : times.tomorrow[k].getTime();
+    const ms = Math.max(0, target - now);
     const h = Math.floor(ms / 3_600_000);
     const m = Math.floor((ms % 3_600_000) / 60_000);
     const s = Math.floor((ms % 60_000) / 1000);
     const pad = (n: number) => String(n).padStart(2, "0");
     return `${h}:${pad(m)}:${pad(s)}`;
   })();
+
+  function enableLocation() {
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => {
+        const cfg = loadReminderConfig();
+        saveReminderConfig({
+          ...cfg,
+          lat: Math.round(pos.coords.latitude * 100) / 100,
+          lng: Math.round(pos.coords.longitude * 100) / 100,
+          locationLabel: null,
+        });
+        loadTimes();
+      },
+      () => {},
+      { timeout: 12000, maximumAge: 600000 },
+    );
+  }
+
+  function dismissLocCta() {
+    setLocCtaDismissed(true);
+    try {
+      localStorage.setItem("aqim-loccta", "1");
+    } catch {}
+  }
 
   useEffect(() => {
     setPlan(null);
@@ -154,7 +223,7 @@ export default function HomePage() {
       const res = await fetch("/api/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, prayer, rakahs }),
+        body: JSON.stringify({ mode, prayer, rakahs, focus: focusPayload() }),
       });
       const data = await res.json();
       // Let the sujood animation complete its current cycle before revealing —
@@ -191,32 +260,36 @@ export default function HomePage() {
   const showRakahInput =
     mode === "qiyam" || (mode === "nafl" && prayer === "free");
 
+  if (!booted) return <PageLoader />;
+
   return (
     <div className="pt-2 lg:grid lg:grid-cols-[minmax(340px,400px)_1fr] lg:gap-8 lg:items-start">
-      {/* Controls column */}
+      {/* Controls column — fixed, deliberate order */}
       <div className="space-y-5 lg:sticky lg:top-20">
         {/* Not set up yet → the setup call leads the page */}
         {status && !status.hasMemorization && (
           <Link
             href="/setup"
-            className="flex items-center gap-3 card p-4 bg-accent-soft border-accent/30 active:scale-[0.99] transition animate-rise"
+            className="flex items-center gap-3 card p-4 bg-accent-soft border-accent/30 active:scale-[0.99] transition"
           >
             <Sparkles size={18} className="text-accent shrink-0" />
             <span className="text-sm">{t("home.setMemoFirst")}</span>
           </Link>
         )}
 
-        {/* INFO CARD — next prayer at a glance (informational only) */}
-        <section className="relative overflow-hidden rounded-2xl bg-primary text-white p-6 animate-rise">
+        {/* INFO CARD — the selected prayer's time at a glance */}
+        <section className="relative overflow-hidden rounded-2xl bg-primary text-white p-6">
           <div className="flex items-center justify-between gap-2">
             <span className="text-xs font-bold text-white/70">
-              {t("home.nextPrayer")}
+              {prayer === nextKey || !times
+                ? t("home.nextPrayer")
+                : t("home.selectedPrayer")}
             </span>
             {hijri && <span className="text-[11px] text-white/60">{hijri}</span>}
           </div>
           <div className="flex items-end justify-between gap-4 mt-1">
             <h1 className="font-heading text-[2.6rem] leading-tight">
-              {heroKey === "qiyam" ? t("mode.qiyam") : t(`prayer.${heroKey}`)}
+              {prayer === "qiyam" ? t("mode.qiyam") : t(`prayer.${prayer}`)}
             </h1>
             {countdown && (
               <div className="text-end pb-2">
@@ -234,11 +307,32 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Location CTA — makes the countdown feature discoverable */}
+        {!hasLocation && !locCtaDismissed && (
+          <div className="card p-4 flex items-center gap-3">
+            <MapPin size={18} className="text-primary shrink-0" />
+            <span className="text-sm flex-1">{t("home.locCta")}</span>
+            <button
+              onClick={enableLocation}
+              className="btn-primary px-3.5 py-1.5 text-xs whitespace-nowrap"
+            >
+              {t("home.locCta.btn")}
+            </button>
+            <button
+              onClick={dismissLocCta}
+              aria-label="dismiss"
+              className="text-muted hover:text-foreground shrink-0"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        )}
+
         {/* Ayah of the day — the designed highlight */}
         {daily && status?.hasMemorization && (
           <ContentCard
             label={t("home.dailyAyah")}
-            icon={<Sparkles size={13} />}
+            icon={<BookOpen size={13} />}
             reference={
               <>
                 {t("passage.surah")}{" "}
@@ -474,7 +568,7 @@ function SlotView({
       const res = await fetch("/api/suggest-one", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, exclude }),
+        body: JSON.stringify({ mode, exclude, focus: focusPayload() }),
       });
       const data = await res.json();
       if (data.content) {

@@ -18,6 +18,7 @@ export function Welcome() {
   const { t, lang } = useLang();
   const router = useRouter();
   const [visible, setVisible] = useState(false);
+  const [ready, setReady] = useState(false);
   const [step, setStep] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [ayah, setAyah] = useState<{
@@ -29,11 +30,17 @@ export function Welcome() {
     try {
       if (!localStorage.getItem(FLAG)) {
         setVisible(true);
-        // The signature verse (Al-Isra 17:78) for the opening slide.
-        fetch("/api/slogan-ayah")
+        // Wait for the signature verse (or a short timeout) BEFORE showing the
+        // slide, so the whole screen enters as one synchronized unit instead
+        // of the ayah popping in late.
+        const fetchAyah = fetch("/api/slogan-ayah")
           .then((r) => r.json())
           .then(setAyah)
           .catch(() => {});
+        Promise.race([
+          fetchAyah,
+          new Promise((r) => setTimeout(r, 900)),
+        ]).finally(() => setReady(true));
       } else {
         // Already onboarded — make sure the paint-blocking cover is down.
         document.documentElement.removeAttribute("data-welcome");
@@ -45,6 +52,10 @@ export function Welcome() {
 
   // Hand-off transition after finishing/skipping — same brand overlay as boot.
   if (leaving) return <BrandOverlay />;
+
+  // Hold the (already-covered) background until the first slide is complete,
+  // so all its elements animate in together.
+  if (!ready) return <div className="fixed inset-0 z-40 bg-background" />;
 
   function finish(goSetup: boolean) {
     try {

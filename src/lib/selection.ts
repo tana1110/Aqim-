@@ -18,6 +18,16 @@ interface SelectionSettings {
   maxAyahShort: number;
 }
 
+// A temporary review spotlight (from the History screen's focus mode): prefer
+// passages inside this range, optionally allowing intentional repetition.
+export interface FocusSpec {
+  surahNumber: number;
+  fromAyah: number | null;
+  toAyah: number | null;
+  repeat: boolean;
+  chunk: number;
+}
+
 // A candidate passage carries its approximate recitation length (word count),
 // used to balance passage lengths across the rak'ahs of one prayer.
 interface Candidate extends Passage {
@@ -171,10 +181,49 @@ export async function selectPassages(
   count: number,
   settings: SelectionSettings,
   exclude: Passage[] = [],
+  focus: FocusSpec | null = null,
 ): Promise<SelectionResult> {
-  const candidates = await buildCandidates(userId, mode, settings);
+  let candidates = await buildCandidates(userId, mode, settings);
   if (candidates.length === 0) {
     return { passages: [], relaxed: false, exhausted: true };
+  }
+
+  // Focus mode: additionally offer chunks cut to the focused range at the
+  // requested size, and mark which candidates fall inside the spotlight.
+  const inFocus = (c: Candidate) =>
+    !!focus &&
+    c.surahNumber === focus.surahNumber &&
+    (focus.fromAyah == null || c.fromAyah >= focus.fromAyah) &&
+    (focus.toAyah == null || c.toAyah <= focus.toAyah);
+
+  if (focus) {
+    const base = candidates.filter((c) => c.surahNumber === focus.surahNumber);
+    if (base.length > 0) {
+      const lo =
+        focus.fromAyah ?? Math.min(...base.map((c) => c.fromAyah));
+      const hi = focus.toAyah ?? Math.max(...base.map((c) => c.toAyah));
+      const wordsAt = new Map<string, number>();
+      for (const c of base) {
+        const per = c.words / (c.toAyah - c.fromAyah + 1);
+        for (let a = c.fromAyah; a <= c.toAyah; a++) {
+          wordsAt.set(`${a}`, per);
+        }
+      }
+      const size = Math.max(1, focus.chunk);
+      const extra: Candidate[] = [];
+      for (let start = lo; start <= hi; start += size) {
+        const end = Math.min(start + size - 1, hi);
+        let words = 0;
+        for (let a = start; a <= end; a++) words += wordsAt.get(`${a}`) ?? 3;
+        extra.push({
+          surahNumber: focus.surahNumber,
+          fromAyah: start,
+          toAyah: end,
+          words: Math.max(1, Math.round(words)),
+        });
+      }
+      candidates = [...candidates, ...extra];
+    }
   }
 
   const { recent, lastUsedAt } = await recentUsage(userId, mode, settings);
@@ -203,15 +252,25 @@ export async function selectPassages(
     return pickRandom(sorted.slice(0, Math.min(3, sorted.length)));
   };
 
-  // --- First rak'ah: free choice (fresh random, else least-recently-used). ---
+  // With focus.repeat, focused passages ignore the anti-repetition window —
+  // intentional drilling wants them again and again.
+  const focusPick = (list: Candidate[]) => {
+    if (!focus) return undefined;
+    const pool = (focus.repeat ? list : list.filter(isFresh)).filter(inFocus);
+    return pool.length ? pickRandom(pool) : undefined;
+  };
+
+  // --- First rak'ah: focused passages take priority, then free choice. ---
   {
-    const fresh = available().filter(isFresh);
-    let pick: Candidate | undefined;
-    if (fresh.length) pick = pickRandom(fresh);
-    else {
-      relaxed = true;
-      const pool = available().sort(lru);
-      pick = pool[0];
+    let pick: Candidate | undefined = focusPick(available());
+    if (!pick) {
+      const fresh = available().filter(isFresh);
+      if (fresh.length) pick = pickRandom(fresh);
+      else {
+        relaxed = true;
+        const pool = available().sort(lru);
+        pick = pool[0];
+      }
     }
     if (!pick) return { passages: [], relaxed, exhausted: true };
     chosen.push(pick);
@@ -230,8 +289,12 @@ export async function selectPassages(
 
     const fresh = pool.filter(isFresh);
     let pick: Candidate;
+    const focused = focusPick(pool);
     const freshInBand = fresh.filter(inBand);
-    if (freshInBand.length) {
+    if (focused) {
+      // Stay inside the review spotlight whenever it can supply passages.
+      pick = focused;
+    } else if (freshInBand.length) {
       // Comparable length AND not recently used — the ideal case.
       pick = pickRandom(freshInBand);
     } else if (fresh.length) {

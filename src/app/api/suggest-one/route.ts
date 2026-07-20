@@ -11,8 +11,25 @@ export async function POST(request: Request) {
   const body = (await request.json()) as {
     mode?: Mode;
     exclude?: Passage[];
+    focus?: {
+      surahNumber: number;
+      fromAyah: number | null;
+      toAyah: number | null;
+      repeat: boolean;
+      chunk: number;
+    } | null;
   };
   const mode = (body.mode ?? "faraid") as Mode;
+  const focus =
+    body.focus && Number.isInteger(body.focus.surahNumber)
+      ? {
+          surahNumber: body.focus.surahNumber,
+          fromAyah: body.focus.fromAyah ?? null,
+          toAyah: body.focus.toAyah ?? null,
+          repeat: !!body.focus.repeat,
+          chunk: Math.min(30, Math.max(1, body.focus.chunk ?? 5)),
+        }
+      : null;
 
   const settings = await prisma.settings.findUnique({
     where: { userId: user.id },
@@ -28,6 +45,7 @@ export async function POST(request: Request) {
       maxAyahShort: settings?.maxAyahShort ?? 10,
     },
     body.exclude ?? [],
+    focus,
   );
 
   const passage = result.passages[0];
