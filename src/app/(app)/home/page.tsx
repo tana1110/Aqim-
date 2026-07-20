@@ -4,7 +4,6 @@ import { useEffect, useState, type ComponentType } from "react";
 import Link from "next/link";
 import { Sparkles, RefreshCw, Check, Layers, BookMarked } from "lucide-react";
 import { PassageCard } from "@/components/PassageCard";
-import { Logo } from "@/components/Logo";
 import { MosqueIcon, NafilahIcon, QiyamIcon } from "@/components/ModeIcons";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, cleanAyah } from "@/lib/quranDisplay";
@@ -139,39 +138,26 @@ export default function HomePage() {
     <div className="pt-2 lg:grid lg:grid-cols-[minmax(340px,400px)_1fr] lg:gap-8 lg:items-start">
       {/* Controls column */}
       <div className="space-y-5 lg:sticky lg:top-20">
-        {/* Greeting */}
-        <section className="card overflow-hidden animate-rise">
-          <div className="p-5 bg-primary-soft flex items-start justify-between gap-4">
-            <div>
-              <p className="text-xs text-muted mb-1">
-                {t("home.greeting")}
-                {hijri ? ` · ${hijri}` : ""}
-              </p>
-              <h1 className="font-heading text-[1.65rem] leading-tight text-foreground">
-                {t("home.title")}
-              </h1>
-              <p className="text-sm text-muted mt-1.5">{t("home.subtitle")}</p>
-            </div>
-            <Logo variant="icon" size={44} className="shrink-0 mt-1 opacity-90" />
-          </div>
-        </section>
-
+        {/* Not set up yet → the setup call leads the page */}
         {status && !status.hasMemorization && (
           <Link
             href="/setup"
-            className="flex items-center gap-3 card p-4 bg-accent-soft border-accent/30 active:scale-[0.99] transition"
+            className="flex items-center gap-3 card p-4 bg-accent-soft border-accent/30 active:scale-[0.99] transition animate-rise"
           >
             <Sparkles size={18} className="text-accent shrink-0" />
             <span className="text-sm">{t("home.setMemoFirst")}</span>
           </Link>
         )}
 
-        {/* Ayah of the day */}
-        {daily && (
+        {/* Ayah of the day — first thing on the page, once the account is set up */}
+        {daily && status?.hasMemorization && (
           <section className="card p-4 border-s-4 border-s-accent animate-rise">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-accent mb-2">
-              <Sparkles size={13} />
-              {t("home.dailyAyah")}
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-accent">
+                <Sparkles size={13} />
+                {t("home.dailyAyah")}
+              </span>
+              {hijri && <span className="text-[11px] text-muted">{hijri}</span>}
             </div>
             <p className="font-quran text-lg leading-[2] text-foreground" dir="rtl">
               {cleanAyah(daily.arabicText)}
