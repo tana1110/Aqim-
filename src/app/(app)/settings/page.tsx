@@ -1,159 +1,254 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Info } from "lucide-react";
-import { LogoLoader } from "@/components/Logo";
+import { Bell, MapPin, Info } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
-import type { AppSettings } from "@/lib/types";
+import {
+  CITIES,
+  METHOD_KEYS,
+  loadReminderConfig,
+  saveReminderConfig,
+  type ReminderConfig,
+} from "@/lib/reminder";
+
+// Font-size steps (root scale). Constrained so every screen stays intact.
+const FONT_STEPS = [
+  { key: "font.small", value: "0.875" },
+  { key: "font.normal", value: "1" },
+  { key: "font.large", value: "1.125" },
+  { key: "font.xlarge", value: "1.25" },
+];
 
 export default function SettingsPage() {
-  const { t } = useLang();
-  const [settings, setSettings] = useState<AppSettings | null>(null);
-  const [saved, setSaved] = useState(false);
+  const { t, lang } = useLang();
+  const [fontScale, setFontScale] = useState("1");
+  const [cfg, setCfg] = useState<ReminderConfig | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/settings")
-      .then((r) => r.json())
-      .then((d) => setSettings(d.settings))
-      .catch(() => {});
+    try {
+      setFontScale(localStorage.getItem("aqim-font-scale") || "1");
+    } catch {}
+    setCfg(loadReminderConfig());
   }, []);
 
-  function update<K extends keyof AppSettings>(key: K, value: AppSettings[K]) {
-    setSaved(false);
-    setSettings((s) => (s ? { ...s, [key]: value } : s));
+  function applyFont(v: string) {
+    setFontScale(v);
+    try {
+      localStorage.setItem("aqim-font-scale", v);
+    } catch {}
+    document.documentElement.style.setProperty("--font-scale", v);
   }
 
-  async function save() {
-    if (!settings) return;
-    const res = await fetch("/api/settings", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(settings),
+  function update(patch: Partial<ReminderConfig>) {
+    setCfg((c) => {
+      if (!c) return c;
+      const next = { ...c, ...patch };
+      saveReminderConfig(next);
+      return next;
     });
-    setSettings((await res.json()).settings);
-    setSaved(true);
   }
 
-  if (!settings)
-    return (
-      <div className="grid place-items-center py-24 text-primary">
-        <LogoLoader size={72} />
-      </div>
+  async function toggleReminder() {
+    if (!cfg) return;
+    setNotice(null);
+    if (cfg.enabled) {
+      update({ enabled: false });
+      return;
+    }
+    // Ask for notification permission only now — when the user opts in.
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") {
+        setNotice(t("reminder.permDenied"));
+        return;
+      }
+    } catch {
+      setNotice(t("reminder.permDenied"));
+      return;
+    }
+    update({ enabled: true });
+  }
+
+  function useMyLocation() {
+    setNotice(null);
+    navigator.geolocation?.getCurrentPosition(
+      (pos) => {
+        update({
+          lat: Math.round(pos.coords.latitude * 100) / 100,
+          lng: Math.round(pos.coords.longitude * 100) / 100,
+          locationLabel: null,
+        });
+      },
+      () => setNotice(t("reminder.locDenied")),
+      { timeout: 12000, maximumAge: 600000 },
     );
+  }
+
+  function pickCity(key: string) {
+    const c = CITIES.find((x) => x.key === key);
+    if (!c) return;
+    update({ lat: c.lat, lng: c.lng, locationLabel: key });
+  }
+
+  if (!cfg) return null;
+
+  const cityLabel = (k: string) =>
+    lang === "ar"
+      ? CITIES.find((c) => c.key === k)?.ar
+      : CITIES.find((c) => c.key === k)?.en;
+
+  const locationText = cfg.locationLabel
+    ? cityLabel(cfg.locationLabel)
+    : cfg.lat != null
+      ? `${cfg.lat}, ${cfg.lng}`
+      : null;
 
   return (
     <div className="space-y-5 pt-2 max-w-2xl">
       <h1 className="text-xl font-bold">{t("settings.title")}</h1>
 
       <div className="card divide-y divide-border overflow-hidden">
-        <div className="flex items-center justify-between p-4">
-          <span className="text-sm font-medium">{t("settings.language")}</span>
+        {/* Language */}
+        <Row label={t("settings.language")}>
           <LanguageToggle />
-        </div>
-        <NumberField
-          label={t("settings.witr")}
-          hint={t("settings.witr.hint")}
-          value={settings.witrRakahs}
-          min={1}
-          max={11}
-          onChange={(v) => update("witrRakahs", v)}
-        />
-        <NumberField
-          label={t("settings.noRepeat")}
-          hint={t("settings.noRepeat.hint")}
-          value={settings.noRepeatWindow}
-          min={1}
-          max={100}
-          onChange={(v) => update("noRepeatWindow", v)}
-        />
-        <NumberField
-          label={t("settings.qiyamWindow")}
-          hint={t("settings.qiyamWindow.hint")}
-          value={settings.qiyamRepeatWindow}
-          min={1}
-          max={100}
-          onChange={(v) => update("qiyamRepeatWindow", v)}
-        />
-        <NumberField
-          label={t("settings.shortSurah")}
-          hint={t("settings.shortSurah.hint")}
-          value={settings.maxAyahShort}
-          min={3}
-          max={50}
-          onChange={(v) => update("maxAyahShort", v)}
-        />
-        <div className="flex items-center justify-between p-4 gap-4">
-          <span className="text-sm font-medium">
-            {t("settings.tafsirSource")}
-          </span>
-          <span className="text-xs text-muted text-end">
-            {t("settings.tafsirSource.value")}
-          </span>
+        </Row>
+
+        {/* Font size */}
+        <Row label={t("settings.fontSize")}>
+          <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
+            {FONT_STEPS.map((s) => (
+              <button
+                key={s.value}
+                onClick={() => applyFont(s.value)}
+                aria-pressed={fontScale === s.value}
+                className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap ${
+                  fontScale === s.value
+                    ? "bg-primary text-white"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                {t(s.key)}
+              </button>
+            ))}
+          </div>
+        </Row>
+
+        {/* Prayer reminder */}
+        <div className="p-4 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-sm font-medium flex items-center gap-1.5">
+                <Bell size={15} className="text-primary" />
+                {t("reminder.title")}
+              </div>
+              <div className="text-xs text-muted mt-0.5">{t("reminder.hint")}</div>
+            </div>
+            <button
+              onClick={toggleReminder}
+              role="switch"
+              aria-checked={cfg.enabled}
+              className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${
+                cfg.enabled ? "bg-primary" : "bg-surface-2 border border-border"
+              }`}
+            >
+              <span
+                className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-all ${
+                  cfg.enabled ? "start-6" : "start-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          <p className="text-xs text-muted leading-relaxed">
+            {t("reminder.explain")}
+          </p>
+
+          {cfg.enabled && (
+            <>
+              {/* Calculation method */}
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm font-medium">{t("reminder.method")}</span>
+                <select
+                  value={cfg.method}
+                  onChange={(e) =>
+                    update({ method: e.target.value as ReminderConfig["method"] })
+                  }
+                  className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm max-w-[55%]"
+                >
+                  {METHOD_KEYS.map((m) => (
+                    <option key={m} value={m}>
+                      {t(`method.${m}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Location */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-sm font-medium flex items-center gap-1.5">
+                    <MapPin size={14} className="text-primary" />
+                    {t("reminder.location")}
+                  </span>
+                  <span className="text-xs text-muted truncate">
+                    {locationText ?? t("reminder.noLocation")}
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={useMyLocation}
+                    className="btn-primary px-3.5 py-1.5 text-xs"
+                  >
+                    {cfg.lat != null && !cfg.locationLabel
+                      ? t("reminder.refresh")
+                      : t("reminder.useMyLocation")}
+                  </button>
+                  <select
+                    value={cfg.locationLabel ?? ""}
+                    onChange={(e) => e.target.value && pickCity(e.target.value)}
+                    className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs"
+                  >
+                    <option value="">{t("reminder.orCity")}</option>
+                    {CITIES.map((c) => (
+                      <option key={c.key} value={c.key}>
+                        {lang === "ar" ? c.ar : c.en}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-muted flex items-start gap-1.5">
+                <Info size={12} className="mt-0.5 shrink-0" />
+                {t("reminder.reliability")}
+              </p>
+            </>
+          )}
+
+          {notice && (
+            <p className="text-xs text-accent bg-accent-soft rounded-lg p-2.5">
+              {notice}
+            </p>
+          )}
         </div>
       </div>
-
-      <div className="card p-4 flex gap-3 bg-accent-soft border-accent/25">
-        <Info size={18} className="text-accent shrink-0 mt-0.5" />
-        <p className="text-xs text-foreground/80 leading-relaxed">
-          {t("settings.fiqhNote")}
-        </p>
-      </div>
-
-      <button
-        onClick={save}
-        className="btn-primary w-full py-3.5 flex items-center justify-center gap-2"
-      >
-        {saved ? (
-          <>
-            <Check size={18} /> {t("settings.settingsSaved")}
-          </>
-        ) : (
-          t("settings.saveSettings")
-        )}
-      </button>
     </div>
   );
 }
 
-function NumberField({
+function Row({
   label,
-  hint,
-  value,
-  min,
-  max,
-  onChange,
+  children,
 }: {
   label: string;
-  hint?: string;
-  value: number;
-  min: number;
-  max: number;
-  onChange: (n: number) => void;
+  children: React.ReactNode;
 }) {
   return (
     <div className="flex items-center justify-between gap-4 p-4">
-      <div className="min-w-0">
-        <div className="text-sm font-medium">{label}</div>
-        {hint && <div className="text-xs text-muted mt-0.5">{hint}</div>}
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <button
-          onClick={() => onChange(Math.max(min, value - 1))}
-          className="w-9 h-9 rounded-full bg-surface-2 border border-border grid place-items-center text-lg active:scale-90 transition"
-          aria-label="-"
-        >
-          −
-        </button>
-        <span className="w-7 text-center font-bold tabular-nums">{value}</span>
-        <button
-          onClick={() => onChange(Math.min(max, value + 1))}
-          className="w-9 h-9 rounded-full bg-primary text-white grid place-items-center text-lg active:scale-90 transition"
-          aria-label="+"
-        >
-          +
-        </button>
-      </div>
+      <span className="text-sm font-medium">{label}</span>
+      {children}
     </div>
   );
 }

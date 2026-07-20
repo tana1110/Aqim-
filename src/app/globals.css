@@ -70,6 +70,13 @@
   }
 }
 
+/* User font-size setting: one root scale that every rem-based size (all
+   Tailwind text/spacing utilities) multiplies against — no per-component
+   overrides. Set pre-paint from localStorage; range constrained in Settings. */
+html {
+  font-size: calc(16px * var(--font-scale, 1));
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }

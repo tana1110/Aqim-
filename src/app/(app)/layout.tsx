@@ -5,6 +5,7 @@ import { BottomNav, TopNav } from "@/components/BottomNav";
 import { Logo } from "@/components/Logo";
 import { SplashScreen } from "@/components/SplashScreen";
 import { Welcome } from "@/components/Welcome";
+import { ReminderScheduler } from "@/components/ReminderScheduler";
 import { LanguageToggle } from "@/components/LanguageToggle";
 
 // Responsive app shell: mobile bottom tab bar, desktop top nav; content widens
@@ -18,6 +19,7 @@ export default function AppLayout({
     <div className="min-h-dvh flex flex-col">
       <SplashScreen />
       <Welcome />
+      <ReminderScheduler />
       <header className="sticky top-0 z-20 bg-background border-b border-border">
         <div className="mx-auto max-w-6xl px-4 md:px-8 py-3 flex items-center justify-between gap-4">
           <Link href="/home" className="flex items-center gap-2.5 shrink-0">
