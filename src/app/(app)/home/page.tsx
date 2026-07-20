@@ -170,10 +170,6 @@ export default function HomePage() {
 
         {/* HERO — the one big action: your next prayer + أقِم */}
         <section className="relative overflow-hidden rounded-2xl bg-primary text-white p-6 animate-rise">
-          {/* brand watermark */}
-          <div className="absolute -end-6 -bottom-8 opacity-[0.13] pointer-events-none text-white">
-            <LogoLoader size={170} inherit />
-          </div>
           <div className="relative">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-bold text-white/70">
