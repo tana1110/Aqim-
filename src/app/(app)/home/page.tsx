@@ -299,9 +299,9 @@ export default function HomePage() {
             {loading ? (
               <LogoLoader size={30} inherit className="text-white" />
             ) : (
-              // translate-y compensates Amiri Quran's tall ascent metrics so
-              // the word sits optically dead-center in the button.
-              <span className="font-quran text-2xl leading-none inline-block translate-y-[0.14em]">
+              // Heading font (Amiri): same classical look as the Quran face but
+              // with sane vertical metrics, so the word centers perfectly.
+              <span className="font-heading font-bold text-2xl leading-none">
                 أقِم
               </span>
             )}
