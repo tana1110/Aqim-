@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Sparkles, Layers, BookMarked } from "lucide-react";
+import { LogoLoader } from "@/components/Logo";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
@@ -36,20 +37,30 @@ export default function HistoryPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [surahMap, setSurahMap] = useState<Map<number, SurahMeta>>(new Map());
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     Promise.all([
       fetch("/api/history/stats").then((r) => r.json()),
       fetch("/api/history").then((r) => r.json()),
       fetch("/api/surahs").then((r) => r.json()),
-    ]).then(([s, h, sur]) => {
-      setStats(s);
-      setRows(h.history ?? []);
-      setSurahMap(
-        new Map((sur.surahs ?? []).map((x: SurahMeta) => [x.number, x])),
-      );
-    });
+    ])
+      .then(([s, h, sur]) => {
+        setStats(s);
+        setRows(h.history ?? []);
+        setSurahMap(
+          new Map((sur.surahs ?? []).map((x: SurahMeta) => [x.number, x])),
+        );
+      })
+      .finally(() => setLoaded(true));
   }, []);
+
+  if (!loaded)
+    return (
+      <div className="grid place-items-center py-24 text-primary">
+        <LogoLoader size={72} />
+      </div>
+    );
 
   return (
     <div className="space-y-5 pt-2 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start lg:space-y-0">

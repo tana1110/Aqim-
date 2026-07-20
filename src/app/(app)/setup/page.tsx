@@ -256,10 +256,8 @@ export default function SetupPage() {
 
 function Loading() {
   return (
-    <div className="space-y-3 pt-4">
-      {[...Array(4)].map((_, i) => (
-        <div key={i} className="h-16 rounded-2xl bg-surface-2 animate-pulse" />
-      ))}
+    <div className="grid place-items-center py-24 text-primary">
+      <LogoLoader size={72} />
     </div>
   );
 }

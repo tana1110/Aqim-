@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Check, Info } from "lucide-react";
+import { LogoLoader } from "@/components/Logo";
 import { useLang } from "@/components/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import type { AppSettings } from "@/lib/types";
@@ -35,7 +36,11 @@ export default function SettingsPage() {
   }
 
   if (!settings)
-    return <div className="h-40 rounded-2xl bg-surface-2 animate-pulse mt-4" />;
+    return (
+      <div className="grid place-items-center py-24 text-primary">
+        <LogoLoader size={72} />
+      </div>
+    );
 
   return (
     <div className="space-y-5 pt-2 max-w-2xl">

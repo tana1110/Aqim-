@@ -111,6 +111,7 @@ export default function HomePage() {
   async function aqim() {
     setLoading(true);
     setError(null);
+    const started = Date.now();
     try {
       const res = await fetch("/api/suggest", {
         method: "POST",
@@ -118,6 +119,11 @@ export default function HomePage() {
         body: JSON.stringify({ mode, prayer, rakahs }),
       });
       const data = await res.json();
+      // Let the sujood animation complete its current cycle before revealing —
+      // the dot always reaches the ground and rises (LogoLoader dur = 1.8s).
+      const CYCLE = 1800;
+      const elapsed = Date.now() - started;
+      await new Promise((r) => setTimeout(r, CYCLE - (elapsed % CYCLE)));
       if (data.error) setError(data.error);
       else setPlan(data.plan);
     } catch {
@@ -532,7 +538,11 @@ function SlotView({
             disabled={busy}
             className="flex-1 rounded-lg border border-border bg-surface py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 hover:border-primary/40 transition disabled:opacity-60"
           >
-            <RefreshCw size={15} className={busy ? "animate-spin" : ""} />
+            {busy ? (
+              <LogoLoader size={18} className="text-primary" />
+            ) : (
+              <RefreshCw size={15} />
+            )}
             {t("home.suggestAnother")}
           </button>
         </div>
