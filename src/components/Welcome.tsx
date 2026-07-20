@@ -6,6 +6,7 @@ import { BookOpenText, Repeat } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLang } from "@/components/LanguageProvider";
+import { cleanAyah } from "@/lib/quranDisplay";
 
 const FLAG = "aqim-onboarded";
 
@@ -13,15 +14,24 @@ const FLAG = "aqim-onboarded";
 // native app's intro. Ends at the memorization picker. Later opens go straight
 // to the dashboard and never see this again.
 export function Welcome() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const router = useRouter();
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
+  const [ayah, setAyah] = useState<{
+    arabic: string | null;
+    translation: string | null;
+  }>({ arabic: null, translation: null });
 
   useLayoutEffect(() => {
     try {
       if (!localStorage.getItem(FLAG)) {
         setVisible(true);
+        // The signature verse (Al-Isra 17:78) for the opening slide.
+        fetch("/api/slogan-ayah")
+          .then((r) => r.json())
+          .then(setAyah)
+          .catch(() => {});
       } else {
         // Already onboarded — make sure the paint-blocking cover is down.
         document.documentElement.removeAttribute("data-welcome");
@@ -43,9 +53,9 @@ export function Welcome() {
   const slides = [
     {
       art: (
-        <div className="flex flex-col items-center gap-5">
-          <Logo variant="icon" size={92} />
-          <Logo variant={2} size={56} />
+        <div className="flex flex-col items-center gap-4">
+          <Logo variant="icon" size={76} />
+          <Logo variant={2} size={48} />
         </div>
       ),
       title: t("landing.slogan"),
@@ -88,10 +98,26 @@ export function Welcome() {
 
       {/* Slide */}
       <div
-        className="flex-1 flex flex-col items-center justify-center text-center px-8 gap-6 animate-rise"
+        className="flex-1 flex flex-col items-center justify-center text-center px-8 gap-5 animate-rise"
         key={step}
       >
         {s.art}
+        {/* The signature verse — the heart of the app — on the opening slide */}
+        {step === 0 && ayah.arabic && (
+          <>
+            <p
+              className="font-quran text-lg md:text-xl text-muted leading-[2.1] max-w-md"
+              dir="rtl"
+            >
+              {cleanAyah(ayah.arabic)}
+            </p>
+            {lang === "en" && ayah.translation && (
+              <p className="text-xs text-muted/80 italic max-w-sm -mt-2" dir="ltr">
+                “{ayah.translation}”
+              </p>
+            )}
+          </>
+        )}
         <h1 className="font-heading text-[1.9rem] md:text-4xl font-bold text-primary leading-snug max-w-md">
           {s.title}
         </h1>

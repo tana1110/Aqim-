@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
-import { Logo } from "@/components/Logo";
+import { LogoLoader } from "@/components/Logo";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
@@ -132,8 +132,8 @@ export default function SetupPage() {
       {transitioning && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-background">
           <div className="flex flex-col items-center gap-5">
-            <div className="animate-splash-pop">
-              <Logo variant="icon" size={112} />
+            <div className="animate-splash-pop text-primary">
+              <LogoLoader size={112} />
             </div>
             <span className="font-heading text-4xl text-primary animate-splash-rise">
               أقِم

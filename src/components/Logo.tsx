@@ -29,6 +29,64 @@ interface LogoProps {
   className?: string;
 }
 
+// Animated loading mark: the icon's "head" dot travels down the back-arc to
+// the ground, holds briefly (sujood), then rises — a brand-true spinner.
+// Uses currentColor so it adapts to its context (e.g. white inside the gold
+// CTA button); the dot keeps the gold accent unless inherit is set.
+export function LogoLoader({
+  size = 28,
+  className,
+  inherit = false,
+}: {
+  size?: number;
+  className?: string;
+  inherit?: boolean; // dot uses currentColor too (for solid-color contexts)
+}) {
+  const stroke = { fill: "none", stroke: "currentColor" } as const;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      role="status"
+      aria-label="…"
+      className={className}
+    >
+      {/* ground / prayer line */}
+      <line
+        x1="14"
+        y1="50"
+        x2="50"
+        y2="50"
+        strokeWidth="4"
+        strokeLinecap="round"
+        style={stroke}
+      />
+      {/* arched back */}
+      <path
+        d="M47 23 Q33 25 21 47"
+        strokeWidth="7"
+        strokeLinecap="round"
+        style={stroke}
+      />
+      {/* head performing sujood along the back-arc */}
+      <circle
+        r="5.5"
+        style={inherit ? { fill: "currentColor" } : { fill: "var(--color-accent)" }}
+      >
+        <animateMotion
+          dur="1.8s"
+          repeatCount="indefinite"
+          path="M47 23 Q33 25 21 45"
+          keyPoints="0;1;1;0;0"
+          keyTimes="0;0.4;0.62;0.95;1"
+          calcMode="linear"
+        />
+      </circle>
+    </svg>
+  );
+}
+
 // The word, centered, with a chosen font / size / weight.
 function Word({
   font,

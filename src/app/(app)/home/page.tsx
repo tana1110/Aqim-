@@ -3,6 +3,7 @@
 import { useEffect, useState, type ComponentType } from "react";
 import Link from "next/link";
 import { Sparkles, RefreshCw, Check, Layers, BookMarked } from "lucide-react";
+import { LogoLoader } from "@/components/Logo";
 import { PassageCard } from "@/components/PassageCard";
 import { MosqueIcon, NafilahIcon, QiyamIcon } from "@/components/ModeIcons";
 import { useLang } from "@/components/LanguageProvider";
@@ -261,7 +262,7 @@ export default function HomePage() {
           className="btn-cta w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-60"
         >
           {loading ? (
-            <RefreshCw size={20} className="animate-spin" />
+            <LogoLoader size={30} inherit className="text-white" />
           ) : (
             <span className="font-quran text-2xl leading-none">أقِم</span>
           )}
