@@ -214,7 +214,11 @@ export default function HomePage() {
               {loading ? (
                 <LogoLoader size={30} inherit className="text-white" />
               ) : (
-                <span className="font-quran text-2xl leading-none">أقِم</span>
+                // translate-y compensates Amiri Quran's tall ascent metrics so
+                // the word sits optically dead-center in the button.
+                <span className="font-quran text-2xl leading-none inline-block translate-y-[0.14em]">
+                  أقِم
+                </span>
               )}
             </button>
           </div>
