@@ -6,7 +6,8 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "أقم — Aqim",
     short_name: "أقم",
-    description: "اقرأ بخشوع، لا بعادة",
+    description:
+      "اقرأ بخشوع، لا بعادة — آية مختلفة من محفوظاتك لكل صلاة، لتراجع حفظك وتتدبر أكثر.",
     // Installed app opens straight into the app (WhatsApp-style): first launch
     // shows the one-time Welcome onboarding, later launches go to the dashboard.
     // The marketing landing page at "/" is for browser visitors.

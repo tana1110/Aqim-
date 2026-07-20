@@ -35,10 +35,18 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Aqim · أقم",
+  title: "أقم — اقرأ بخشوع، لا بعادة",
   description:
-    "Choose which memorized verses to recite in prayer — with variety, from a verified Quran source.",
-  appleWebApp: { capable: true, title: "Aqim", statusBarStyle: "default" },
+    "نوّع تلاوتك في الصلاة: «أقم» يقترح عليك آيةً مختلفة من محفوظاتك لكل صلاة، فتراجع حفظك كله، وتتدبر معاني ما تقرأ، وتقف بين يدي الله بخشوعٍ متجدد بدل تكرار السور نفسها كل مرة.",
+  appleWebApp: { capable: true, title: "أقم", statusBarStyle: "default" },
+  openGraph: {
+    title: "أقم — اقرأ بخشوع، لا بعادة",
+    description:
+      "آية مختلفة من محفوظاتك لكل صلاة — راجع حفظك، تدبر أكثر، واخشع في صلاتك.",
+    siteName: "أقم",
+    type: "website",
+    locale: "ar",
+  },
 };
 
 export const viewport: Viewport = {
