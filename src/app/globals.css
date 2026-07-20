@@ -196,6 +196,14 @@ h3 {
   height: calc(4.25rem + env(safe-area-inset-bottom, 0px));
 }
 
+/* Hide scrollbars on horizontal chip rows (still scrollable). */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* First-run cover: raised by a blocking <head> script when the Welcome is due,
    hiding the app underneath until the Welcome overlay (z-40) mounts. Sits above
    header (z-20) and bottom nav (z-30), below Welcome (z-40) and splash (z-50). */

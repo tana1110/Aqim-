@@ -70,6 +70,14 @@ export default function RootLayout({
       className={`${amiri.variable} ${amiriQuran.variable} ${cairo.variable} ${inter.variable} h-full antialiased`}
     >
       <head>
+        {/* Paint the brand background from the very first frame — kills the
+            white flash before the stylesheet loads. */}
+        <style
+          dangerouslySetInnerHTML={{
+            __html:
+              "html{background:#f3eee3}@media (prefers-color-scheme:dark){html{background:#1c2830}}",
+          }}
+        />
         {/* Apply the saved language before paint to avoid a flash of the wrong
             direction. */}
         <script

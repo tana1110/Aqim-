@@ -5,28 +5,37 @@ import Link from "next/link";
 import { Sparkles, RefreshCw, Check, Layers, BookMarked } from "lucide-react";
 import { LogoLoader } from "@/components/Logo";
 import { PassageCard } from "@/components/PassageCard";
-import { MosqueIcon, NafilahIcon, QiyamIcon } from "@/components/ModeIcons";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, cleanAyah } from "@/lib/quranDisplay";
 import type { Mode, PassageContent, ResolvedPlan } from "@/lib/types";
 
-const FARAID_PRAYERS = ["fajr", "dhuhr", "asr", "maghrib", "isha"];
-const NAFL_PRAYERS = [
-  "fajr-sunnah",
-  "dhuhr-nafl",
-  "maghrib-sunnah",
-  "isha-shaf",
-  "witr",
-  "free",
+// One row of everything the user can pray — tapping a chip sets both the
+// prayer and its mode. No "type" step.
+const CHIPS: { key: string; mode: Mode }[] = [
+  { key: "fajr", mode: "faraid" },
+  { key: "dhuhr", mode: "faraid" },
+  { key: "asr", mode: "faraid" },
+  { key: "maghrib", mode: "faraid" },
+  { key: "isha", mode: "faraid" },
+  { key: "fajr-sunnah", mode: "nafl" },
+  { key: "dhuhr-nafl", mode: "nafl" },
+  { key: "maghrib-sunnah", mode: "nafl" },
+  { key: "isha-shaf", mode: "nafl" },
+  { key: "witr", mode: "nafl" },
+  { key: "free", mode: "nafl" },
+  { key: "qiyam", mode: "qiyam" },
 ];
-const MODES: {
-  key: Mode;
-  Icon: ComponentType<{ size?: number; className?: string }>;
-}[] = [
-  { key: "faraid", Icon: MosqueIcon },
-  { key: "nafl", Icon: NafilahIcon },
-  { key: "qiyam", Icon: QiyamIcon },
-];
+
+// Rough time-of-day default so the hero already shows the likely next prayer.
+function defaultPrayer(): string {
+  const h = new Date().getHours() + new Date().getMinutes() / 60;
+  if (h >= 3 && h < 11) return "fajr";
+  if (h < 15) return "dhuhr";
+  if (h < 17.5) return "asr";
+  if (h < 19.5) return "maghrib";
+  if (h < 23) return "isha";
+  return "qiyam";
+}
 
 interface DailyAyah {
   surahNumber: number;
@@ -87,10 +96,13 @@ export default function HomePage() {
     }
   })();
 
+  // Preselect the likely next prayer by local time (client-only to avoid
+  // a server/client hydration mismatch).
   useEffect(() => {
-    if (mode === "faraid") setPrayer("fajr");
-    else if (mode === "nafl") setPrayer("fajr-sunnah");
-  }, [mode]);
+    const p = defaultPrayer();
+    setPrayer(p);
+    setMode(CHIPS.find((c) => c.key === p)?.mode ?? "faraid");
+  }, []);
 
   useEffect(() => {
     setPlan(null);
@@ -150,15 +162,88 @@ export default function HomePage() {
           </Link>
         )}
 
-        {/* Ayah of the day — first thing on the page, once the account is set up */}
+        {/* HERO — the one big action: your next prayer + أقِم */}
+        <section className="relative overflow-hidden rounded-2xl bg-primary text-white p-6 animate-rise">
+          {/* brand watermark */}
+          <div className="absolute -end-6 -bottom-8 opacity-[0.13] pointer-events-none text-white">
+            <LogoLoader size={170} inherit />
+          </div>
+          <div className="relative">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs font-bold text-white/70">
+                {t("home.nextPrayer")}
+              </span>
+              {hijri && <span className="text-[11px] text-white/60">{hijri}</span>}
+            </div>
+            <h1 className="font-heading text-[2.6rem] leading-tight mt-1">
+              {prayer === "qiyam" ? t("mode.qiyam") : t(`prayer.${prayer}`)}
+            </h1>
+
+            {showRakahInput && (
+              <div className="flex items-center justify-between mt-3 rounded-xl border border-white/25 px-4 py-2.5">
+                <span className="text-sm text-white/80">{t("home.rakahs")}</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setRakahs(Math.max(1, rakahs - 1))}
+                    className="w-8 h-8 rounded-full border border-white/40 grid place-items-center text-lg active:scale-90 transition"
+                    aria-label="-"
+                  >
+                    −
+                  </button>
+                  <span className="w-6 text-center font-bold tabular-nums">
+                    {rakahs}
+                  </span>
+                  <button
+                    onClick={() => setRakahs(Math.min(20, rakahs + 1))}
+                    className="w-8 h-8 rounded-full bg-white text-primary grid place-items-center text-lg active:scale-90 transition"
+                    aria-label="+"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={aqim}
+              disabled={loading}
+              className="btn-cta w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-60 mt-4"
+            >
+              {loading ? (
+                <LogoLoader size={30} inherit className="text-white" />
+              ) : (
+                <span className="font-quran text-2xl leading-none">أقِم</span>
+              )}
+            </button>
+          </div>
+        </section>
+
+        {/* All prayers — one sliding row of chips */}
+        <div className="-mx-4 px-4 flex gap-2 overflow-x-auto no-scrollbar snap-x">
+          {CHIPS.map((c) => {
+            const on = prayer === c.key;
+            return (
+              <button
+                key={c.key}
+                onClick={() => {
+                  setPrayer(c.key);
+                  setMode(c.mode);
+                }}
+                data-on={on}
+                className="pill px-4 py-2 text-sm font-medium whitespace-nowrap snap-start shrink-0 active:scale-[0.97]"
+              >
+                {c.key === "qiyam" ? t("mode.qiyam") : t(`prayer.${c.key}`)}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Ayah of the day */}
         {daily && status?.hasMemorization && (
           <section className="card p-4 border-s-4 border-s-accent animate-rise">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-accent">
-                <Sparkles size={13} />
-                {t("home.dailyAyah")}
-              </span>
-              {hijri && <span className="text-[11px] text-muted">{hijri}</span>}
+            <div className="flex items-center gap-1.5 text-xs font-bold text-accent mb-2">
+              <Sparkles size={13} />
+              {t("home.dailyAyah")}
             </div>
             <p className="font-quran text-lg leading-[2] text-foreground" dir="rtl">
               {cleanAyah(daily.arabicText)}
@@ -176,97 +261,26 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* This week */}
-        {week && (
-          <section>
-            <SectionLabel>{t("home.thisWeek")}</SectionLabel>
-            <div className="grid grid-cols-3 gap-2.5">
-              <MiniStat
-                Icon={Sparkles}
-                value={week.totalRecitations}
-                label={t("home.recitations")}
-              />
-              <MiniStat
-                Icon={Layers}
-                value={week.distinctPassages}
-                label={t("home.passages")}
-              />
-              <MiniStat
-                Icon={BookMarked}
-                value={week.distinctSurahs}
-                label={t("home.surahs")}
-              />
-            </div>
+        {/* This week — one slim strip */}
+        {week && status?.hasMemorization && (
+          <section className="card grid grid-cols-3 divide-x divide-border rtl:divide-x-reverse">
+            <MiniStat
+              Icon={Sparkles}
+              value={week.totalRecitations}
+              label={t("home.recitations")}
+            />
+            <MiniStat
+              Icon={Layers}
+              value={week.distinctPassages}
+              label={t("home.passages")}
+            />
+            <MiniStat
+              Icon={BookMarked}
+              value={week.distinctSurahs}
+              label={t("home.surahs")}
+            />
           </section>
         )}
-
-        {/* Mode */}
-        <div>
-          <SectionLabel>{t("home.type")}</SectionLabel>
-          <div className="grid grid-cols-3 gap-2.5">
-            {MODES.map((m) => {
-              const on = mode === m.key;
-              return (
-                <button
-                  key={m.key}
-                  onClick={() => setMode(m.key)}
-                  className={`card !shadow-none p-3 flex flex-col items-center gap-1.5 transition active:scale-[0.97] ${
-                    on ? "!bg-primary-soft border-primary/40" : "hover:border-primary/30"
-                  }`}
-                >
-                  <m.Icon
-                    size={24}
-                    className={on ? "text-primary" : "text-muted"}
-                  />
-                  <span className="text-sm font-bold leading-none">
-                    {t(`mode.${m.key}`)}
-                  </span>
-                  <span className="text-[10px] text-muted">
-                    {t(`mode.${m.key}.hint`)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Prayer */}
-        {mode !== "qiyam" && (
-          <div>
-            <SectionLabel>{t("home.prayer")}</SectionLabel>
-            <div className="flex flex-wrap gap-2">
-              {(mode === "faraid" ? FARAID_PRAYERS : NAFL_PRAYERS).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPrayer(p)}
-                  data-on={prayer === p}
-                  className="pill px-4 py-2 text-sm font-medium active:scale-[0.97]"
-                >
-                  {t(`prayer.${p}`)}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {showRakahInput && (
-          <div className="flex items-center justify-between card p-4">
-            <span className="text-sm text-muted">{t("home.rakahs")}</span>
-            <Stepper value={rakahs} onChange={setRakahs} min={1} max={20} />
-          </div>
-        )}
-
-        <button
-          onClick={aqim}
-          disabled={loading}
-          className="btn-cta w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-60"
-        >
-          {loading ? (
-            <LogoLoader size={30} inherit className="text-white" />
-          ) : (
-            <span className="font-quran text-2xl leading-none">أقِم</span>
-          )}
-        </button>
 
         {error && (
           <div className="text-sm text-primary text-center bg-primary-soft rounded-xl p-3">
@@ -289,10 +303,6 @@ export default function HomePage() {
   );
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <div className="text-xs font-bold text-muted mb-2 px-1">{children}</div>;
-}
-
 function MiniStat({
   Icon,
   value,
@@ -303,7 +313,7 @@ function MiniStat({
   label: string;
 }) {
   return (
-    <div className="card p-3 text-center">
+    <div className="p-3 text-center">
       <Icon size={16} className="text-secondary mx-auto mb-1" />
       <div className="text-xl font-bold tabular-nums leading-none">{value}</div>
       <div className="text-[10px] text-muted mt-1 leading-tight">{label}</div>
