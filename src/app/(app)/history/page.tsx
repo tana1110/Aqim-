@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Sparkles, Layers, BookMarked } from "lucide-react";
-import { LogoLoader } from "@/components/Logo";
+import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
@@ -55,12 +55,7 @@ export default function HistoryPage() {
       .finally(() => setLoaded(true));
   }, []);
 
-  if (!loaded)
-    return (
-      <div className="grid place-items-center py-24 text-primary">
-        <LogoLoader size={72} />
-      </div>
-    );
+  if (!loaded) return <PageLoader />;
 
   return (
     <div className="space-y-5 pt-2 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start lg:space-y-0">

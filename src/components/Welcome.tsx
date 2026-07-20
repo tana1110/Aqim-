@@ -2,8 +2,9 @@
 
 import { useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpenText, Repeat } from "lucide-react";
+import { BookOpenText } from "lucide-react";
 import { Logo } from "@/components/Logo";
+import { BrandOverlay } from "@/components/Brand";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLang } from "@/components/LanguageProvider";
 import { cleanAyah } from "@/lib/quranDisplay";
@@ -18,6 +19,7 @@ export function Welcome() {
   const router = useRouter();
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
+  const [leaving, setLeaving] = useState(false);
   const [ayah, setAyah] = useState<{
     arabic: string | null;
     translation: string | null;
@@ -41,13 +43,20 @@ export function Welcome() {
 
   if (!visible) return null;
 
+  // Hand-off transition after finishing/skipping — same brand overlay as boot.
+  if (leaving) return <BrandOverlay />;
+
   function finish(goSetup: boolean) {
     try {
       localStorage.setItem(FLAG, "1");
     } catch {}
-    document.documentElement.removeAttribute("data-welcome");
-    setVisible(false);
-    if (goSetup) router.push("/setup");
+    // Brief brand transition so the hand-off into the app feels intentional.
+    setLeaving(true);
+    setTimeout(() => {
+      document.documentElement.removeAttribute("data-welcome");
+      setVisible(false);
+      if (goSetup) router.push("/setup");
+    }, 1100);
   }
 
   const slides = [
@@ -59,7 +68,7 @@ export function Welcome() {
         </div>
       ),
       title: t("landing.slogan"),
-      body: t("welcome.intro"),
+      body: "", // the slogan says it all — no duplicate sentence beneath
     },
     {
       art: (
@@ -71,11 +80,7 @@ export function Welcome() {
       body: t("welcome.s2.body"),
     },
     {
-      art: (
-        <div className="w-24 h-24 rounded-3xl bg-accent-soft grid place-items-center">
-          <Repeat size={44} className="text-accent" />
-        </div>
-      ),
+      art: <Logo variant="icon" size={88} />,
       title: t("welcome.s3.title"),
       body: t("welcome.s3.body"),
     },

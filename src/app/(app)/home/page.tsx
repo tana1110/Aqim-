@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, type ComponentType } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Sparkles, RefreshCw, Check, Layers, BookMarked } from "lucide-react";
+import { Sparkles, RefreshCw, Check } from "lucide-react";
 import { LogoLoader } from "@/components/Logo";
+import { ContentCard } from "@/components/ContentCard";
 import { PassageCard } from "@/components/PassageCard";
+import { computeTimes, loadReminderConfig } from "@/lib/reminder";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, cleanAyah } from "@/lib/quranDisplay";
 import type { Mode, PassageContent, ResolvedPlan } from "@/lib/types";
@@ -46,12 +48,6 @@ interface DailyAyah {
   translation: string | null;
 }
 
-interface WeekStats {
-  totalRecitations: number;
-  distinctPassages: number;
-  distinctSurahs: number;
-}
-
 export default function HomePage() {
   const { t, lang } = useLang();
   const [status, setStatus] = useState<{
@@ -65,7 +61,6 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [daily, setDaily] = useState<DailyAyah | null>(null);
-  const [week, setWeek] = useState<WeekStats | null>(null);
 
   useEffect(() => {
     fetch("/api/status")
@@ -77,10 +72,6 @@ export default function HomePage() {
     fetch("/api/daily-ayah")
       .then((r) => r.json())
       .then((d) => setDaily(d.ayah))
-      .catch(() => {});
-    fetch("/api/history/stats")
-      .then((r) => r.json())
-      .then((d) => setWeek(d.week))
       .catch(() => {});
   }, []);
 
@@ -96,13 +87,60 @@ export default function HomePage() {
     }
   })();
 
-  // Preselect the likely next prayer by local time (client-only to avoid
-  // a server/client hydration mismatch).
+  // Next prayer for the info card. With a saved location we compute exact
+  // times on-device (adhan); otherwise fall back to a time-of-day heuristic.
+  const [heroKey, setHeroKey] = useState<string>("fajr");
+  const [nextAt, setNextAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+
   useEffect(() => {
     const p = defaultPrayer();
+    setHeroKey(p);
     setPrayer(p);
     setMode(CHIPS.find((c) => c.key === p)?.mode ?? "faraid");
+
+    const cfg = loadReminderConfig();
+    if (cfg.lat == null || cfg.lng == null) return;
+
+    function computeNext() {
+      const nowMs = Date.now();
+      for (const off of [0, 1]) {
+        const d = new Date();
+        d.setDate(d.getDate() + off);
+        const times = computeTimes(cfg.lat!, cfg.lng!, cfg.method, d);
+        for (const k of ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const) {
+          const t = times[k].getTime();
+          if (t > nowMs) {
+            setHeroKey(k);
+            setNextAt(t);
+            setPrayer(k);
+            setMode("faraid");
+            return;
+          }
+        }
+      }
+    }
+    computeNext();
+    const iv = setInterval(computeNext, 60_000);
+    return () => clearInterval(iv);
   }, []);
+
+  // Live 1s tick for the countdown (only when we know the exact time).
+  useEffect(() => {
+    if (nextAt == null) return;
+    const iv = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(iv);
+  }, [nextAt]);
+
+  const countdown = (() => {
+    if (nextAt == null) return null;
+    const ms = Math.max(0, nextAt - now);
+    const h = Math.floor(ms / 3_600_000);
+    const m = Math.floor((ms % 3_600_000) / 60_000);
+    const s = Math.floor((ms % 60_000) / 1000);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${h}:${pad(m)}:${pad(s)}`;
+  })();
 
   useEffect(() => {
     setPlan(null);
@@ -168,131 +206,113 @@ export default function HomePage() {
           </Link>
         )}
 
-        {/* HERO — the one big action: your next prayer + أقِم */}
+        {/* INFO CARD — next prayer at a glance (informational only) */}
         <section className="relative overflow-hidden rounded-2xl bg-primary text-white p-6 animate-rise">
-          <div className="relative">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-white/70">
-                {t("home.nextPrayer")}
-              </span>
-              {hijri && <span className="text-[11px] text-white/60">{hijri}</span>}
-            </div>
-            <h1 className="font-heading text-[2.6rem] leading-tight mt-1">
-              {prayer === "qiyam" ? t("mode.qiyam") : t(`prayer.${prayer}`)}
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-bold text-white/70">
+              {t("home.nextPrayer")}
+            </span>
+            {hijri && <span className="text-[11px] text-white/60">{hijri}</span>}
+          </div>
+          <div className="flex items-end justify-between gap-4 mt-1">
+            <h1 className="font-heading text-[2.6rem] leading-tight">
+              {heroKey === "qiyam" ? t("mode.qiyam") : t(`prayer.${heroKey}`)}
             </h1>
-
-            {showRakahInput && (
-              <div className="flex items-center justify-between mt-3 rounded-xl border border-white/25 px-4 py-2.5">
-                <span className="text-sm text-white/80">{t("home.rakahs")}</span>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setRakahs(Math.max(1, rakahs - 1))}
-                    className="w-8 h-8 rounded-full border border-white/40 grid place-items-center text-lg active:scale-90 transition"
-                    aria-label="-"
-                  >
-                    −
-                  </button>
-                  <span className="w-6 text-center font-bold tabular-nums">
-                    {rakahs}
-                  </span>
-                  <button
-                    onClick={() => setRakahs(Math.min(20, rakahs + 1))}
-                    className="w-8 h-8 rounded-full bg-white text-primary grid place-items-center text-lg active:scale-90 transition"
-                    aria-label="+"
-                  >
-                    +
-                  </button>
+            {countdown && (
+              <div className="text-end pb-2">
+                <div className="text-[10px] text-white/60">
+                  {t("home.remaining")}
+                </div>
+                <div
+                  className="text-2xl font-bold tabular-nums tracking-wide"
+                  dir="ltr"
+                >
+                  {countdown}
                 </div>
               </div>
             )}
-
-            <button
-              onClick={aqim}
-              disabled={loading}
-              className="btn-cta w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-60 mt-4"
-            >
-              {loading ? (
-                <LogoLoader size={30} inherit className="text-white" />
-              ) : (
-                // translate-y compensates Amiri Quran's tall ascent metrics so
-                // the word sits optically dead-center in the button.
-                <span className="font-quran text-2xl leading-none inline-block translate-y-[0.14em]">
-                  أقِم
-                </span>
-              )}
-            </button>
           </div>
         </section>
 
-        {/* All prayers — one sliding row of chips */}
-        <div className="-mx-4 px-4 flex gap-2 overflow-x-auto no-scrollbar snap-x">
-          {CHIPS.map((c) => {
-            const on = prayer === c.key;
-            return (
-              <button
-                key={c.key}
-                onClick={() => {
-                  setPrayer(c.key);
-                  setMode(c.mode);
-                }}
-                data-on={on}
-                className="pill px-4 py-2 text-sm font-medium whitespace-nowrap snap-start shrink-0 active:scale-[0.97]"
-              >
-                {c.key === "qiyam" ? t("mode.qiyam") : t(`prayer.${c.key}`)}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Ayah of the day */}
+        {/* Ayah of the day — the designed highlight */}
         {daily && status?.hasMemorization && (
-          <section className="card p-4 border-s-4 border-s-accent animate-rise">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-accent mb-2">
-              <Sparkles size={13} />
-              {t("home.dailyAyah")}
-            </div>
-            <p className="font-quran text-lg leading-[2] text-foreground" dir="rtl">
+          <ContentCard
+            label={t("home.dailyAyah")}
+            icon={<Sparkles size={13} />}
+            reference={
+              <>
+                {t("passage.surah")}{" "}
+                {surahName(lang, daily.surahNameArabic, daily.surahNameTranslit)}{" "}
+                · {t("passage.ayah")} {daily.ayahNumber}
+              </>
+            }
+          >
+            <p
+              className="font-quran text-xl leading-[2.1] text-foreground"
+              dir="rtl"
+            >
               {cleanAyah(daily.arabicText)}
             </p>
             {lang === "en" && daily.translation && (
-              <p className="text-xs text-muted italic mt-1.5" dir="ltr">
+              <p className="text-xs text-muted italic mt-2" dir="ltr">
                 “{daily.translation}”
               </p>
             )}
-            <p className="text-[11px] text-muted mt-2">
-              {t("passage.surah")}{" "}
-              {surahName(lang, daily.surahNameArabic, daily.surahNameTranslit)} ·{" "}
-              {t("passage.ayah")} {daily.ayahNumber}
-            </p>
-          </section>
+          </ContentCard>
         )}
 
-        {/* This week — one slim strip */}
-        {week && status?.hasMemorization && (
-          <section className="card grid grid-cols-3 divide-x divide-border rtl:divide-x-reverse">
-            <MiniStat
-              Icon={Sparkles}
-              value={week.totalRecitations}
-              label={t("home.recitations")}
-            />
-            <MiniStat
-              Icon={Layers}
-              value={week.distinctPassages}
-              label={t("home.passages")}
-            />
-            <MiniStat
-              Icon={BookMarked}
-              value={week.distinctSurahs}
-              label={t("home.surahs")}
-            />
-          </section>
-        )}
+        {/* SELECTION — pick what to recite (the action) */}
+        <section className="card p-4 sm:p-5 space-y-4">
+          <h2 className="text-sm font-bold">{t("home.pickVerses")}</h2>
 
-        {error && (
-          <div className="text-sm text-primary text-center bg-primary-soft rounded-xl p-3">
-            {error}
+          <div className="-mx-4 px-4 flex gap-2 overflow-x-auto no-scrollbar snap-x">
+            {CHIPS.map((c) => {
+              const on = prayer === c.key;
+              return (
+                <button
+                  key={c.key}
+                  onClick={() => {
+                    setPrayer(c.key);
+                    setMode(c.mode);
+                  }}
+                  data-on={on}
+                  className="pill px-4 py-2 text-sm font-medium whitespace-nowrap snap-start shrink-0 active:scale-[0.97]"
+                >
+                  {c.key === "qiyam" ? t("mode.qiyam") : t(`prayer.${c.key}`)}
+                </button>
+              );
+            })}
           </div>
-        )}
+
+          {showRakahInput && (
+            <div className="flex items-center justify-between rounded-xl border border-border px-4 py-2.5">
+              <span className="text-sm text-muted">{t("home.rakahs")}</span>
+              <Stepper value={rakahs} onChange={setRakahs} min={1} max={20} />
+            </div>
+          )}
+
+          <button
+            onClick={aqim}
+            disabled={loading}
+            className="btn-cta w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {loading ? (
+              <LogoLoader size={30} inherit className="text-white" />
+            ) : (
+              // translate-y compensates Amiri Quran's tall ascent metrics so
+              // the word sits optically dead-center in the button.
+              <span className="font-quran text-2xl leading-none inline-block translate-y-[0.14em]">
+                أقِم
+              </span>
+            )}
+          </button>
+
+          {error && (
+            <div className="text-sm text-primary text-center bg-primary-soft rounded-xl p-3">
+              {error}
+            </div>
+          )}
+        </section>
       </div>
 
       {/* Results column */}
@@ -309,23 +329,6 @@ export default function HomePage() {
   );
 }
 
-function MiniStat({
-  Icon,
-  value,
-  label,
-}: {
-  Icon: ComponentType<{ size?: number; className?: string }>;
-  value: number;
-  label: string;
-}) {
-  return (
-    <div className="p-3 text-center">
-      <Icon size={16} className="text-secondary mx-auto mb-1" />
-      <div className="text-xl font-bold tabular-nums leading-none">{value}</div>
-      <div className="text-[10px] text-muted mt-1 leading-tight">{label}</div>
-    </div>
-  );
-}
 
 function Stepper({
   value,

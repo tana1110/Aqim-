@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
-import { LogoLoader } from "@/components/Logo";
+import { BrandOverlay, PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
@@ -129,18 +129,7 @@ export default function SetupPage() {
   return (
     <div className="space-y-5 pt-2 pb-4">
       {/* Post-save brand transition (~2s) before the dashboard */}
-      {transitioning && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-background">
-          <div className="flex flex-col items-center gap-5">
-            <div className="animate-splash-pop text-primary">
-              <LogoLoader size={112} />
-            </div>
-            <span className="font-heading text-4xl text-primary animate-splash-rise">
-              أقِم
-            </span>
-          </div>
-        </div>
-      )}
+      {transitioning && <BrandOverlay />}
 
       <div>
         <h1 className="text-xl font-bold mb-1">{t("setup.title")}</h1>
@@ -255,9 +244,5 @@ export default function SetupPage() {
 }
 
 function Loading() {
-  return (
-    <div className="grid place-items-center py-24 text-primary">
-      <LogoLoader size={72} />
-    </div>
-  );
+  return <PageLoader />;
 }

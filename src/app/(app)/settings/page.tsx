@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell, MapPin, Info } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
+import { PageLoader } from "@/components/Brand";
 import {
   CITIES,
   METHOD_KEYS,
@@ -92,7 +93,7 @@ export default function SettingsPage() {
     update({ lat: c.lat, lng: c.lng, locationLabel: key });
   }
 
-  if (!cfg) return null;
+  if (!cfg) return <PageLoader />;
 
   const cityLabel = (k: string) =>
     lang === "ar"
