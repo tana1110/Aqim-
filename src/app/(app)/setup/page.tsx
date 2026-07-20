@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
+import { Logo } from "@/components/Logo";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
@@ -27,6 +28,7 @@ export default function SetupPage() {
   const [tab, setTab] = useState<"surah" | "juz">("surah");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [transitioning, setTransitioning] = useState(false);
   const [seeded, setSeeded] = useState(true);
 
   useEffect(() => {
@@ -104,8 +106,9 @@ export default function SetupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ranges: buildRanges() }),
       });
-      // Head to the home screen so they can start choosing recitations.
-      router.push("/home");
+      // Brief brand transition, then the home screen.
+      setTransitioning(true);
+      setTimeout(() => router.push("/home"), 2000);
     } catch {
       setSaving(false);
     }
@@ -125,6 +128,20 @@ export default function SetupPage() {
 
   return (
     <div className="space-y-5 pt-2 pb-4">
+      {/* Post-save brand transition (~2s) before the dashboard */}
+      {transitioning && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-background">
+          <div className="flex flex-col items-center gap-5">
+            <div className="animate-splash-pop">
+              <Logo variant="icon" size={112} />
+            </div>
+            <span className="font-heading text-4xl text-primary animate-splash-rise">
+              أقِم
+            </span>
+          </div>
+        </div>
+      )}
+
       <div>
         <h1 className="text-xl font-bold mb-1">{t("setup.title")}</h1>
         <p className="text-sm text-muted">{t("setup.subtitle")}</p>
