@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Sunrise, Sunset, MoonStar, HandHelping, Search, Check } from "lucide-react";
+import { Search, Check } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 
@@ -38,10 +38,10 @@ export default function AdhkarPage() {
     const find = (frag: string) =>
       chapters.find((c) => strip(c.title).includes(frag)) ?? null;
     return [
-      { key: "adhkar.morning", Icon: Sunrise, ch: find("الصباح") },
-      { key: "adhkar.evening", Icon: Sunset, ch: find("المساء") },
-      { key: "adhkar.sleep", Icon: MoonStar, ch: find("أذكار النوم") ?? find("اذكار النوم") },
-      { key: "adhkar.istikhara", Icon: HandHelping, ch: find("الاستخارة") ?? find("الاستخاره") },
+      { key: "adhkar.morning", ch: find("الصباح") },
+      { key: "adhkar.evening", ch: find("المساء") },
+      { key: "adhkar.sleep", ch: find("أذكار النوم") ?? find("اذكار النوم") },
+      { key: "adhkar.istikhara", ch: find("الاستخارة") ?? find("الاستخاره") },
     ];
   }, [chapters]);
 
@@ -71,10 +71,9 @@ export default function AdhkarPage() {
               <button
                 key={f.key}
                 onClick={() => setOpen(f.ch)}
-                className="card p-4 flex flex-col items-center gap-2 text-center hover:border-primary/40 active:scale-[0.97] transition"
+                className="card p-4 grid place-items-center text-center hover:border-primary/40 active:scale-[0.97] transition"
               >
-                <f.Icon size={24} className="text-primary" />
-                <span className="text-sm font-bold leading-tight">
+                <span className="font-heading text-[15px] font-bold leading-tight">
                   {t(f.key)}
                 </span>
               </button>
