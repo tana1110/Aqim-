@@ -99,6 +99,8 @@ const ar: Dict = {
   // setup
   "setup.title": "ماذا تحفظ؟",
   "setup.subtitle": "اختر بالسور أو بالأجزاء — سنقترح من محفوظاتك فقط.",
+  "setup.search": "ابحث عن سورة…",
+  "setup.noResults": "لا نتائج",
   "setup.bySurah": "بالسور",
   "setup.byJuz": "بالأجزاء",
   "setup.ayahs": "آية",
@@ -314,6 +316,8 @@ const en: Dict = {
 
   "setup.title": "What have you memorized?",
   "setup.subtitle": "Pick by surah or by juz — we only suggest from your memorization.",
+  "setup.search": "Search surahs…",
+  "setup.noResults": "No results",
   "setup.bySurah": "By Surah",
   "setup.byJuz": "By Juz",
   "setup.ayahs": "ayahs",

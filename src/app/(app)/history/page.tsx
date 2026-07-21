@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Sparkles, Layers, BookMarked, Crosshair } from "lucide-react";
+import { Crosshair } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
@@ -12,21 +12,6 @@ interface MemoRange {
   surahNumber: number;
   fromAyah: number;
   toAyah: number;
-}
-
-interface Stats {
-  week: {
-    totalRecitations: number;
-    distinctPassages: number;
-    distinctSurahs: number;
-    bySurah: {
-      surahNumber: number;
-      count: number;
-      nameEnglish: string;
-      nameArabic: string;
-    }[];
-  };
-  allTime: { totalRecitations: number; distinctPassages: number };
 }
 
 interface HistoryRow {
@@ -41,7 +26,6 @@ interface HistoryRow {
 
 export default function HistoryPage() {
   const { t, lang } = useLang();
-  const [stats, setStats] = useState<Stats | null>(null);
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [surahMap, setSurahMap] = useState<Map<number, SurahMeta>>(new Map());
   const [memo, setMemo] = useState<MemoRange[]>([]);
@@ -49,13 +33,11 @@ export default function HistoryPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/history/stats").then((r) => r.json()),
       fetch("/api/history").then((r) => r.json()),
       fetch("/api/surahs").then((r) => r.json()),
       fetch("/api/memorization").then((r) => r.json()),
     ])
-      .then(([s, h, sur, m]) => {
-        setStats(s);
+      .then(([h, sur, m]) => {
         setRows(h.history ?? []);
         setSurahMap(
           new Map((sur.surahs ?? []).map((x: SurahMeta) => [x.number, x])),
@@ -78,61 +60,6 @@ export default function HistoryPage() {
       <div className="lg:col-span-2">
         <FocusPanel memo={memo} surahMap={surahMap} />
       </div>
-
-      {stats && (
-        <div className="space-y-5">
-          <div className="grid grid-cols-3 gap-2.5">
-            <Stat
-              Icon={Sparkles}
-              label={t("history.week")}
-              value={stats.week.totalRecitations}
-            />
-            <Stat
-              Icon={Layers}
-              label={t("history.distinctPassages")}
-              value={stats.week.distinctPassages}
-            />
-            <Stat
-              Icon={BookMarked}
-              label={t("history.distinctSurahs")}
-              value={stats.week.distinctSurahs}
-            />
-          </div>
-
-          {stats.week.bySurah.length > 0 && (
-            <div className="card p-4">
-              <div className="text-sm font-bold mb-3">
-                {t("history.mostRepeated")}
-              </div>
-              <div className="space-y-2.5">
-                {stats.week.bySurah.map((b) => (
-                  <div key={b.surahNumber} className="flex items-center gap-3">
-                    <span
-                      className={`w-24 truncate ${lang === "ar" ? "font-quran text-base" : "text-sm font-medium"}`}
-                    >
-                      {surahName(lang, b.nameArabic, b.nameEnglish)}
-                    </span>
-                    <div className="flex-1 h-2.5 rounded-full bg-surface-2 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-secondary"
-                        style={{
-                          width: `${
-                            (b.count / Math.max(1, stats.week.bySurah[0].count)) *
-                            100
-                          }%`,
-                        }}
-                      />
-                    </div>
-                    <span className="text-xs text-muted w-5 text-end tabular-nums">
-                      {b.count}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       <div>
         <div className="text-sm font-bold mb-2 px-1">{t("history.recent")}</div>
@@ -312,6 +239,18 @@ function FocusPanel({
         </div>
       </div>
 
+      {/* Enable sits IMMEDIATELY under the pickers — visible the moment a
+          surah is chosen, no scrolling needed. */}
+      {!cfg.active && (
+        <button
+          onClick={() => cfg.surahNumber && apply({ ...cfg, active: true })}
+          disabled={!cfg.surahNumber}
+          className="btn-cta w-full sm:w-auto px-8 py-3 text-sm disabled:opacity-50"
+        >
+          {t("focus.enable")}
+        </button>
+      )}
+
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         {/* Intentional repetition */}
         <label className="flex items-center gap-2 text-sm cursor-pointer">
@@ -346,35 +285,7 @@ function FocusPanel({
         </label>
       </div>
 
-      {!cfg.active && (
-        <button
-          onClick={() => cfg.surahNumber && apply({ ...cfg, active: true })}
-          disabled={!cfg.surahNumber}
-          className="btn-primary px-5 py-2.5 text-sm disabled:opacity-50"
-        >
-          {t("focus.enable")}
-        </button>
-      )}
     </section>
   );
 }
 
-function Stat({
-  Icon,
-  label,
-  value,
-}: {
-  Icon: typeof Sparkles;
-  label: string;
-  value: number;
-}) {
-  return (
-    <div className="card p-3.5 text-center">
-      <Icon size={18} className="text-primary mx-auto mb-1.5" />
-      <div className="text-2xl font-bold text-foreground tabular-nums">
-        {value}
-      </div>
-      <div className="text-[10px] text-muted mt-0.5 leading-tight">{label}</div>
-    </div>
-  );
-}

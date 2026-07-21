@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check } from "lucide-react";
+import { Check, Search } from "lucide-react";
 import { BrandOverlay, PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
@@ -53,6 +53,7 @@ export default function SetupPage() {
   const [selectedSurahs, setSelectedSurahs] = useState<Set<number>>(new Set());
   const [selectedJuz, setSelectedJuz] = useState<Set<number>>(new Set());
   const [tab, setTab] = useState<"surah" | "juz">("surah");
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
@@ -272,45 +273,40 @@ export default function SetupPage() {
       </div>
 
       {tab === "surah" && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2.5">
-          {surahs.map((s) => {
-            const on = selectedSurahs.has(s.number);
-            return (
-              <button
-                key={s.number}
-                onClick={() => toggleSurah(s.number)}
-                className={`text-start rounded-2xl border p-3 transition active:scale-[0.98] ${
-                  on
-                    ? "border-primary/50 bg-primary-soft"
-                    : "border-border bg-surface hover:border-primary/30"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-[11px] text-muted">{s.number}</span>
-                  <span
-                    className={`w-5 h-5 rounded-full grid place-items-center transition ${
-                      on ? "bg-primary text-white" : "bg-surface-2"
-                    }`}
-                  >
-                    {on && <Check size={12} strokeWidth={3} />}
-                  </span>
-                </div>
-                <div
-                  className={
-                    lang === "ar"
-                      ? "font-quran text-lg leading-tight"
-                      : "text-sm font-semibold leading-tight"
-                  }
-                >
-                  {surahName(lang, s.nameArabic, s.nameTranslit)}
-                </div>
-                <div className="text-[11px] text-muted">
-                  {s.ayahCount} {t("setup.ayahs")}
-                </div>
-              </button>
-            );
-          })}
-        </div>
+        <>
+          {/* Instant search — no scrolling through 114 cards */}
+          <div className="relative">
+            <Search
+              size={16}
+              className="absolute start-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+            />
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={t("setup.search")}
+              className="w-full rounded-xl border border-border bg-surface ps-9 pe-3 py-2.5 text-sm"
+            />
+          </div>
+          <SurahGrid
+            surahs={surahs.filter((s) => {
+              const q = query.trim().toLowerCase();
+              if (!q) return true;
+              return (
+                s.nameArabic.replace(/[ً-ْٰ]/g, "").includes(q) ||
+                s.nameArabic.includes(q) ||
+                s.nameTranslit.toLowerCase().includes(q) ||
+                s.nameEnglish.toLowerCase().includes(q) ||
+                String(s.number) === q
+              );
+            })}
+            emptyText={t("setup.noResults")}
+            lang={lang}
+            selected={selectedSurahs}
+            toggle={toggleSurah}
+            ayahsLabel={t("setup.ayahs")}
+          />
+        </>
       )}
 
       {tab === "juz" && (
@@ -337,6 +333,66 @@ export default function SetupPage() {
         </div>
       )}
 
+    </div>
+  );
+}
+
+function SurahGrid({
+  surahs,
+  emptyText,
+  lang,
+  selected,
+  toggle,
+  ayahsLabel,
+}: {
+  surahs: SurahMeta[];
+  emptyText: string;
+  lang: string;
+  selected: Set<number>;
+  toggle: (n: number) => void;
+  ayahsLabel: string;
+}) {
+  if (surahs.length === 0)
+    return <p className="text-sm text-muted text-center py-8">{emptyText}</p>;
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6 gap-2.5">
+      {surahs.map((s) => {
+        const on = selected.has(s.number);
+        return (
+          <button
+            key={s.number}
+            onClick={() => toggle(s.number)}
+            className={`text-start rounded-2xl border p-3 transition active:scale-[0.98] ${
+              on
+                ? "border-primary/50 bg-primary-soft"
+                : "border-border bg-surface hover:border-primary/30"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-[11px] text-muted">{s.number}</span>
+              <span
+                className={`w-5 h-5 rounded-full grid place-items-center transition ${
+                  on ? "bg-primary text-white" : "bg-surface-2"
+                }`}
+              >
+                {on && <Check size={12} strokeWidth={3} />}
+              </span>
+            </div>
+            <div
+              className={
+                lang === "ar"
+                  ? "font-quran text-lg leading-tight"
+                  : "text-sm font-semibold leading-tight"
+              }
+            >
+              {surahName(lang as "ar" | "en", s.nameArabic, s.nameTranslit)}
+            </div>
+            <div className="text-[11px] text-muted">
+              {s.ayahCount} {ayahsLabel}
+            </div>
+          </button>
+        );
+      })}
     </div>
   );
 }

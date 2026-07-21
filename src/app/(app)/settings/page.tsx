@@ -7,7 +7,6 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageLoader } from "@/components/Brand";
 import {
   CITIES,
-  METHOD_KEYS,
   loadReminderConfig,
   saveReminderConfig,
   type ReminderConfig,
@@ -168,23 +167,8 @@ export default function SettingsPage() {
 
           {cfg.enabled && (
             <>
-              {/* Calculation method */}
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-sm font-medium">{t("reminder.method")}</span>
-                <select
-                  value={cfg.method}
-                  onChange={(e) =>
-                    update({ method: e.target.value as ReminderConfig["method"] })
-                  }
-                  className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm max-w-[55%]"
-                >
-                  {METHOD_KEYS.map((m) => (
-                    <option key={m} value={m}>
-                      {t(`method.${m}`)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Calculation method is intentionally NOT user-facing — a
+                  sensible default (Umm al-Qura) is hardcoded in lib/reminder. */}
 
               {/* Location */}
               <div className="space-y-2">

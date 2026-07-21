@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BookOpen, MapPin, RefreshCw, Check, Sparkles, X } from "lucide-react";
 import { LogoLoader } from "@/components/Logo";
@@ -215,6 +215,28 @@ export default function HomePage() {
     setPlan(null);
   }, [mode, prayer, rakahs]);
 
+  // Keep the selected chip visible inside its scrolling row.
+  const chipsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = chipsRef.current?.querySelector('[data-on="true"]');
+    el?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [prayer, booted]);
+
+  // On phones the suggestions render below the fold — bring them into view.
+  const resultsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (plan && window.innerWidth < 1024) {
+      setTimeout(
+        () =>
+          resultsRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "start",
+          }),
+        80,
+      );
+    }
+  }, [plan]);
+
   async function aqim() {
     setLoading(true);
     setError(null);
@@ -359,7 +381,10 @@ export default function HomePage() {
         <section className="card p-4 sm:p-5 space-y-4">
           <h2 className="text-sm font-bold">{t("home.pickVerses")}</h2>
 
-          <div className="-mx-4 px-4 flex gap-2 overflow-x-auto no-scrollbar snap-x">
+          <div
+            ref={chipsRef}
+            className="-mx-4 px-4 flex gap-2 overflow-x-auto no-scrollbar snap-x"
+          >
             {CHIPS.map((c) => {
               const on = prayer === c.key;
               return (
@@ -410,7 +435,7 @@ export default function HomePage() {
       </div>
 
       {/* Results column */}
-      <div className="mt-6 lg:mt-0">
+      <div ref={resultsRef} className="mt-6 lg:mt-0 scroll-mt-20">
         {plan ? (
           <PlanView plan={plan} prayer={prayer} lang={lang} />
         ) : (

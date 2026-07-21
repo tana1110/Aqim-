@@ -222,6 +222,30 @@ html[data-welcome="1"] body::before {
   background: var(--color-background);
 }
 
+/* Side navigation drawer: slides in from the start side (RTL-aware). */
+@keyframes drawerInLtr {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes drawerInRtl {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.animate-drawer {
+  animation: drawerInLtr 0.24s ease both;
+}
+html[dir="rtl"] .animate-drawer {
+  animation-name: drawerInRtl;
+}
+
 /* One page-level fade used for every route change (see (app)/template.tsx). */
 @keyframes pageFade {
   from {
