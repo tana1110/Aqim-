@@ -197,6 +197,32 @@ export default function SetupPage() {
         <p className="text-sm text-muted">{t("setup.subtitle")}</p>
       </div>
 
+      {/* Save bar — appears AT THE TOP the moment anything is selected and
+          stays stuck under the header while scrolling. In normal flow, so it
+          never covers the last rows of the list. */}
+      {selectedCount > 0 && (
+        <div className="sticky top-[64px] z-10 animate-rise">
+          <div className="card flex items-center justify-between gap-3 p-2.5 ps-4 shadow-lg">
+            <span className="text-sm font-medium">
+              {t("setup.selected", { n: selectedCount })}
+            </span>
+            <button
+              onClick={save}
+              disabled={saving}
+              className="btn-cta px-8 py-2.5 text-sm flex items-center gap-1.5 disabled:opacity-70"
+            >
+              {saving ? (
+                <>
+                  <Check size={16} /> {t("common.saved")}
+                </>
+              ) : (
+                t("common.save")
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Live summary of the memorization (updates as you toggle) */}
       <section className="card p-4">
         <div className="text-xs font-bold text-muted mb-3">
@@ -311,31 +337,6 @@ export default function SetupPage() {
         </div>
       )}
 
-      {/* Save bar pops in the MOMENT anything is selected — always floating
-          and visible, never something to scroll for. */}
-      {selectedCount > 0 && (
-        <div className="fixed inset-x-0 bottom-24 md:bottom-6 z-20 px-4 animate-rise">
-          <div className="mx-auto max-w-md card flex items-center justify-between gap-3 p-2.5 ps-4 shadow-lg">
-            <span className="text-sm font-medium">
-              {t("setup.selected", { n: selectedCount })}
-            </span>
-            <button
-              onClick={save}
-              disabled={saving}
-              className="btn-cta px-8 py-2.5 text-sm flex items-center gap-1.5 disabled:opacity-70"
-            >
-              {saving ? (
-                <>
-                  <Check size={16} /> {t("common.saved")}
-                </>
-              ) : (
-                t("common.save")
-              )}
-            </button>
-          </div>
-        </div>
-      )}
-      <div className="h-16" />
     </div>
   );
 }
