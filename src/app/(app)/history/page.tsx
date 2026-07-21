@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Crosshair } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
+import { GrowthChart, type GrowthPoint } from "@/components/GrowthChart";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import { defaultFocus, loadFocus, saveFocus, type FocusConfig } from "@/lib/focus";
@@ -29,6 +30,8 @@ export default function HistoryPage() {
   const [rows, setRows] = useState<HistoryRow[]>([]);
   const [surahMap, setSurahMap] = useState<Map<number, SurahMeta>>(new Map());
   const [memo, setMemo] = useState<MemoRange[]>([]);
+  const [juzList, setJuzList] = useState<{ juz: number; segments: MemoRange[] }[]>([]);
+  const [growth, setGrowth] = useState<GrowthPoint[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
@@ -36,16 +39,60 @@ export default function HistoryPage() {
       fetch("/api/history").then((r) => r.json()),
       fetch("/api/surahs").then((r) => r.json()),
       fetch("/api/memorization").then((r) => r.json()),
+      fetch("/api/juz").then((r) => r.json()),
+      fetch("/api/memo-history").then((r) => r.json()),
     ])
-      .then(([h, sur, m]) => {
+      .then(([h, sur, m, j, g]) => {
         setRows(h.history ?? []);
         setSurahMap(
           new Map((sur.surahs ?? []).map((x: SurahMeta) => [x.number, x])),
         );
         setMemo(m.memorization ?? []);
+        setJuzList(j.juz ?? []);
+        setGrowth(g.points ?? []);
       })
       .finally(() => setLoaded(true));
   }, []);
+
+  // Memorization summary (merged coverage — no double counting).
+  const summary = (() => {
+    const bySurah = new Map<number, [number, number][]>();
+    for (const r of memo) {
+      const l = bySurah.get(r.surahNumber) ?? [];
+      l.push([r.fromAyah, r.toAyah]);
+      bySurah.set(r.surahNumber, l);
+    }
+    const merged = new Map<number, [number, number][]>();
+    for (const [n, list] of bySurah) {
+      list.sort((a, b) => a[0] - b[0]);
+      const out: [number, number][] = [];
+      for (const iv of list) {
+        const last = out[out.length - 1];
+        if (last && iv[0] <= last[1] + 1) last[1] = Math.max(last[1], iv[1]);
+        else out.push([...iv]);
+      }
+      merged.set(n, out);
+    }
+    const covered = (n: number, a: number, b: number) =>
+      (merged.get(n) ?? []).some(([x, y]) => x <= a && b <= y);
+    let totalAyat = 0;
+    let fullSurahs = 0;
+    for (const [n, list] of merged) {
+      for (const [a, b] of list) totalAyat += b - a + 1;
+      const count = surahMap.get(n)?.ayahCount;
+      if (count && list.length === 1 && list[0][0] === 1 && list[0][1] >= count)
+        fullSurahs++;
+    }
+    let fullJuz = 0;
+    for (const j of juzList) {
+      if (
+        j.segments.length > 0 &&
+        j.segments.every((seg) => covered(seg.surahNumber, seg.fromAyah, seg.toAyah))
+      )
+        fullJuz++;
+    }
+    return { totalAyat, fullSurahs, fullJuz };
+  })();
 
   if (!loaded) return <PageLoader />;
 
@@ -54,6 +101,50 @@ export default function HistoryPage() {
       <div className="lg:col-span-2">
         <h1 className="text-xl font-bold mb-1">{t("history.title")}</h1>
         <p className="text-sm text-muted">{t("history.subtitle")}</p>
+      </div>
+
+      {/* Memorization summary + growth over time */}
+      <div className="lg:col-span-2">
+        <section className="card p-4">
+          <div className="text-xs font-bold text-muted mb-3">
+            {t("setup.summary")}
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-border rtl:divide-x-reverse text-center">
+            <div className="px-2">
+              <div className="text-2xl font-bold text-primary tabular-nums">
+                {summary.fullSurahs}
+              </div>
+              <div className="text-[10px] text-muted mt-0.5">
+                {t("setup.fullSurahs")}
+              </div>
+            </div>
+            <div className="px-2">
+              <div className="text-2xl font-bold text-primary tabular-nums">
+                {summary.fullJuz}
+                <span className="text-sm text-muted font-normal"> / 30</span>
+              </div>
+              <div className="text-[10px] text-muted mt-0.5">
+                {t("setup.fullJuz")}
+              </div>
+            </div>
+            <div className="px-2">
+              <div className="text-2xl font-bold text-primary tabular-nums">
+                {summary.totalAyat}
+              </div>
+              <div className="text-[10px] text-muted mt-0.5">
+                {t("setup.totalAyat")}
+              </div>
+            </div>
+          </div>
+          {growth.length > 1 && (
+            <div className="mt-4 pt-3 border-t border-border">
+              <div className="text-xs font-bold text-muted mb-2">
+                {t("setup.growth")}
+              </div>
+              <GrowthChart points={growth} ariaLabel={t("setup.growth")} />
+            </div>
+          )}
+        </section>
       </div>
 
       {/* Focus mode — active memorization-review tool */}

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Search } from "lucide-react";
 import { BrandOverlay, PageLoader } from "@/components/Brand";
-import { GrowthChart, type GrowthPoint } from "@/components/GrowthChart";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
@@ -55,14 +54,6 @@ export default function SetupPage() {
   const [selectedJuz, setSelectedJuz] = useState<Set<number>>(new Set());
   const [tab, setTab] = useState<"surah" | "juz">("surah");
   const [query, setQuery] = useState("");
-  const [growth, setGrowth] = useState<GrowthPoint[]>([]);
-
-  function loadGrowth() {
-    fetch("/api/memo-history")
-      .then((r) => r.json())
-      .then((d) => setGrowth(d.points ?? []))
-      .catch(() => {});
-  }
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
@@ -92,7 +83,6 @@ export default function SetupPage() {
       setLoading(false);
     }
     load().catch(() => setLoading(false));
-    loadGrowth();
   }, []);
 
   const ayahCountBySurah = useMemo(
@@ -127,9 +117,6 @@ export default function SetupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ranges: buildRanges() }),
       });
-      // Totals are already reflected live in the summary; refresh the growth
-      // chart immediately too (a snapshot was just recorded server-side).
-      loadGrowth();
       // Brief brand transition, then the home screen.
       setTransitioning(true);
       setTimeout(() => router.push("/home"), 2000);
@@ -140,56 +127,6 @@ export default function SetupPage() {
 
   const selectedCount = selectedSurahs.size + selectedJuz.size;
 
-  // Live summary of the current selection: full surahs, complete juz, total
-  // ayat — computed from merged coverage so overlaps never double-count.
-  const summary = useMemo(() => {
-    const ranges = buildRangesFrom(
-      selectedSurahs,
-      selectedJuz,
-      juzList,
-      ayahCountBySurah,
-    );
-    const bySurah = new Map<number, [number, number][]>();
-    for (const r of ranges) {
-      const list = bySurah.get(r.surahNumber) ?? [];
-      list.push([r.fromAyah, r.toAyah]);
-      bySurah.set(r.surahNumber, list);
-    }
-    // merge intervals per surah
-    const merged = new Map<number, [number, number][]>();
-    for (const [s, list] of bySurah) {
-      list.sort((a, b) => a[0] - b[0]);
-      const out: [number, number][] = [];
-      for (const iv of list) {
-        const last = out[out.length - 1];
-        if (last && iv[0] <= last[1] + 1) last[1] = Math.max(last[1], iv[1]);
-        else out.push([...iv]);
-      }
-      merged.set(s, out);
-    }
-    const covered = (s: number, from: number, to: number) =>
-      (merged.get(s) ?? []).some(([a, b]) => a <= from && to <= b);
-
-    let totalAyat = 0;
-    let fullSurahs = 0;
-    for (const [s, list] of merged) {
-      for (const [a, b] of list) totalAyat += b - a + 1;
-      const count = ayahCountBySurah.get(s);
-      if (count && list.length === 1 && list[0][0] === 1 && list[0][1] >= count)
-        fullSurahs++;
-    }
-    let fullJuz = 0;
-    for (const j of juzList) {
-      if (
-        j.segments.length > 0 &&
-        j.segments.every((seg) =>
-          covered(seg.surahNumber, seg.fromAyah, seg.toAyah),
-        )
-      )
-        fullJuz++;
-    }
-    return { totalAyat, fullSurahs, fullJuz };
-  }, [selectedSurahs, selectedJuz, juzList, ayahCountBySurah]);
 
   if (loading) return <Loading />;
 
@@ -237,49 +174,6 @@ export default function SetupPage() {
         </div>
       )}
 
-      {/* Live summary of the memorization (updates as you toggle) */}
-      <section className="card p-4">
-        <div className="text-xs font-bold text-muted mb-3">
-          {t("setup.summary")}
-        </div>
-        <div className="grid grid-cols-3 divide-x divide-border rtl:divide-x-reverse text-center">
-          <div className="px-2">
-            <div className="text-2xl font-bold text-primary tabular-nums">
-              {summary.fullSurahs}
-            </div>
-            <div className="text-[10px] text-muted mt-0.5">
-              {t("setup.fullSurahs")}
-            </div>
-          </div>
-          <div className="px-2">
-            <div className="text-2xl font-bold text-primary tabular-nums">
-              {summary.fullJuz}
-              <span className="text-sm text-muted font-normal"> / 30</span>
-            </div>
-            <div className="text-[10px] text-muted mt-0.5">
-              {t("setup.fullJuz")}
-            </div>
-          </div>
-          <div className="px-2">
-            <div className="text-2xl font-bold text-primary tabular-nums">
-              {summary.totalAyat}
-            </div>
-            <div className="text-[10px] text-muted mt-0.5">
-              {t("setup.totalAyat")}
-            </div>
-          </div>
-        </div>
-
-        {/* Growth over time */}
-        {growth.length > 1 && (
-          <div className="mt-4 pt-3 border-t border-border">
-            <div className="text-xs font-bold text-muted mb-2">
-              {t("setup.growth")}
-            </div>
-            <GrowthChart points={growth} ariaLabel={t("setup.growth")} />
-          </div>
-        )}
-      </section>
 
       <div className="flex gap-2 p-1 bg-surface-2 rounded-2xl">
         {(["surah", "juz"] as const).map((tb) => (
