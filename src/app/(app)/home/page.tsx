@@ -4,20 +4,17 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   BookOpen,
-  Heart,
   MapPin,
   RefreshCw,
   Check,
   Sparkles,
   Flame,
   ChevronLeft,
-  X,
 } from "lucide-react";
 import { LogoLoader } from "@/components/Logo";
 import { PageLoader } from "@/components/Brand";
 import { ContentCard } from "@/components/ContentCard";
 import { PassageCard } from "@/components/PassageCard";
-import { WirdCard } from "@/components/WirdCard";
 import { isDoneToday, currentStreak, loadWird } from "@/lib/wird";
 import {
   computeTimes,
@@ -217,12 +214,6 @@ export default function HomePage() {
     );
   }
 
-  function dismissLocCta() {
-    setLocCtaDismissed(true);
-    try {
-      localStorage.setItem("aqim-loccta", "1");
-    } catch {}
-  }
 
   useEffect(() => {
     setPlan(null);
@@ -300,9 +291,9 @@ export default function HomePage() {
   return (
     <div className="pt-2 lg:grid lg:grid-cols-[minmax(340px,400px)_1fr] lg:gap-8 lg:items-start">
       {/* Controls column — fixed, deliberate order */}
-      <div className="space-y-5 lg:sticky lg:top-20">
-        {/* New user → clear two-step instructions, front and center */}
-        {status && !status.hasMemorization && (
+      <div className="space-y-6 lg:sticky lg:top-20">
+        {/* ONE hero: either get-started (new user) or the prayer card */}
+        {status && !status.hasMemorization ? (
           <section className="rounded-[1.75rem] bg-accent-soft p-6 space-y-4">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[11px] font-bold text-accent">
               <Sparkles size={12} />
@@ -327,121 +318,129 @@ export default function HomePage() {
               {t("home.getStarted.btn")}
             </Link>
           </section>
-        )}
-
-        {/* THE prayer card — "look: your next prayer" + one أقم action.
-            No picker walls; other prayers hide behind a small link. */}
-        <section className="card rounded-[1.75rem] p-5 space-y-4">
-          <div className="flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold text-muted">
-                {prayer === nextKey || !times
-                  ? t("home.nextPrayer")
-                  : t("home.selectedPrayer")}
-                {hijri ? ` · ${hijri}` : ""}
-              </div>
-              <div className="font-heading text-3xl font-bold leading-tight truncate">
-                {prayer === "qiyam" ? t("mode.qiyam") : t(`prayer.${prayer}`)}
-              </div>
-            </div>
-            {countdown && (
-              <div className="text-end shrink-0">
-                <div className="text-[10px] text-muted">
-                  {t("home.remaining")}
+        ) : (
+          <section className="rounded-[1.75rem] bg-primary text-white p-6 space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold text-white/60">
+                  {prayer === nextKey || !times
+                    ? t("home.nextPrayer")
+                    : t("home.selectedPrayer")}
+                  {hijri ? ` · ${hijri}` : ""}
                 </div>
-                <div
-                  className="text-xl font-bold tabular-nums tracking-wide text-primary"
-                  dir="ltr"
-                >
-                  {countdown}
+                <div className="font-heading text-3xl font-bold leading-tight truncate">
+                  {prayer === "qiyam" ? t("mode.qiyam") : t(`prayer.${prayer}`)}
                 </div>
               </div>
-            )}
-          </div>
-
-          {showRakahInput && (
-            <div className="flex items-center justify-between rounded-xl border border-border px-4 py-2.5">
-              <span className="text-sm text-muted">{t("home.rakahs")}</span>
-              <Stepper value={rakahs} onChange={setRakahs} min={1} max={20} />
-            </div>
-          )}
-
-          <button
-            onClick={aqim}
-            disabled={loading}
-            className="btn-cta w-full !rounded-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            {loading ? (
-              <LogoLoader size={30} inherit className="text-white" />
-            ) : (
-              <span className="font-heading font-bold text-2xl leading-none">
-                أقِم
-              </span>
-            )}
-          </button>
-
-          {error && (
-            <div className="text-sm text-primary text-center bg-primary-soft rounded-xl p-3">
-              {error}
-            </div>
-          )}
-
-          {/* Other prayers — tucked away until asked for */}
-          <div className="text-center">
-            <button
-              onClick={() => setShowOther(!showOther)}
-              className="text-xs font-bold text-muted hover:text-foreground"
-            >
-              {t("home.otherPrayer")}
-            </button>
-          </div>
-          {showOther && (
-            <div
-              ref={chipsRef}
-              className="-mx-5 px-5 flex gap-2 overflow-x-auto no-scrollbar snap-x"
-            >
-              {CHIPS.map((c) => {
-                const on = prayer === c.key;
-                return (
-                  <button
-                    key={c.key}
-                    onClick={() => {
-                      setPrayer(c.key);
-                      setMode(c.mode);
-                    }}
-                    data-on={on}
-                    className="pill px-4 py-2 text-sm font-medium whitespace-nowrap snap-start shrink-0 active:scale-[0.97]"
+              {countdown ? (
+                <div className="text-end shrink-0">
+                  <div className="text-[10px] text-white/60">
+                    {t("home.remaining")}
+                  </div>
+                  <div
+                    className="text-xl font-bold tabular-nums tracking-wide"
+                    dir="ltr"
                   >
-                    {c.key === "qiyam" ? t("mode.qiyam") : t(`prayer.${c.key}`)}
+                    {countdown}
+                  </div>
+                </div>
+              ) : (
+                !hasLocation &&
+                !locCtaDismissed && (
+                  <button
+                    onClick={enableLocation}
+                    className="shrink-0 flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-bold"
+                  >
+                    <MapPin size={12} />
+                    {t("home.locCta.btn")}
                   </button>
-                );
-              })}
+                )
+              )}
             </div>
-          )}
-        </section>
 
-        {/* Location CTA — makes the countdown feature discoverable */}
-        {!hasLocation && !locCtaDismissed && (
-          <div className="card p-4 flex items-center gap-3">
-            <MapPin size={18} className="text-primary shrink-0" />
-            <span className="text-sm flex-1">{t("home.locCta")}</span>
+            {showRakahInput && (
+              <div className="flex items-center justify-between rounded-xl border border-white/25 px-4 py-2.5">
+                <span className="text-sm text-white/80">{t("home.rakahs")}</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setRakahs(Math.max(1, rakahs - 1))}
+                    className="w-8 h-8 rounded-full border border-white/40 grid place-items-center text-lg active:scale-90 transition"
+                    aria-label="-"
+                  >
+                    −
+                  </button>
+                  <span className="w-6 text-center font-bold tabular-nums">
+                    {rakahs}
+                  </span>
+                  <button
+                    onClick={() => setRakahs(Math.min(20, rakahs + 1))}
+                    className="w-8 h-8 rounded-full bg-white text-primary grid place-items-center text-lg active:scale-90 transition"
+                    aria-label="+"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            )}
+
             <button
-              onClick={enableLocation}
-              className="btn-primary px-3.5 py-1.5 text-xs whitespace-nowrap"
+              onClick={aqim}
+              disabled={loading}
+              className="btn-cta w-full !rounded-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-60"
             >
-              {t("home.locCta.btn")}
+              {loading ? (
+                <LogoLoader size={30} inherit className="text-white" />
+              ) : (
+                <span className="font-heading font-bold text-2xl leading-none">
+                  أقِم
+                </span>
+              )}
             </button>
-            <button
-              onClick={dismissLocCta}
-              aria-label="dismiss"
-              className="text-muted hover:text-foreground shrink-0"
-            >
-              <X size={16} />
-            </button>
-          </div>
+
+            {error && (
+              <div className="text-sm text-white bg-white/10 text-center rounded-xl p-3">
+                {error}
+              </div>
+            )}
+
+            <div className="text-center">
+              <button
+                onClick={() => setShowOther(!showOther)}
+                className="text-xs font-bold text-white/60 hover:text-white"
+              >
+                {t("home.otherPrayer")}
+              </button>
+            </div>
+            {showOther && (
+              <div
+                ref={chipsRef}
+                className="-mx-6 px-6 flex gap-2 overflow-x-auto no-scrollbar snap-x"
+              >
+                {CHIPS.map((c) => {
+                  const on = prayer === c.key;
+                  return (
+                    <button
+                      key={c.key}
+                      onClick={() => {
+                        setPrayer(c.key);
+                        setMode(c.mode);
+                      }}
+                      className={`rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap snap-start shrink-0 active:scale-[0.97] transition ${
+                        on
+                          ? "bg-white text-primary font-bold"
+                          : "bg-white/10 text-white/85"
+                      }`}
+                    >
+                      {c.key === "qiyam" ? t("mode.qiyam") : t(`prayer.${c.key}`)}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         )}
 
-        {/* Ayah of the day — the designed highlight */}
+        {/* آية اليوم */}
         {daily && status?.hasMemorization && (
           <ContentCard
             label={t("home.dailyAyah")}
@@ -468,11 +467,8 @@ export default function HomePage() {
           </ContentCard>
         )}
 
-        {/* CONTINUE hero — daily wird / streak (or its setup) */}
-        <WirdCard />
-
-        {/* Today's tasks */}
-        <TodoList />
+        {/* Slim wird status — full controls live in the Quran tab */}
+        <WirdMini />
       </div>
 
       {/* Results column */}
@@ -490,11 +486,11 @@ export default function HomePage() {
 }
 
 
-// "Today's tasks" — wird status (with streak) + memorization review nudge.
-function TodoList() {
+// Slim wird status row — the full wird controls live on the Quran tab.
+function WirdMini() {
   const { t } = useLang();
   const [state, setState] = useState<{
-    wirdOn: boolean;
+    on: boolean;
     done: boolean;
     streak: number;
   } | null>(null);
@@ -502,7 +498,7 @@ function TodoList() {
   useEffect(() => {
     const read = () =>
       setState({
-        wirdOn: loadWird().enabled,
+        on: loadWird().enabled,
         done: isDoneToday(),
         streak: currentStreak(),
       });
@@ -511,56 +507,35 @@ function TodoList() {
     return () => window.removeEventListener("aqim-wird-changed", read);
   }, []);
 
-  if (!state) return null;
+  if (!state?.on) return null;
 
   return (
-    <div>
-      <h2 className="text-lg font-bold mb-3 px-1">{t("home.todos")}</h2>
-      <div className="space-y-3">
-        {state.wirdOn && (
-          <Link
-            href="/quran"
-            className="flex items-center gap-4 rounded-[1.5rem] bg-accent-soft p-4 active:scale-[0.99] transition"
-          >
-            <span
-              className={`w-11 h-11 rounded-full grid place-items-center shrink-0 ${
-                state.done ? "bg-secondary text-white" : "bg-surface text-accent"
-              }`}
-            >
-              {state.done ? (
-                <Check size={20} strokeWidth={3} />
-              ) : (
-                <BookOpen size={20} />
-              )}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-[15px] font-bold truncate">
-                {t("home.todo.wird")}
-              </span>
-              {state.streak > 0 && (
-                <span className="flex items-center gap-1 text-xs text-muted mt-0.5">
-                  <Flame size={13} className="text-accent" />
-                  {state.streak} {t("wird.streak")}
-                </span>
-              )}
-            </span>
-            <ChevronLeft size={18} className="rtl:block hidden text-muted shrink-0" />
-          </Link>
-        )}
-        <Link
-          href="/history"
-          className="flex items-center gap-4 rounded-[1.5rem] bg-secondary-soft p-4 active:scale-[0.99] transition"
+    <Link
+      href="/quran"
+      className="card rounded-xl px-4 py-3 flex items-center justify-between gap-3 active:scale-[0.99] transition"
+    >
+      <span className="flex items-center gap-2 text-sm font-medium min-w-0">
+        <span
+          className={`w-6 h-6 rounded-full grid place-items-center shrink-0 ${
+            state.done ? "bg-secondary text-white" : "bg-surface-2 border border-border"
+          }`}
         >
-          <span className="w-11 h-11 rounded-full bg-surface text-secondary grid place-items-center shrink-0">
-            <RefreshCw size={19} />
+          {state.done && <Check size={13} strokeWidth={3} />}
+        </span>
+        <span className="truncate">
+          {state.done ? t("wird.doneToday") : t("home.todo.wird")}
+        </span>
+      </span>
+      <span className="flex items-center gap-2 shrink-0 text-xs text-muted">
+        {state.streak > 0 && (
+          <span className="flex items-center gap-1 text-accent font-bold">
+            <Flame size={13} />
+            {state.streak}
           </span>
-          <span className="text-[15px] font-bold flex-1">
-            {t("home.todo.review")}
-          </span>
-          <ChevronLeft size={18} className="rtl:block hidden text-muted shrink-0" />
-        </Link>
-      </div>
-    </div>
+        )}
+        <ChevronLeft size={15} className="rtl:block hidden" />
+      </span>
+    </Link>
   );
 }
 

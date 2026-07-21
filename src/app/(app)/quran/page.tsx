@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PageLoader } from "@/components/Brand";
+import { WirdStrip } from "@/components/WirdCard";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, getBismillahDisplay, cleanAyah } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
@@ -21,6 +22,7 @@ interface PageSurah {
 interface MushafPage {
   page: number;
   totalPages: number;
+  juz: number;
   ayahs: PageAyah[];
   surahs: PageSurah[];
 }
@@ -130,6 +132,11 @@ export default function QuranPage() {
         </div>
       </div>
 
+      {/* Daily wird lives with reading */}
+      <div className="mt-3">
+        <WirdStrip />
+      </div>
+
       {/* Controls */}
       <div className="flex items-center gap-2 mt-3">
         <select
@@ -150,10 +157,10 @@ export default function QuranPage() {
         </span>
       </div>
 
-      {/* The page — turned like a book: swipe, or tap the edges */}
+      {/* The page — framed like a printed Mushaf; swipe or tap edges to turn */}
       <div
         key={data.page}
-        className="relative card mt-3 px-5 sm:px-8 py-7 animate-page select-none"
+        className="relative mt-3 animate-page select-none"
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
       >
@@ -168,50 +175,73 @@ export default function QuranPage() {
           onClick={() => turn(-1)}
           className="absolute inset-y-0 right-0 w-[14%] z-10 cursor-pointer opacity-0"
         />
-        {groups.map((g) => {
-          const startsAtOne = g.ayahs[0].ayahNumber === 1;
-          const bism = getBismillahDisplay(
-            g.surah.number,
-            g.ayahs[0].ayahNumber,
-            g.ayahs[0].text,
-          );
-          const renderAyahs = (
-            bism.skipFirstAyah ? g.ayahs.slice(1) : g.ayahs
-          ).map((a, idx) => ({
-            n: a.ayahNumber,
-            text:
-              !bism.skipFirstAyah && idx === 0 && bism.firstAyahText != null
-                ? bism.firstAyahText
-                : cleanAyah(a.text),
-          }));
-          return (
-            <div key={g.surah.number} className="mb-2">
-              {startsAtOne && (
-                <div className="text-center my-4">
-                  <div className="inline-block rounded-xl border border-accent/40 bg-accent-soft/50 px-6 py-2 font-quran text-xl text-primary">
-                    {g.surah.nameArabic}
-                  </div>
-                </div>
-              )}
-              {bism.line && (
-                <p className="bismillah-line" dir="rtl">
-                  {bism.line}
-                  {bism.lineIsAyahOne && (
-                    <span className="ayah-mark">﴿{toArabicDigits(1)}﴾</span>
-                  )}
-                </p>
-              )}
-              <p className="quran-text !text-justify" dir="rtl">
-                {renderAyahs.map((a) => (
-                  <span key={a.n}>
-                    {a.text}
-                    <span className="ayah-mark">﴿{toArabicDigits(a.n)}﴾</span>{" "}
-                  </span>
-                ))}
-              </p>
+
+        {/* ornamental double frame */}
+        <div className="rounded-lg border-2 border-accent/60 bg-surface p-1.5 shadow-sm">
+          <div className="rounded-md border border-accent/35 px-4 sm:px-7 pt-3 pb-5">
+            {/* Mushaf chrome: juz (start) · surah (end) */}
+            <div className="flex items-center justify-between text-[11px] text-muted font-heading border-b border-accent/25 pb-2 mb-4">
+              <span>
+                {t("setup.juz")} {lang === "ar" ? toArabicDigits(data.juz) : data.juz}
+              </span>
+              <span className="font-quran text-sm text-primary">
+                {main?.nameArabic ?? ""}
+              </span>
             </div>
-          );
-        })}
+
+            {groups.map((g) => {
+              const startsAtOne = g.ayahs[0].ayahNumber === 1;
+              const bism = getBismillahDisplay(
+                g.surah.number,
+                g.ayahs[0].ayahNumber,
+                g.ayahs[0].text,
+              );
+              const renderAyahs = (
+                bism.skipFirstAyah ? g.ayahs.slice(1) : g.ayahs
+              ).map((a, idx) => ({
+                n: a.ayahNumber,
+                text:
+                  !bism.skipFirstAyah && idx === 0 && bism.firstAyahText != null
+                    ? bism.firstAyahText
+                    : cleanAyah(a.text),
+              }));
+              return (
+                <div key={g.surah.number} className="mb-1">
+                  {startsAtOne && (
+                    <div className="my-4 rounded-lg border-y-2 border-x border-accent/50 bg-accent-soft/40 py-2.5 text-center">
+                      <span className="font-quran text-xl text-primary">
+                        {g.surah.nameArabic}
+                      </span>
+                    </div>
+                  )}
+                  {bism.line && (
+                    <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
+                      {bism.line}
+                      {bism.lineIsAyahOne && (
+                        <span className="ayah-mark">{"۝" + toArabicDigits(1)}</span>
+                      )}
+                    </p>
+                  )}
+                  <p className="quran-text !text-justify !leading-[2.3]" dir="rtl">
+                    {renderAyahs.map((a) => (
+                      <span key={a.n}>
+                        {a.text}
+                        <span className="ayah-mark text-accent">
+                          {"۝" + toArabicDigits(a.n)}
+                        </span>{" "}
+                      </span>
+                    ))}
+                  </p>
+                </div>
+              );
+            })}
+
+            {/* page number, centered like a printed Mushaf */}
+            <div className="text-center mt-4 pt-2 border-t border-accent/25 text-sm font-heading text-muted">
+              {lang === "ar" ? toArabicDigits(data.page) : data.page}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* No buttons — the page turns like a book */}

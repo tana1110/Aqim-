@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
   return Response.json({
     page,
     totalPages: 604,
+    juz: ayahs[0]?.juzNumber ?? 1,
     ayahs: ayahs.map((a) => ({
       surahNumber: a.surahNumber,
       ayahNumber: a.ayahNumber,
