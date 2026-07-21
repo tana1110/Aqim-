@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { computeTimes, loadReminderConfig } from "@/lib/reminder";
+import { loadWird, isDoneToday } from "@/lib/wird";
 import { translate, type Lang } from "@/lib/i18n";
 
 const LEAD_MS = 5 * 60 * 1000; // notify 5 minutes before the prayer
@@ -48,8 +49,47 @@ export function ReminderScheduler() {
       } catch {}
     }
 
+    async function showWird() {
+      if (isDoneToday()) return; // already completed — no nag
+      const l = lang();
+      const title = translate(l, "wird.notifTitle");
+      const body = translate(l, "wird.notifBody");
+      try {
+        const reg = await navigator.serviceWorker?.ready;
+        if (reg?.showNotification) {
+          reg.showNotification(title, { body, icon: "/icon.svg", dir: "auto" });
+          return;
+        }
+      } catch {}
+      try {
+        new Notification(title, { body, icon: "/icon.svg" });
+      } catch {}
+    }
+
+    function scheduleWird() {
+      const w = loadWird();
+      if (
+        !w.enabled ||
+        typeof Notification === "undefined" ||
+        Notification.permission !== "granted"
+      )
+        return;
+      const [hh, mm] = w.time.split(":").map(Number);
+      // Today's slot if still ahead, else tomorrow's.
+      for (const dayOffset of [0, 1]) {
+        const at = new Date();
+        at.setDate(at.getDate() + dayOffset);
+        at.setHours(hh || 20, mm || 0, 0, 0);
+        if (at.getTime() > Date.now()) {
+          timers.push(setTimeout(showWird, at.getTime() - Date.now()));
+          break;
+        }
+      }
+    }
+
     function schedule() {
       clearAll();
+      scheduleWird();
       const cfg = loadReminderConfig();
       if (
         !cfg.enabled ||
@@ -82,9 +122,11 @@ export function ReminderScheduler() {
 
     schedule();
     window.addEventListener("aqim-reminder-changed", schedule);
+    window.addEventListener("aqim-wird-changed", schedule);
     return () => {
       clearAll();
       window.removeEventListener("aqim-reminder-changed", schedule);
+      window.removeEventListener("aqim-wird-changed", schedule);
     };
   }, []);
 

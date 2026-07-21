@@ -11,6 +11,8 @@ type Dict = Record<string, string>;
 const ar: Dict = {
   // nav / shell
   "nav.home": "الرئيسية",
+  "nav.quran": "القرآن",
+  "nav.adhkar": "أذكاري",
   "nav.setup": "محفوظاتي",
   "nav.history": "السجل",
   "nav.settings": "الإعدادات",
@@ -162,6 +164,7 @@ const ar: Dict = {
   // history
   // memorization summary
   "setup.summary": "محفوظاتك",
+  "setup.growth": "نموّ حفظك عبر الزمن",
   "setup.fullSurahs": "سورة كاملة",
   "setup.fullJuz": "جزء كامل",
   "setup.totalAyat": "آية محفوظة",
@@ -181,6 +184,51 @@ const ar: Dict = {
   "focus.disable": "إيقاف التركيز",
   "focus.active": "وضع التركيز مفعّل على",
   "focus.pickSurah": "اختر سورة من محفوظاتك",
+
+  // adhkar
+  "adhkar.title": "أذكاري",
+  "adhkar.subtitle": "من كتاب حصن المسلم — نص موثّق، لا يُولّد ولا يُعدّل.",
+  "adhkar.morning": "أذكار الصباح",
+  "adhkar.evening": "أذكار المساء",
+  "adhkar.sleep": "أذكار النوم",
+  "adhkar.istikhara": "الاستخارة",
+  "adhkar.allChapters": "كل الفصول",
+  "adhkar.searchPh": "ابحث في الفصول…",
+  "adhkar.reps": "التكرار",
+  "adhkar.done": "تم",
+  "adhkar.reset": "إعادة",
+  "adhkar.back": "→ الفصول",
+  "adhkar.source": "المصدر: حصن المسلم — سعيد بن علي بن وهف القحطاني",
+
+  // quran reading
+  "quran.title": "القرآن الكريم",
+  "quran.page": "صفحة",
+  "quran.jump": "انتقل إلى سورة",
+  "quran.prev": "السابقة",
+  "quran.next": "التالية",
+  "quran.progress": "تقدّمك في السورة",
+
+  // wird
+  "wird.title": "الورد اليومي",
+  "wird.desc": "حدّد جزءاً تقرؤه كل يوم، وسنذكّرك في وقتك المفضّل.",
+  "wird.pages": "عدد الصفحات يومياً",
+  "wird.time": "وقت التذكير",
+  "wird.enable": "تفعيل الورد",
+  "wird.disable": "إيقاف الورد",
+  "wird.markDone": "أكملت وردي اليوم ✓",
+  "wird.doneToday": "أنجزت ورد اليوم",
+  "wird.continue": "أكمل وردك اليومي",
+  "wird.start": "ابدأ وردك اليومي",
+  "wird.notifTitle": "وقت الورد اليومي",
+  "wird.notifBody": "حان وقت قراءتك اليومية — اقرأ بخشوع.",
+  "wird.streak": "أيام متتالية",
+
+  // home extras
+  "home.continueLabel": "استمر",
+  "home.quick": "أقسام التطبيق",
+  "home.todos": "مهام اليوم",
+  "home.todo.wird": "أكمل ورد اليوم",
+  "home.todo.review": "راجع محفوظاتك",
 
   "history.title": "سجلّك",
   "history.subtitle": "تابع تنوّعك في القراءة هذا الأسبوع.",
@@ -235,6 +283,8 @@ const ar: Dict = {
 
 const en: Dict = {
   "nav.home": "Home",
+  "nav.quran": "Quran",
+  "nav.adhkar": "Adhkar",
   "nav.setup": "Memorized",
   "nav.history": "History",
   "nav.settings": "Settings",
@@ -375,6 +425,7 @@ const en: Dict = {
   "settings.settingsSaved": "Settings saved",
 
   "setup.summary": "Your memorization",
+  "setup.growth": "Your memorization growth over time",
   "setup.fullSurahs": "full surahs",
   "setup.fullJuz": "complete juz",
   "setup.totalAyat": "ayat memorized",
@@ -393,6 +444,47 @@ const en: Dict = {
   "focus.disable": "Turn off focus",
   "focus.active": "Focus mode is active on",
   "focus.pickSurah": "Pick a surah from your memorization",
+
+  "adhkar.title": "My Adhkar",
+  "adhkar.subtitle": "From Hisn al-Muslim — verified text, never generated or altered.",
+  "adhkar.morning": "Morning Adhkar",
+  "adhkar.evening": "Evening Adhkar",
+  "adhkar.sleep": "Sleep Adhkar",
+  "adhkar.istikhara": "Istikharah",
+  "adhkar.allChapters": "All chapters",
+  "adhkar.searchPh": "Search chapters…",
+  "adhkar.reps": "Repetitions",
+  "adhkar.done": "Done",
+  "adhkar.reset": "Reset",
+  "adhkar.back": "← Chapters",
+  "adhkar.source": "Source: Hisn al-Muslim — Sa'id bin Ali bin Wahf Al-Qahtani",
+
+  "quran.title": "The Holy Quran",
+  "quran.page": "Page",
+  "quran.jump": "Jump to surah",
+  "quran.prev": "Previous",
+  "quran.next": "Next",
+  "quran.progress": "Your progress in this surah",
+
+  "wird.title": "Daily Wird",
+  "wird.desc": "Set a daily reading portion and we'll remind you at your preferred time.",
+  "wird.pages": "Pages per day",
+  "wird.time": "Reminder time",
+  "wird.enable": "Enable wird",
+  "wird.disable": "Turn off wird",
+  "wird.markDone": "I completed today's wird ✓",
+  "wird.doneToday": "Today's wird done",
+  "wird.continue": "Continue your daily wird",
+  "wird.start": "Start your daily wird",
+  "wird.notifTitle": "Daily wird time",
+  "wird.notifBody": "Time for your daily reading — recite with devotion.",
+  "wird.streak": "day streak",
+
+  "home.continueLabel": "Continue",
+  "home.quick": "App sections",
+  "home.todos": "Today's tasks",
+  "home.todo.wird": "Complete today's wird",
+  "home.todo.review": "Review your memorization",
 
   "history.title": "Your history",
   "history.subtitle": "Track your variety this week.",

@@ -2,12 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, BookOpenText, BarChart3, Settings, X } from "lucide-react";
+import {
+  Home,
+  BookOpenText,
+  BookOpen,
+  Heart,
+  BarChart3,
+  Settings,
+  X,
+} from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useLang } from "@/components/LanguageProvider";
 
 export const TABS = [
   { href: "/home", key: "nav.home", Icon: Home },
+  { href: "/quran", key: "nav.quran", Icon: BookOpen },
+  { href: "/adhkar", key: "nav.adhkar", Icon: Heart },
   { href: "/setup", key: "nav.setup", Icon: BookOpenText },
   { href: "/history", key: "nav.history", Icon: BarChart3 },
   { href: "/settings", key: "nav.settings", Icon: Settings },

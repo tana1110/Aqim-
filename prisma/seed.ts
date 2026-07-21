@@ -36,7 +36,15 @@ const prisma = new PrismaClient({ adapter });
 
 // Bump this whenever the seed's derived data (e.g. tafsir summary format)
 // changes, so deploys regenerate it even though row counts are unchanged.
-const SEED_VERSION = "3";
+const SEED_VERSION = "4";
+
+// Hisn al-Muslim (حصن المسلم) — vendored verified dataset (MIT, transcribed
+// from the printed book by asellam/HisnElMuslim and cross-checked in-session
+// against rn0x/hisn_almuslim_json + wafaaelmaandy/Hisn-Muslim-Json).
+// NEVER generated or paraphrased.
+const ADHKAR_SOURCE_LABEL =
+  "حصن المسلم — سعيد بن علي بن وهف القحطاني";
+const ADHKAR_EXPECT = { chapters: 133, entries: 302 };
 
 const API = "https://api.alquran.cloud/v1";
 const TEXT_EDITION = "quran-uthmani";
@@ -265,6 +273,42 @@ async function main() {
     }
     if (s.number % 20 === 0) console.log(`  ...surah ${s.number}/114`);
   }
+
+  // --- Adhkar (Hisn al-Muslim) from the vendored verified dataset ----------
+  const { readFileSync } = await import("node:fs");
+  const hisn = JSON.parse(readFileSync("data/hisn.json", "utf8")) as Record<
+    string,
+    { Adhkar: { Text: string; Count: number; Reference: string }[] }
+  >;
+  const chapters = Object.keys(hisn);
+  const entryTotal = chapters.reduce((n, k) => n + hisn[k].Adhkar.length, 0);
+  if (
+    chapters.length !== ADHKAR_EXPECT.chapters ||
+    entryTotal !== ADHKAR_EXPECT.entries
+  ) {
+    console.error(
+      `ADHKAR INTEGRITY FAILED: ${chapters.length} chapters / ${entryTotal} entries ` +
+        `(expected ${ADHKAR_EXPECT.chapters}/${ADHKAR_EXPECT.entries}) — aborting.`,
+    );
+    process.exit(1);
+  }
+  await prisma.adhkarText.deleteMany();
+  for (let ci = 0; ci < chapters.length; ci++) {
+    const title = chapters[ci];
+    await prisma.adhkarText.createMany({
+      data: hisn[title].Adhkar.map((a, i) => ({
+        chapterIndex: ci + 1,
+        chapter: title,
+        position: i + 1,
+        text: a.Text,
+        count: Math.max(1, a.Count || 1),
+        reference: a.Reference || null,
+        source: ADHKAR_SOURCE_LABEL,
+      })),
+    });
+  }
+  const adhkarCount = await prisma.adhkarText.count();
+  console.log(`Seeded ${adhkarCount} adhkar across ${chapters.length} chapters.`);
 
   await prisma.meta.upsert({
     where: { key: "seedVersion" },

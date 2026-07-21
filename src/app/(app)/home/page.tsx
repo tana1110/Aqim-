@@ -2,11 +2,24 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { BookOpen, MapPin, RefreshCw, Check, Sparkles, X } from "lucide-react";
+import {
+  BookOpen,
+  Heart,
+  MapPin,
+  RefreshCw,
+  Check,
+  Sparkles,
+  Flame,
+  ChevronLeft,
+  X,
+} from "lucide-react";
 import { LogoLoader } from "@/components/Logo";
 import { PageLoader } from "@/components/Brand";
 import { ContentCard } from "@/components/ContentCard";
 import { PassageCard } from "@/components/PassageCard";
+import { WirdCard } from "@/components/WirdCard";
+import { MosqueIcon, NafilahIcon, QiyamIcon } from "@/components/ModeIcons";
+import { isDoneToday, currentStreak, loadWird } from "@/lib/wird";
 import {
   computeTimes,
   loadReminderConfig,
@@ -237,6 +250,17 @@ export default function HomePage() {
     }
   }, [plan]);
 
+  // Quick-link helper: select a prayer/mode and bring the picker into view.
+  function pick(p: string, m: Mode) {
+    setPrayer(p);
+    setMode(m);
+    setTimeout(() => {
+      document
+        .getElementById("selection")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 60);
+  }
+
   async function aqim() {
     setLoading(true);
     setError(null);
@@ -377,8 +401,54 @@ export default function HomePage() {
           </ContentCard>
         )}
 
+        {/* CONTINUE hero — daily wird / streak (or its setup) */}
+        <WirdCard />
+
+        {/* Quick links — every section of the app, one sliding row */}
+        <div>
+          <div className="text-xs font-bold text-muted mb-2 px-1">
+            {t("home.quick")}
+          </div>
+          <div className="-mx-4 px-4 flex gap-2.5 overflow-x-auto no-scrollbar">
+            {(
+              [
+                { label: t("mode.faraid"), Icon: MosqueIcon, act: () => pick("fajr", "faraid") },
+                { label: t("mode.nafl"), Icon: NafilahIcon, act: () => pick("fajr-sunnah", "nafl") },
+                { label: t("mode.qiyam"), Icon: QiyamIcon, act: () => pick("qiyam", "qiyam") },
+              ] as const
+            ).map((q) => (
+              <button
+                key={q.label}
+                onClick={q.act}
+                className="card !shadow-none px-4 py-3 flex flex-col items-center gap-1.5 min-w-20 shrink-0 hover:border-primary/40 active:scale-[0.96] transition"
+              >
+                <q.Icon size={22} className="text-primary" />
+                <span className="text-xs font-bold whitespace-nowrap">{q.label}</span>
+              </button>
+            ))}
+            <Link
+              href="/adhkar"
+              className="card !shadow-none px-4 py-3 flex flex-col items-center gap-1.5 min-w-20 shrink-0 hover:border-primary/40 active:scale-[0.96] transition"
+            >
+              <Heart size={22} className="text-primary" />
+              <span className="text-xs font-bold whitespace-nowrap">
+                {t("nav.adhkar")}
+              </span>
+            </Link>
+            <Link
+              href="/quran"
+              className="card !shadow-none px-4 py-3 flex flex-col items-center gap-1.5 min-w-20 shrink-0 hover:border-primary/40 active:scale-[0.96] transition"
+            >
+              <BookOpen size={22} className="text-primary" />
+              <span className="text-xs font-bold whitespace-nowrap">
+                {t("nav.quran")}
+              </span>
+            </Link>
+          </div>
+        </div>
+
         {/* SELECTION — pick what to recite (the action) */}
-        <section className="card p-4 sm:p-5 space-y-4">
+        <section id="selection" className="card p-4 sm:p-5 space-y-4 scroll-mt-24">
           <h2 className="text-sm font-bold">{t("home.pickVerses")}</h2>
 
           <div
@@ -432,6 +502,9 @@ export default function HomePage() {
             </div>
           )}
         </section>
+
+        {/* Today's tasks */}
+        <TodoList />
       </div>
 
       {/* Results column */}
@@ -448,6 +521,78 @@ export default function HomePage() {
   );
 }
 
+
+// "Today's tasks" — wird status (with streak) + memorization review nudge.
+function TodoList() {
+  const { t } = useLang();
+  const [state, setState] = useState<{
+    wirdOn: boolean;
+    done: boolean;
+    streak: number;
+  } | null>(null);
+
+  useEffect(() => {
+    const read = () =>
+      setState({
+        wirdOn: loadWird().enabled,
+        done: isDoneToday(),
+        streak: currentStreak(),
+      });
+    read();
+    window.addEventListener("aqim-wird-changed", read);
+    return () => window.removeEventListener("aqim-wird-changed", read);
+  }, []);
+
+  if (!state) return null;
+
+  return (
+    <div>
+      <div className="text-xs font-bold text-muted mb-2 px-1">
+        {t("home.todos")}
+      </div>
+      <div className="card divide-y divide-border overflow-hidden">
+        {state.wirdOn && (
+          <Link
+            href="/quran"
+            className="flex items-center justify-between gap-3 p-3.5 hover:bg-surface-2 transition"
+          >
+            <span className="flex items-center gap-2.5 text-sm">
+              <span
+                className={`w-5 h-5 rounded-full grid place-items-center ${
+                  state.done
+                    ? "bg-secondary text-white"
+                    : "bg-surface-2 border border-border"
+                }`}
+              >
+                {state.done && <Check size={12} strokeWidth={3} />}
+              </span>
+              {t("home.todo.wird")}
+            </span>
+            <span className="flex items-center gap-2 text-xs text-muted">
+              {state.streak > 0 && (
+                <span className="flex items-center gap-1 text-accent font-bold">
+                  <Flame size={13} />
+                  {state.streak}
+                </span>
+              )}
+              <ChevronLeft size={15} className="rtl:block hidden" />
+            </span>
+          </Link>
+        )}
+        <Link
+          href="/history"
+          className="flex items-center justify-between gap-3 p-3.5 hover:bg-surface-2 transition"
+        >
+          <span className="flex items-center gap-2.5 text-sm">
+            <span className="w-5 h-5 rounded-full bg-surface-2 border border-border" />
+            {t("home.todo.review")}
+          </span>
+          <ChevronLeft size={15} className="rtl:block hidden text-muted" />
+        </Link>
+      </div>
+    </div>
+  );
+}
 
 function Stepper({
   value,

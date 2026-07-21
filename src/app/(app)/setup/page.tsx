@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Search } from "lucide-react";
 import { BrandOverlay, PageLoader } from "@/components/Brand";
+import { GrowthChart, type GrowthPoint } from "@/components/GrowthChart";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
@@ -54,6 +55,14 @@ export default function SetupPage() {
   const [selectedJuz, setSelectedJuz] = useState<Set<number>>(new Set());
   const [tab, setTab] = useState<"surah" | "juz">("surah");
   const [query, setQuery] = useState("");
+  const [growth, setGrowth] = useState<GrowthPoint[]>([]);
+
+  function loadGrowth() {
+    fetch("/api/memo-history")
+      .then((r) => r.json())
+      .then((d) => setGrowth(d.points ?? []))
+      .catch(() => {});
+  }
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
@@ -83,6 +92,7 @@ export default function SetupPage() {
       setLoading(false);
     }
     load().catch(() => setLoading(false));
+    loadGrowth();
   }, []);
 
   const ayahCountBySurah = useMemo(
@@ -117,6 +127,9 @@ export default function SetupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ranges: buildRanges() }),
       });
+      // Totals are already reflected live in the summary; refresh the growth
+      // chart immediately too (a snapshot was just recorded server-side).
+      loadGrowth();
       // Brief brand transition, then the home screen.
       setTransitioning(true);
       setTimeout(() => router.push("/home"), 2000);
@@ -256,6 +269,16 @@ export default function SetupPage() {
             </div>
           </div>
         </div>
+
+        {/* Growth over time */}
+        {growth.length > 1 && (
+          <div className="mt-4 pt-3 border-t border-border">
+            <div className="text-xs font-bold text-muted mb-2">
+              {t("setup.growth")}
+            </div>
+            <GrowthChart points={growth} ariaLabel={t("setup.growth")} />
+          </div>
+        )}
       </section>
 
       <div className="flex gap-2 p-1 bg-surface-2 rounded-2xl">

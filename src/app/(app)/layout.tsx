@@ -8,7 +8,6 @@ import { Logo } from "@/components/Logo";
 import { SplashScreen } from "@/components/SplashScreen";
 import { Welcome } from "@/components/Welcome";
 import { ReminderScheduler } from "@/components/ReminderScheduler";
-import { LanguageToggle } from "@/components/LanguageToggle";
 
 // App shell: header with hamburger → side drawer on mobile, inline tabs on
 // desktop. No bottom bar.
@@ -46,7 +45,8 @@ export default function AppLayout({
 
           <TopNav />
 
-          <LanguageToggle />
+          {/* Language switching lives in Settings only (by design). */}
+          <span className="w-10" aria-hidden />
         </div>
       </header>
 

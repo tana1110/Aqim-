@@ -69,6 +69,34 @@ model Meta {
   @@map("meta")
 }
 
+// Hisn al-Muslim adhkar — verified once against independent copies and stored
+// locally (same accuracy principle as the Quran text; never AI-generated).
+model AdhkarText {
+  id           Int     @id @default(autoincrement())
+  chapterIndex Int     @map("chapter_index") // book order
+  chapter      String // chapter title (Arabic, as printed)
+  position     Int // order within the chapter
+  text         String
+  count        Int     @default(1) // prescribed repetitions
+  reference    String?
+  source       String // citation label
+
+  @@index([chapterIndex])
+  @@map("adhkar_text")
+}
+
+// Timestamped totals of memorized ayat — one row whenever the total changes —
+// for the growth-over-time chart.
+model MemoSnapshot {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  totalAyat Int      @map("total_ayat")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@map("memo_snapshot")
+}
+
 model TranslationText {
   id          Int    @id @default(autoincrement())
   surahNumber Int    @map("surah_number")
