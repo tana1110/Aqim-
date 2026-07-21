@@ -46,6 +46,11 @@ const ar: Dict = {
   "home.remaining": "المتبقي",
   "home.selectedPrayer": "الصلاة المحددة",
   "home.pickVerses": "اختر آيات صلاتك",
+  "home.otherPrayer": "صلاة أخرى؟",
+  "home.getStarted.title": "خطوتان وتبدأ",
+  "home.getStarted.s1": "حدّد ما تحفظه من القرآن — مرة واحدة",
+  "home.getStarted.s2": "قبل كل صلاة اضغط «أقِم» ليقترح لك ما تقرأ",
+  "home.getStarted.btn": "حدّد محفوظاتي الآن",
   "home.locCta": "فعّل الموقع لعرض وقت صلاتك القادمة بدقة",
   "home.locCta.btn": "تفعيل الموقع",
   "home.thisWeek": "هذا الأسبوع",
@@ -204,8 +209,7 @@ const ar: Dict = {
   "quran.title": "القرآن الكريم",
   "quran.page": "صفحة",
   "quran.jump": "انتقل إلى سورة",
-  "quran.prev": "السابقة",
-  "quran.next": "التالية",
+  "quran.swipeHint": "اسحب أو المس حافة الصفحة لتقليبها — كما في المصحف",
   "quran.progress": "تقدّمك في السورة",
 
   // wird
@@ -246,8 +250,11 @@ const ar: Dict = {
   "welcome.s2.body": "اختر السور أو الأجزاء التي تحفظها — مرة واحدة فقط.",
   "welcome.s3.title": "اضغط «أقِم» قبل كل صلاة",
   "welcome.s3.body": "يقترح لك آيات من محفوظاتك، بمعناها، دون تكرار السورة نفسها كل مرة.",
+  "welcome.s4.title": "قرآنك وأذكارك في مكان واحد",
+  "welcome.s4.body":
+    "اقرأ المصحف كاملاً، حافظ على وردٍ يومي بسلسلة إنجاز، وأذكار الصباح والمساء من حصن المسلم.",
   "welcome.next": "التالي",
-  "welcome.start": "لنبدأ — حدّد محفوظاتك",
+  "welcome.start": "لنبدأ",
   "welcome.skip": "تخطّي",
 
   // landing
@@ -315,6 +322,11 @@ const en: Dict = {
   "home.remaining": "Remaining",
   "home.selectedPrayer": "Selected prayer",
   "home.pickVerses": "Pick your prayer's verses",
+  "home.otherPrayer": "Another prayer?",
+  "home.getStarted.title": "Two steps to begin",
+  "home.getStarted.s1": "Mark what you've memorized — just once",
+  "home.getStarted.s2": "Before each prayer tap Aqim for a suggestion",
+  "home.getStarted.btn": "Set my memorization now",
   "home.locCta": "Enable location to see your next prayer time precisely",
   "home.locCta.btn": "Enable location",
   "home.thisWeek": "This week",
@@ -462,8 +474,7 @@ const en: Dict = {
   "quran.title": "The Holy Quran",
   "quran.page": "Page",
   "quran.jump": "Jump to surah",
-  "quran.prev": "Previous",
-  "quran.next": "Next",
+  "quran.swipeHint": "Swipe or tap a page edge to turn it — like a real Mushaf",
   "quran.progress": "Your progress in this surah",
 
   "wird.title": "Daily Wird",
@@ -501,8 +512,11 @@ const en: Dict = {
   "welcome.s2.body": "Pick the surahs or juz you know — just once.",
   "welcome.s3.title": "Tap “Aqim” before each prayer",
   "welcome.s3.body": "It suggests verses from your memorization, with their meaning, without repeating the same surah every time.",
+  "welcome.s4.title": "Your Quran and adhkar in one place",
+  "welcome.s4.body":
+    "Read the full Mushaf, keep a daily wird with a streak, and morning/evening adhkar from Hisn al-Muslim.",
   "welcome.next": "Next",
-  "welcome.start": "Let's start — set my memorization",
+  "welcome.start": "Let's start",
   "welcome.skip": "Skip",
 
   "landing.slogan": "Recite with devotion, not by habit",

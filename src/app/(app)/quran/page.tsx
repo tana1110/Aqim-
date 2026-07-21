@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ChevronRight, ChevronLeft } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, getBismillahDisplay, cleanAyah } from "@/lib/quranDisplay";
@@ -73,6 +72,25 @@ export default function QuranPage() {
     setPage(d.page ?? 1);
   }
 
+  // Book-style page turning: swipe like flipping a Mushaf page. The next page
+  // physically sits on the LEFT in an Arabic book — dragging it to the right
+  // (positive delta) turns forward; the reverse turns back. Tapping a page
+  // edge does the same.
+  const touchX = useRef<number | null>(null);
+  function turn(delta: 1 | -1) {
+    setPage((p) => Math.min(604, Math.max(1, (p ?? 1) + delta)));
+  }
+  function onTouchStart(e: React.TouchEvent) {
+    touchX.current = e.touches[0]?.clientX ?? null;
+  }
+  function onTouchEnd(e: React.TouchEvent) {
+    if (touchX.current == null) return;
+    const dx = (e.changedTouches[0]?.clientX ?? touchX.current) - touchX.current;
+    touchX.current = null;
+    if (Math.abs(dx) < 55) return;
+    turn(dx > 0 ? 1 : -1);
+  }
+
   if (page == null || !data) return <PageLoader />;
 
   // Progress within the page's main surah (the one that continues furthest).
@@ -132,8 +150,24 @@ export default function QuranPage() {
         </span>
       </div>
 
-      {/* The page */}
-      <div className="card mt-3 px-5 sm:px-8 py-7">
+      {/* The page — turned like a book: swipe, or tap the edges */}
+      <div
+        key={data.page}
+        className="relative card mt-3 px-5 sm:px-8 py-7 animate-page select-none"
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
+      >
+        {/* edge tap zones (invisible): left = next (RTL book), right = back */}
+        <button
+          aria-label="next page"
+          onClick={() => turn(1)}
+          className="absolute inset-y-0 left-0 w-[14%] z-10 cursor-pointer opacity-0"
+        />
+        <button
+          aria-label="previous page"
+          onClick={() => turn(-1)}
+          className="absolute inset-y-0 right-0 w-[14%] z-10 cursor-pointer opacity-0"
+        />
         {groups.map((g) => {
           const startsAtOne = g.ayahs[0].ayahNumber === 1;
           const bism = getBismillahDisplay(
@@ -180,27 +214,10 @@ export default function QuranPage() {
         })}
       </div>
 
-      {/* Pager — in RTL "next page" moves forward in the Mushaf */}
-      <div className="flex items-center justify-between gap-3 mt-4 pb-6">
-        <button
-          onClick={() => setPage(Math.max(1, data.page - 1))}
-          disabled={data.page <= 1}
-          className="flex-1 rounded-xl border border-border bg-surface py-3 text-sm font-bold flex items-center justify-center gap-1.5 disabled:opacity-40 active:scale-[0.98] transition"
-        >
-          <ChevronRight size={16} className="rtl:block hidden" />
-          <ChevronLeft size={16} className="rtl:hidden" />
-          {t("quran.prev")}
-        </button>
-        <button
-          onClick={() => setPage(Math.min(604, data.page + 1))}
-          disabled={data.page >= 604}
-          className="flex-1 btn-primary py-3 text-sm flex items-center justify-center gap-1.5 disabled:opacity-40"
-        >
-          {t("quran.next")}
-          <ChevronLeft size={16} className="rtl:block hidden" />
-          <ChevronRight size={16} className="rtl:hidden" />
-        </button>
-      </div>
+      {/* No buttons — the page turns like a book */}
+      <p className="text-center text-[11px] text-muted mt-3 pb-6">
+        {t("quran.swipeHint")}
+      </p>
     </div>
   );
 }

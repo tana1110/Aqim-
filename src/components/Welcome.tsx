@@ -1,7 +1,6 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { BookOpenText } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { BrandOverlay } from "@/components/Brand";
@@ -16,7 +15,6 @@ const FLAG = "aqim-onboarded";
 // to the dashboard and never see this again.
 export function Welcome() {
   const { t, lang } = useLang();
-  const router = useRouter();
   const [visible, setVisible] = useState(false);
   const [ready, setReady] = useState(false);
   const [step, setStep] = useState(0);
@@ -57,16 +55,16 @@ export function Welcome() {
   // so all its elements animate in together.
   if (!ready) return <div className="fixed inset-0 z-40 bg-background" />;
 
-  function finish(goSetup: boolean) {
+  function finish() {
     try {
       localStorage.setItem(FLAG, "1");
     } catch {}
-    // Brief brand transition so the hand-off into the app feels intentional.
+    // Brief brand transition, then reveal the HOME screen (which carries its
+    // own get-started call-to-action) — never dropped straight into setup.
     setLeaving(true);
     setTimeout(() => {
       document.documentElement.removeAttribute("data-welcome");
       setVisible(false);
-      if (goSetup) router.push("/setup");
     }, 1100);
   }
 
@@ -95,6 +93,15 @@ export function Welcome() {
       title: t("welcome.s3.title"),
       body: t("welcome.s3.body"),
     },
+    {
+      art: (
+        <div className="w-24 h-24 rounded-3xl bg-secondary-soft grid place-items-center">
+          <BookOpenText size={44} className="text-secondary" />
+        </div>
+      ),
+      title: t("welcome.s4.title"),
+      body: t("welcome.s4.body"),
+    },
   ];
   const last = step === slides.length - 1;
   const s = slides[step];
@@ -105,7 +112,7 @@ export function Welcome() {
       <div className="flex items-center justify-between p-4 pt-5">
         <LanguageToggle />
         <button
-          onClick={() => finish(false)}
+          onClick={() => finish()}
           className="text-sm text-muted hover:text-foreground px-3 py-1.5"
         >
           {t("welcome.skip")}
@@ -155,7 +162,7 @@ export function Welcome() {
           ))}
         </div>
         <button
-          onClick={() => (last ? finish(true) : setStep(step + 1))}
+          onClick={() => (last ? finish() : setStep(step + 1))}
           className={`${last ? "btn-cta" : "btn-primary"} w-full max-w-sm py-4 text-lg`}
         >
           {last ? t("welcome.start") : t("welcome.next")}

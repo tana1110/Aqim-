@@ -18,7 +18,6 @@ import { PageLoader } from "@/components/Brand";
 import { ContentCard } from "@/components/ContentCard";
 import { PassageCard } from "@/components/PassageCard";
 import { WirdCard } from "@/components/WirdCard";
-import { MosqueIcon, NafilahIcon, QiyamIcon } from "@/components/ModeIcons";
 import { isDoneToday, currentStreak, loadWird } from "@/lib/wird";
 import {
   computeTimes,
@@ -76,6 +75,7 @@ export default function HomePage() {
   const [mode, setMode] = useState<Mode>("faraid");
   const [prayer, setPrayer] = useState<string>("fajr");
   const [rakahs, setRakahs] = useState(2);
+  const [showOther, setShowOther] = useState(false);
   const [plan, setPlan] = useState<ResolvedPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -250,17 +250,6 @@ export default function HomePage() {
     }
   }, [plan]);
 
-  // Quick-link helper: select a prayer/mode and bring the picker into view.
-  function pick(p: string, m: Mode) {
-    setPrayer(p);
-    setMode(m);
-    setTimeout(() => {
-      document
-        .getElementById("selection")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
-  }
-
   async function aqim() {
     setLoading(true);
     setError(null);
@@ -312,39 +301,121 @@ export default function HomePage() {
     <div className="pt-2 lg:grid lg:grid-cols-[minmax(340px,400px)_1fr] lg:gap-8 lg:items-start">
       {/* Controls column — fixed, deliberate order */}
       <div className="space-y-5 lg:sticky lg:top-20">
-        {/* Not set up yet → the setup call leads the page */}
+        {/* New user → clear two-step instructions, front and center */}
         {status && !status.hasMemorization && (
-          <Link
-            href="/setup"
-            className="flex items-center gap-3 card p-4 bg-accent-soft border-accent/30 active:scale-[0.99] transition"
-          >
-            <Sparkles size={18} className="text-accent shrink-0" />
-            <span className="text-sm">{t("home.setMemoFirst")}</span>
-          </Link>
+          <section className="rounded-[1.75rem] bg-accent-soft p-6 space-y-4">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[11px] font-bold text-accent">
+              <Sparkles size={12} />
+              {t("home.getStarted.title")}
+            </span>
+            <ol className="space-y-2.5">
+              {[t("home.getStarted.s1"), t("home.getStarted.s2")].map(
+                (step, i) => (
+                  <li key={i} className="flex items-start gap-3 text-[15px]">
+                    <span className="w-6 h-6 rounded-full bg-surface grid place-items-center text-xs font-bold text-accent shrink-0 mt-0.5">
+                      {i + 1}
+                    </span>
+                    {step}
+                  </li>
+                ),
+              )}
+            </ol>
+            <Link
+              href="/setup"
+              className="btn-cta w-full !rounded-full py-3.5 text-base flex items-center justify-center"
+            >
+              {t("home.getStarted.btn")}
+            </Link>
+          </section>
         )}
 
-        {/* Prayer strip — compact glance: selected prayer + countdown */}
-        <section className="card rounded-[1.25rem] px-5 py-4 flex items-center justify-between gap-4">
-          <div className="min-w-0">
-            <div className="text-[10px] font-bold text-muted">
-              {prayer === nextKey || !times
-                ? t("home.nextPrayer")
-                : t("home.selectedPrayer")}
-              {hijri ? ` · ${hijri}` : ""}
-            </div>
-            <div className="font-heading text-2xl font-bold leading-tight truncate">
-              {prayer === "qiyam" ? t("mode.qiyam") : t(`prayer.${prayer}`)}
-            </div>
-          </div>
-          {countdown && (
-            <div className="text-end shrink-0">
-              <div className="text-[10px] text-muted">{t("home.remaining")}</div>
-              <div
-                className="text-xl font-bold tabular-nums tracking-wide text-primary"
-                dir="ltr"
-              >
-                {countdown}
+        {/* THE prayer card — "look: your next prayer" + one أقم action.
+            No picker walls; other prayers hide behind a small link. */}
+        <section className="card rounded-[1.75rem] p-5 space-y-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-muted">
+                {prayer === nextKey || !times
+                  ? t("home.nextPrayer")
+                  : t("home.selectedPrayer")}
+                {hijri ? ` · ${hijri}` : ""}
               </div>
+              <div className="font-heading text-3xl font-bold leading-tight truncate">
+                {prayer === "qiyam" ? t("mode.qiyam") : t(`prayer.${prayer}`)}
+              </div>
+            </div>
+            {countdown && (
+              <div className="text-end shrink-0">
+                <div className="text-[10px] text-muted">
+                  {t("home.remaining")}
+                </div>
+                <div
+                  className="text-xl font-bold tabular-nums tracking-wide text-primary"
+                  dir="ltr"
+                >
+                  {countdown}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {showRakahInput && (
+            <div className="flex items-center justify-between rounded-xl border border-border px-4 py-2.5">
+              <span className="text-sm text-muted">{t("home.rakahs")}</span>
+              <Stepper value={rakahs} onChange={setRakahs} min={1} max={20} />
+            </div>
+          )}
+
+          <button
+            onClick={aqim}
+            disabled={loading}
+            className="btn-cta w-full !rounded-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-60"
+          >
+            {loading ? (
+              <LogoLoader size={30} inherit className="text-white" />
+            ) : (
+              <span className="font-heading font-bold text-2xl leading-none">
+                أقِم
+              </span>
+            )}
+          </button>
+
+          {error && (
+            <div className="text-sm text-primary text-center bg-primary-soft rounded-xl p-3">
+              {error}
+            </div>
+          )}
+
+          {/* Other prayers — tucked away until asked for */}
+          <div className="text-center">
+            <button
+              onClick={() => setShowOther(!showOther)}
+              className="text-xs font-bold text-muted hover:text-foreground"
+            >
+              {t("home.otherPrayer")}
+            </button>
+          </div>
+          {showOther && (
+            <div
+              ref={chipsRef}
+              className="-mx-5 px-5 flex gap-2 overflow-x-auto no-scrollbar snap-x"
+            >
+              {CHIPS.map((c) => {
+                const on = prayer === c.key;
+                return (
+                  <button
+                    key={c.key}
+                    onClick={() => {
+                      setPrayer(c.key);
+                      setMode(c.mode);
+                    }}
+                    data-on={on}
+                    className="pill px-4 py-2 text-sm font-medium whitespace-nowrap snap-start shrink-0 active:scale-[0.97]"
+                  >
+                    {c.key === "qiyam" ? t("mode.qiyam") : t(`prayer.${c.key}`)}
+                  </button>
+                );
+              })}
             </div>
           )}
         </section>
@@ -399,111 +470,6 @@ export default function HomePage() {
 
         {/* CONTINUE hero — daily wird / streak (or its setup) */}
         <WirdCard />
-
-        {/* Explore — chunky topic cards, icon in a circle (reference style) */}
-        <div>
-          <h2 className="text-lg font-bold mb-3 px-1">{t("home.quick")}</h2>
-          <div className="-mx-4 px-4 flex gap-3 overflow-x-auto no-scrollbar">
-            {(
-              [
-                { label: t("mode.faraid"), Icon: MosqueIcon, act: () => pick("fajr", "faraid") },
-                { label: t("mode.nafl"), Icon: NafilahIcon, act: () => pick("fajr-sunnah", "nafl") },
-                { label: t("mode.qiyam"), Icon: QiyamIcon, act: () => pick("qiyam", "qiyam") },
-              ] as const
-            ).map((q) => (
-              <button
-                key={q.label}
-                onClick={q.act}
-                className="rounded-[1.5rem] bg-primary-soft px-5 py-4 flex flex-col items-start gap-3 min-w-28 shrink-0 active:scale-[0.96] transition"
-              >
-                <span className="w-11 h-11 rounded-full bg-surface grid place-items-center">
-                  <q.Icon size={22} className="text-primary" />
-                </span>
-                <span className="text-sm font-bold whitespace-nowrap">
-                  {q.label}
-                </span>
-              </button>
-            ))}
-            <Link
-              href="/adhkar"
-              className="rounded-[1.5rem] bg-secondary-soft px-5 py-4 flex flex-col items-start gap-3 min-w-28 shrink-0 active:scale-[0.96] transition"
-            >
-              <span className="w-11 h-11 rounded-full bg-surface grid place-items-center">
-                <Heart size={22} className="text-secondary" />
-              </span>
-              <span className="text-sm font-bold whitespace-nowrap">
-                {t("nav.adhkar")}
-              </span>
-            </Link>
-            <Link
-              href="/quran"
-              className="rounded-[1.5rem] bg-accent-soft px-5 py-4 flex flex-col items-start gap-3 min-w-28 shrink-0 active:scale-[0.96] transition"
-            >
-              <span className="w-11 h-11 rounded-full bg-surface grid place-items-center">
-                <BookOpen size={22} className="text-accent" />
-              </span>
-              <span className="text-sm font-bold whitespace-nowrap">
-                {t("nav.quran")}
-              </span>
-            </Link>
-          </div>
-        </div>
-
-        {/* SELECTION — pick what to recite (the action) */}
-        <section id="selection" className="card p-4 sm:p-5 space-y-4 scroll-mt-24">
-          <h2 className="text-sm font-bold">{t("home.pickVerses")}</h2>
-
-          <div
-            ref={chipsRef}
-            className="-mx-4 px-4 flex gap-2 overflow-x-auto no-scrollbar snap-x"
-          >
-            {CHIPS.map((c) => {
-              const on = prayer === c.key;
-              return (
-                <button
-                  key={c.key}
-                  onClick={() => {
-                    setPrayer(c.key);
-                    setMode(c.mode);
-                  }}
-                  data-on={on}
-                  className="pill px-4 py-2 text-sm font-medium whitespace-nowrap snap-start shrink-0 active:scale-[0.97]"
-                >
-                  {c.key === "qiyam" ? t("mode.qiyam") : t(`prayer.${c.key}`)}
-                </button>
-              );
-            })}
-          </div>
-
-          {showRakahInput && (
-            <div className="flex items-center justify-between rounded-xl border border-border px-4 py-2.5">
-              <span className="text-sm text-muted">{t("home.rakahs")}</span>
-              <Stepper value={rakahs} onChange={setRakahs} min={1} max={20} />
-            </div>
-          )}
-
-          <button
-            onClick={aqim}
-            disabled={loading}
-            className="btn-cta w-full py-4 text-lg flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            {loading ? (
-              <LogoLoader size={30} inherit className="text-white" />
-            ) : (
-              // Heading font (Amiri): same classical look as the Quran face but
-              // with sane vertical metrics, so the word centers perfectly.
-              <span className="font-heading font-bold text-2xl leading-none">
-                أقِم
-              </span>
-            )}
-          </button>
-
-          {error && (
-            <div className="text-sm text-primary text-center bg-primary-soft rounded-xl p-3">
-              {error}
-            </div>
-          )}
-        </section>
 
         {/* Today's tasks */}
         <TodoList />
