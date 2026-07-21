@@ -323,34 +323,30 @@ export default function HomePage() {
           </Link>
         )}
 
-        {/* INFO CARD — the selected prayer's time at a glance */}
-        <section className="relative overflow-hidden rounded-2xl bg-primary text-white p-6">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-bold text-white/70">
+        {/* Prayer strip — compact glance: selected prayer + countdown */}
+        <section className="card rounded-[1.25rem] px-5 py-4 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[10px] font-bold text-muted">
               {prayer === nextKey || !times
                 ? t("home.nextPrayer")
                 : t("home.selectedPrayer")}
-            </span>
-            {hijri && <span className="text-[11px] text-white/60">{hijri}</span>}
-          </div>
-          <div className="flex items-end justify-between gap-4 mt-1">
-            <h1 className="font-heading text-[2.6rem] leading-tight">
+              {hijri ? ` · ${hijri}` : ""}
+            </div>
+            <div className="font-heading text-2xl font-bold leading-tight truncate">
               {prayer === "qiyam" ? t("mode.qiyam") : t(`prayer.${prayer}`)}
-            </h1>
-            {countdown && (
-              <div className="text-end pb-2">
-                <div className="text-[10px] text-white/60">
-                  {t("home.remaining")}
-                </div>
-                <div
-                  className="text-2xl font-bold tabular-nums tracking-wide"
-                  dir="ltr"
-                >
-                  {countdown}
-                </div>
-              </div>
-            )}
+            </div>
           </div>
+          {countdown && (
+            <div className="text-end shrink-0">
+              <div className="text-[10px] text-muted">{t("home.remaining")}</div>
+              <div
+                className="text-xl font-bold tabular-nums tracking-wide text-primary"
+                dir="ltr"
+              >
+                {countdown}
+              </div>
+            </div>
+          )}
         </section>
 
         {/* Location CTA — makes the countdown feature discoverable */}
@@ -404,12 +400,10 @@ export default function HomePage() {
         {/* CONTINUE hero — daily wird / streak (or its setup) */}
         <WirdCard />
 
-        {/* Quick links — every section of the app, one sliding row */}
+        {/* Explore — chunky topic cards, icon in a circle (reference style) */}
         <div>
-          <div className="text-xs font-bold text-muted mb-2 px-1">
-            {t("home.quick")}
-          </div>
-          <div className="-mx-4 px-4 flex gap-2.5 overflow-x-auto no-scrollbar">
+          <h2 className="text-lg font-bold mb-3 px-1">{t("home.quick")}</h2>
+          <div className="-mx-4 px-4 flex gap-3 overflow-x-auto no-scrollbar">
             {(
               [
                 { label: t("mode.faraid"), Icon: MosqueIcon, act: () => pick("fajr", "faraid") },
@@ -420,27 +414,35 @@ export default function HomePage() {
               <button
                 key={q.label}
                 onClick={q.act}
-                className="card !shadow-none px-4 py-3 flex flex-col items-center gap-1.5 min-w-20 shrink-0 hover:border-primary/40 active:scale-[0.96] transition"
+                className="rounded-[1.5rem] bg-primary-soft px-5 py-4 flex flex-col items-start gap-3 min-w-28 shrink-0 active:scale-[0.96] transition"
               >
-                <q.Icon size={22} className="text-primary" />
-                <span className="text-xs font-bold whitespace-nowrap">{q.label}</span>
+                <span className="w-11 h-11 rounded-full bg-surface grid place-items-center">
+                  <q.Icon size={22} className="text-primary" />
+                </span>
+                <span className="text-sm font-bold whitespace-nowrap">
+                  {q.label}
+                </span>
               </button>
             ))}
             <Link
               href="/adhkar"
-              className="card !shadow-none px-4 py-3 flex flex-col items-center gap-1.5 min-w-20 shrink-0 hover:border-primary/40 active:scale-[0.96] transition"
+              className="rounded-[1.5rem] bg-secondary-soft px-5 py-4 flex flex-col items-start gap-3 min-w-28 shrink-0 active:scale-[0.96] transition"
             >
-              <Heart size={22} className="text-primary" />
-              <span className="text-xs font-bold whitespace-nowrap">
+              <span className="w-11 h-11 rounded-full bg-surface grid place-items-center">
+                <Heart size={22} className="text-secondary" />
+              </span>
+              <span className="text-sm font-bold whitespace-nowrap">
                 {t("nav.adhkar")}
               </span>
             </Link>
             <Link
               href="/quran"
-              className="card !shadow-none px-4 py-3 flex flex-col items-center gap-1.5 min-w-20 shrink-0 hover:border-primary/40 active:scale-[0.96] transition"
+              className="rounded-[1.5rem] bg-accent-soft px-5 py-4 flex flex-col items-start gap-3 min-w-28 shrink-0 active:scale-[0.96] transition"
             >
-              <BookOpen size={22} className="text-primary" />
-              <span className="text-xs font-bold whitespace-nowrap">
+              <span className="w-11 h-11 rounded-full bg-surface grid place-items-center">
+                <BookOpen size={22} className="text-accent" />
+              </span>
+              <span className="text-sm font-bold whitespace-nowrap">
                 {t("nav.quran")}
               </span>
             </Link>
@@ -547,47 +549,49 @@ function TodoList() {
 
   return (
     <div>
-      <div className="text-xs font-bold text-muted mb-2 px-1">
-        {t("home.todos")}
-      </div>
-      <div className="card divide-y divide-border overflow-hidden">
+      <h2 className="text-lg font-bold mb-3 px-1">{t("home.todos")}</h2>
+      <div className="space-y-3">
         {state.wirdOn && (
           <Link
             href="/quran"
-            className="flex items-center justify-between gap-3 p-3.5 hover:bg-surface-2 transition"
+            className="flex items-center gap-4 rounded-[1.5rem] bg-accent-soft p-4 active:scale-[0.99] transition"
           >
-            <span className="flex items-center gap-2.5 text-sm">
-              <span
-                className={`w-5 h-5 rounded-full grid place-items-center ${
-                  state.done
-                    ? "bg-secondary text-white"
-                    : "bg-surface-2 border border-border"
-                }`}
-              >
-                {state.done && <Check size={12} strokeWidth={3} />}
-              </span>
-              {t("home.todo.wird")}
+            <span
+              className={`w-11 h-11 rounded-full grid place-items-center shrink-0 ${
+                state.done ? "bg-secondary text-white" : "bg-surface text-accent"
+              }`}
+            >
+              {state.done ? (
+                <Check size={20} strokeWidth={3} />
+              ) : (
+                <BookOpen size={20} />
+              )}
             </span>
-            <span className="flex items-center gap-2 text-xs text-muted">
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-bold truncate">
+                {t("home.todo.wird")}
+              </span>
               {state.streak > 0 && (
-                <span className="flex items-center gap-1 text-accent font-bold">
-                  <Flame size={13} />
-                  {state.streak}
+                <span className="flex items-center gap-1 text-xs text-muted mt-0.5">
+                  <Flame size={13} className="text-accent" />
+                  {state.streak} {t("wird.streak")}
                 </span>
               )}
-              <ChevronLeft size={15} className="rtl:block hidden" />
             </span>
+            <ChevronLeft size={18} className="rtl:block hidden text-muted shrink-0" />
           </Link>
         )}
         <Link
           href="/history"
-          className="flex items-center justify-between gap-3 p-3.5 hover:bg-surface-2 transition"
+          className="flex items-center gap-4 rounded-[1.5rem] bg-secondary-soft p-4 active:scale-[0.99] transition"
         >
-          <span className="flex items-center gap-2.5 text-sm">
-            <span className="w-5 h-5 rounded-full bg-surface-2 border border-border" />
+          <span className="w-11 h-11 rounded-full bg-surface text-secondary grid place-items-center shrink-0">
+            <RefreshCw size={19} />
+          </span>
+          <span className="text-[15px] font-bold flex-1">
             {t("home.todo.review")}
           </span>
-          <ChevronLeft size={15} className="rtl:block hidden text-muted" />
+          <ChevronLeft size={18} className="rtl:block hidden text-muted shrink-0" />
         </Link>
       </div>
     </div>
