@@ -4,12 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   BookOpen,
+  BookOpenText,
   MapPin,
   RefreshCw,
   Check,
   Sparkles,
   Flame,
   ChevronLeft,
+  ScrollText,
+  ListChecks,
+  History,
 } from "lucide-react";
 import { LogoLoader } from "@/components/Logo";
 import { PageLoader } from "@/components/Brand";
@@ -480,6 +484,12 @@ export default function HomePage() {
 
         {/* Today's tasks — wird + adhkar at a glance */}
         {status?.hasMemorization && <TodayCard />}
+
+        {/* Pick up the Mushaf where the reader left off */}
+        <ContinueReading />
+
+        {/* Every section of the app, one tap away */}
+        <QuickGrid />
       </div>
 
       {/* Results column */}
@@ -592,6 +602,110 @@ function TodayCard() {
             state.adhkarDone ? t("adhkar.doneToday") : t("home.todo.adhkar")
           }
         />
+      </div>
+    </section>
+  );
+}
+
+// Resume the Mushaf exactly where the reader stopped — only shown once they
+// have actually started reading (saved page > 1).
+function ContinueReading() {
+  const { t, lang } = useLang();
+  const [page, setPage] = useState<number | null>(null);
+
+  useEffect(() => {
+    try {
+      const p = Number(localStorage.getItem("aqim-quran-page")) || 0;
+      if (p > 1) setPage(Math.min(604, p));
+    } catch {}
+  }, []);
+
+  if (!page) return null;
+
+  const digits = (n: number) =>
+    lang === "ar"
+      ? String(n).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)])
+      : String(n);
+
+  return (
+    <Link
+      href="/quran"
+      className="card rounded-2xl p-4 flex items-center gap-3 active:scale-[0.99] transition hover:border-accent/50"
+    >
+      <span className="w-10 h-10 rounded-xl bg-accent-soft text-accent grid place-items-center shrink-0">
+        <BookOpenText size={19} />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-bold truncate">
+          {t("home.continueReading")}
+        </span>
+        <span className="block text-[11px] text-muted mt-0.5">
+          {t("quran.page")} {digits(page)} / {digits(604)}
+        </span>
+        <span className="block h-1 rounded-full bg-surface-2 overflow-hidden mt-1.5">
+          <span
+            className="block h-full rounded-full bg-accent"
+            style={{ width: `${(page / 604) * 100}%` }}
+          />
+        </span>
+      </span>
+      <ChevronLeft size={16} className="text-muted rtl:block hidden shrink-0" />
+    </Link>
+  );
+}
+
+// One tile per section — the whole app reachable from the home page.
+function QuickGrid() {
+  const { t } = useLang();
+  const tiles = [
+    {
+      href: "/quran",
+      icon: <BookOpenText size={18} />,
+      title: t("nav.quran"),
+      sub: t("home.quick.quran"),
+    },
+    {
+      href: "/adhkar",
+      icon: <ScrollText size={18} />,
+      title: t("nav.adhkar"),
+      sub: t("home.quick.adhkar"),
+    },
+    {
+      href: "/setup",
+      icon: <ListChecks size={18} />,
+      title: t("nav.setup"),
+      sub: t("home.quick.setup"),
+    },
+    {
+      href: "/history",
+      icon: <History size={18} />,
+      title: t("nav.history"),
+      sub: t("home.quick.history"),
+    },
+  ];
+  return (
+    <section>
+      <div className="text-xs font-bold text-muted mb-2 px-1">
+        {t("home.quick")}
+      </div>
+      <div className="grid grid-cols-2 gap-2.5">
+        {tiles.map((tl) => (
+          <Link
+            key={tl.href}
+            href={tl.href}
+            className="card rounded-2xl p-4 active:scale-[0.97] transition hover:border-primary/40"
+          >
+            <span className="w-9 h-9 rounded-xl bg-primary-soft text-primary grid place-items-center mb-2.5">
+              {tl.icon}
+            </span>
+            <span className="block text-sm font-bold leading-snug">
+              {tl.title}
+            </span>
+            <span className="block text-[11px] text-muted mt-0.5 leading-snug">
+              {tl.sub}
+            </span>
+          </Link>
+        ))}
       </div>
     </section>
   );

@@ -243,6 +243,11 @@ const ar: Dict = {
   // home extras
   "home.continueLabel": "استمر",
   "home.quick": "أقسام التطبيق",
+  "home.continueReading": "تابع قراءة القرآن",
+  "home.quick.quran": "اقرأ من المصحف",
+  "home.quick.adhkar": "أذكار الصباح والمساء وأكثر",
+  "home.quick.setup": "حدّث ما تحفظه",
+  "home.quick.history": "تلاواتك ونموّ حفظك",
   "home.todos": "مهام اليوم",
   "home.todo.wird": "أكمل ورد اليوم",
   "home.todo.adhkar": "اقرأ أذكارك",
@@ -518,6 +523,11 @@ const en: Dict = {
 
   "home.continueLabel": "Continue",
   "home.quick": "App sections",
+  "home.continueReading": "Continue reading the Quran",
+  "home.quick.quran": "Read the Mushaf",
+  "home.quick.adhkar": "Morning, evening & more",
+  "home.quick.setup": "Update what you memorized",
+  "home.quick.history": "Your recitations & growth",
   "home.todos": "Today's tasks",
   "home.todo.wird": "Complete today's wird",
   "home.todo.adhkar": "Read your adhkar",
