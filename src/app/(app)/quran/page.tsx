@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useSwipeable } from "react-swipeable";
 import {
   Check,
@@ -142,6 +142,46 @@ export default function QuranPage() {
       document.body.style.overflow = "";
     };
   }, [immersive]);
+
+  // Fit-to-screen: in full-page mode the WHOLE page must fit the viewport —
+  // no scrolling. Text size is solved per page: render, measure, refine.
+  const fitRef = useRef<HTMLDivElement>(null);
+  const fitIter = useRef(0);
+  const [fitSize, setFitSize] = useState(24);
+
+  useEffect(() => {
+    fitIter.current = 0;
+    setFitSize(24);
+  }, [immersive, data?.page]);
+
+  useEffect(() => {
+    const onResize = () => {
+      fitIter.current = 0;
+      setFitSize(24);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
+  useLayoutEffect(() => {
+    if (!immersive || !data) return;
+    const el = fitRef.current;
+    const box = el?.parentElement;
+    if (!el || !box) return;
+    const avail = box.clientHeight;
+    const content = el.scrollHeight;
+    if (avail <= 0 || content <= 0 || fitIter.current >= 6) return;
+    const ratio = avail / content;
+    if (ratio < 1) {
+      // overflowing — shrink (slightly past the exact ratio to converge)
+      fitIter.current++;
+      setFitSize((s) => Math.max(10, s * ratio * 0.97));
+    } else if (ratio > 1.18 && fitSize < 30) {
+      // lots of empty space — grow gently
+      fitIter.current++;
+      setFitSize((s) => Math.min(30, s * Math.min(ratio * 0.92, 1.25)));
+    }
+  }, [immersive, data, fitSize]);
 
   function enterImmersive() {
     setImmersive(true);
@@ -357,7 +397,7 @@ export default function QuranPage() {
         <div key={g.surah.number}>
           {startsAtOne &&
             (bare ? (
-              <p className="font-quran text-xl text-primary text-center my-3">
+              <p className="font-quran text-[1.05em] text-primary text-center my-[0.4em]">
                 {g.surah.nameArabic}
               </p>
             ) : (
@@ -591,18 +631,27 @@ export default function QuranPage() {
 
       <div className="pb-6" />
 
-      {/* FULL-PAGE reading: nothing but the Quran. Tap the middle to show
-          the info bars (surah, juz, pager, progress); edges still turn. */}
+      {/* FULL-PAGE reading: the WHOLE page fits the screen — no scrolling,
+          nothing above or below. Tap the middle for the info bars. */}
       {immersive && (
-        <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
-          {/* COMPLETELY bare: only the Quran text on the page background */}
+        <div className="fixed inset-0 z-50 bg-background overflow-hidden">
           <div
             {...swipe}
             key={"full-" + data.page}
             onClick={() => setBars((b) => !b)}
-            className="min-h-full max-w-2xl mx-auto px-5 py-8 animate-page select-none"
+            className="h-full max-w-2xl mx-auto px-4 flex flex-col justify-center overflow-hidden select-none"
+            style={{
+              paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
+              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
+            }}
           >
-            {renderGroups(true)}
+            <div
+              ref={fitRef}
+              className="animate-page [&_.quran-text]:!text-[length:1em] [&_.quran-text]:!leading-[1.9] [&_.bismillah-line]:!text-[length:0.85em] [&_.bismillah-line]:!leading-[1.7]"
+              style={{ fontSize: `${fitSize}px` }}
+            >
+              {renderGroups(true)}
+            </div>
           </div>
 
           {/* edge tap zones */}
