@@ -28,6 +28,7 @@ import {
   isAdhkarDoneToday,
   adhkarPartsToday,
 } from "@/lib/wird";
+import { loadTasbih, tapTasbih, type TasbihState } from "@/lib/tasbih";
 import {
   computeTimes,
   loadReminderConfig,
@@ -541,6 +542,9 @@ export default function HomePage() {
         {/* Pick up the Mushaf where the reader left off */}
         <ContinueReading />
 
+        {/* Quick misbaha — count right here, full page one tap away */}
+        <MisbahaMini />
+
         {/* Every section of the app, one tap away */}
         <QuickGrid />
       </div>
@@ -710,6 +714,62 @@ function CycleRing({ parts }: { parts: boolean[] }) {
         />
       ))}
     </svg>
+  );
+}
+
+// Home misbaha: tap the bead right on the home page; the full page (choose
+// dhikr, target, rounds) is one tap away.
+function MisbahaMini() {
+  const { t, lang } = useLang();
+  const [s, setS] = useState<TasbihState | null>(null);
+
+  useEffect(() => {
+    const read = () => setS(loadTasbih());
+    read();
+    window.addEventListener("aqim-tasbih-changed", read);
+    return () => window.removeEventListener("aqim-tasbih-changed", read);
+  }, []);
+
+  if (!s) return null;
+  const digits = (n: number) =>
+    lang === "ar"
+      ? String(n).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)])
+      : String(n);
+
+  return (
+    <section className="card rounded-2xl p-4 flex items-center gap-4">
+      <button
+        onClick={() => {
+          const { next, cycled } = tapTasbih(s);
+          setS(next);
+          try {
+            navigator.vibrate?.(cycled ? [40, 60, 40] : 12);
+          } catch {}
+        }}
+        aria-label={t("tasbih.tap")}
+        className="w-20 h-20 rounded-full bg-primary text-white grid place-items-center shrink-0 active:scale-[0.93] transition select-none shadow-md"
+      >
+        <span className="text-2xl font-bold tabular-nums">{digits(s.count)}</span>
+      </button>
+      <div className="min-w-0 flex-1">
+        <div className="text-xs font-bold text-muted mb-0.5">
+          {t("tasbih.title")}
+        </div>
+        <div className="font-quran text-lg text-primary truncate" dir="rtl">
+          {s.phrase}
+        </div>
+        <div className="text-[11px] text-muted tabular-nums mt-0.5">
+          {s.target > 0 ? `${digits(s.count)} / ${digits(s.target)} · ` : ""}
+          {t("tasbih.rounds")}: {digits(s.rounds)}
+        </div>
+      </div>
+      <Link
+        href="/tasbih"
+        className="shrink-0 text-xs font-bold text-primary hover:underline"
+      >
+        {t("home.tasbih.open")}
+      </Link>
+    </section>
   );
 }
 
