@@ -79,22 +79,49 @@ export function WirdStrip() {
   const modeField = (c: WirdConfig) => {
     if (c.mode === "pages")
       return (
-        <label className="flex items-center gap-2 text-sm">
-          <span className="text-muted text-xs">{t("wird.pages")}</span>
-          <input
-            type="number"
-            min={1}
-            max={20}
-            value={c.pages}
-            onChange={(e) =>
-              apply({
-                ...c,
-                pages: Math.min(20, Math.max(1, Number(e.target.value) || 1)),
-              })
-            }
-            className="w-14 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
-          />
-        </label>
+        <div className="w-full space-y-2">
+          <label className="flex items-center gap-2 text-sm">
+            <span className="text-muted text-xs">{t("wird.pages")}</span>
+            <input
+              type="number"
+              min={1}
+              max={30}
+              value={c.pages}
+              onChange={(e) =>
+                apply({
+                  ...c,
+                  pages: Math.min(30, Math.max(1, Number(e.target.value) || 1)),
+                })
+              }
+              className="w-14 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
+            />
+          </label>
+          {/* Khatmah shortcuts: pick a finish-line, we compute the pace */}
+          <div className="flex flex-wrap gap-1.5">
+            {[
+              { key: "wird.k30", pages: Math.ceil(604 / 30) },
+              { key: "wird.k60", pages: Math.ceil(604 / 60) },
+            ].map((k) => (
+              <button
+                key={k.key}
+                onClick={() => apply({ ...c, pages: k.pages })}
+                className={`rounded-full px-3 py-1 text-[11px] font-bold border transition ${
+                  c.pages === k.pages
+                    ? "border-transparent bg-primary text-white"
+                    : "border-border text-muted hover:text-foreground"
+                }`}
+              >
+                {t(k.key)}
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted">
+            {t("wird.khatmahIn", {
+              n: c.pages,
+              d: Math.ceil(604 / c.pages),
+            })}
+          </p>
+        </div>
       );
     if (c.mode === "minutes")
       return (

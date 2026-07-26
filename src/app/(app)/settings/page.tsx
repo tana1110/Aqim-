@@ -195,6 +195,9 @@ export default function SettingsPage() {
           <p className="text-[11px] text-muted mt-1.5">{t("settings.lenHint")}</p>
         </div>
 
+        {/* Offline Quran — download all 604 pages into the local cache */}
+        <OfflineRow />
+
         {/* Replay the intro tour */}
         <Row label={t("settings.replayTour")}>
           <button
@@ -321,6 +324,79 @@ export default function SettingsPage() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Download the entire Mushaf text into the offline cache. Pages the user
+// reads are cached automatically anyway; this button completes the set.
+function OfflineRow() {
+  const { t } = useLang();
+  const [state, setState] = useState<"idle" | "busy" | "done">("idle");
+  const [done, setDone] = useState(0);
+
+  useEffect(() => {
+    // Consider it downloaded if a spread of probe pages is cached.
+    (async () => {
+      try {
+        const cache = await caches.open("aqim-mushaf-v1");
+        for (const p of [1, 302, 604]) {
+          if (!(await cache.match(`${location.origin}/api/mushaf?page=${p}`)))
+            return;
+        }
+        setState("done");
+      } catch {}
+    })();
+  }, []);
+
+  async function download() {
+    if (state === "busy") return;
+    setState("busy");
+    setDone(0);
+    try {
+      const cache = await caches.open("aqim-mushaf-v1");
+      let n = 0;
+      for (let p = 1; p <= 604; p += 8) {
+        const batch: Promise<void>[] = [];
+        for (let q = p; q < Math.min(p + 8, 605); q++) {
+          const url = `${location.origin}/api/mushaf?page=${q}`;
+          batch.push(
+            cache.match(url).then(async (hit) => {
+              if (!hit) {
+                const res = await fetch(url);
+                if (res.ok) await cache.put(url, res);
+              }
+              n++;
+              setDone(n);
+            }),
+          );
+        }
+        await Promise.all(batch);
+      }
+      setState("done");
+    } catch {
+      setState("idle");
+    }
+  }
+
+  return (
+    <div className="p-4 flex items-center justify-between gap-4">
+      <span className="text-sm font-medium">{t("settings.offline")}</span>
+      {state === "done" ? (
+        <span className="text-xs text-secondary font-bold">
+          {t("settings.offlineDone")}
+        </span>
+      ) : (
+        <button
+          onClick={download}
+          disabled={state === "busy"}
+          className="btn-primary px-4 py-1.5 text-xs disabled:opacity-70"
+        >
+          {state === "busy"
+            ? t("settings.offlineProgress", { n: done })
+            : t("settings.offlineBtn")}
+        </button>
+      )}
     </div>
   );
 }

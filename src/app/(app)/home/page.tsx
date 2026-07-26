@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   BookOpen,
   BookOpenText,
@@ -11,6 +12,7 @@ import {
   Sparkles,
   Flame,
   ChevronLeft,
+  Compass,
   ScrollText,
   ListChecks,
   History,
@@ -533,6 +535,9 @@ export default function HomePage() {
         {/* Today's tasks — wird + adhkar at a glance */}
         <TodayCard />
 
+        {/* Spaced review: the memorized surah longest missing from prayer */}
+        {status?.hasMemorization && <ReviewCard />}
+
         {/* Pick up the Mushaf where the reader left off */}
         <ContinueReading />
 
@@ -708,6 +713,53 @@ function CycleRing({ parts }: { parts: boolean[] }) {
   );
 }
 
+// Gentle spaced-review nudge: the memorized surah that has gone longest
+// without being recited in prayer. Opens directly in the Mushaf.
+function ReviewCard() {
+  const { t, lang } = useLang();
+  const router = useRouter();
+  const [sug, setSug] = useState<{
+    surahNumber: number;
+    nameArabic: string;
+    nameTranslit: string;
+    neverUsed: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/review-suggestion")
+      .then((r) => r.json())
+      .then((d) => setSug(d.suggestion))
+      .catch(() => {});
+  }, []);
+
+  if (!sug) return null;
+  const name = surahName(lang, sug.nameArabic, sug.nameTranslit);
+
+  return (
+    <section className="card rounded-2xl p-4 space-y-2.5">
+      <div className="text-xs font-bold text-muted">
+        {t("home.review.title")}
+      </div>
+      <p className="text-sm leading-relaxed">
+        {t(sug.neverUsed ? "home.review.never" : "home.review.body", {
+          s: name,
+        })}
+      </p>
+      <button
+        onClick={() => {
+          try {
+            sessionStorage.setItem("aqim-jump-surah", String(sug.surahNumber));
+          } catch {}
+          router.push("/quran");
+        }}
+        className="btn-primary px-4 py-2 text-xs"
+      >
+        {t("home.review.open")}
+      </button>
+    </section>
+  );
+}
+
 // Resume the Mushaf exactly where the reader stopped; before they've started,
 // the same card invites them to begin from page one.
 function ContinueReading() {
@@ -807,6 +859,13 @@ function QuickGrid() {
       title: t("nav.history"),
       sub: t("home.quick.history"),
     },
+    {
+      href: "/qibla",
+      icon: <Compass size={18} />,
+      title: t("qibla.title"),
+      sub: t("home.quick.qibla"),
+      wide: true,
+    },
   ];
   return (
     <section>
@@ -818,7 +877,9 @@ function QuickGrid() {
           <Link
             key={tl.href}
             href={tl.href}
-            className="card rounded-2xl p-4 active:scale-[0.97] transition hover:border-primary/40"
+            className={`card rounded-2xl p-4 active:scale-[0.97] transition hover:border-primary/40 ${
+              tl.wide ? "col-span-2" : ""
+            }`}
           >
             <span className="w-9 h-9 rounded-xl bg-primary-soft text-primary grid place-items-center mb-2.5">
               {tl.icon}

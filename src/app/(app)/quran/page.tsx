@@ -2,11 +2,26 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSwipeable } from "react-swipeable";
-import { Check, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Download,
+  Play,
+  Search,
+  Square,
+  X,
+} from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, getBismillahDisplay, cleanAyah } from "@/lib/quranDisplay";
 import { maybeCompleteSurahWird, recordPageRead } from "@/lib/wird";
+import {
+  ayahAudioUrl,
+  downloadSurahAudio,
+  globalAyahNumber,
+  isSurahAudioDownloaded,
+} from "@/lib/audio";
 import type { SurahMeta } from "@/lib/types";
 
 // Standard Madani-mushaf start page of each juz (1-30).
@@ -51,14 +66,20 @@ export default function QuranPage() {
   const [showCoach, setShowCoach] = useState(false);
   const fetchSeq = useRef(0);
 
-  // Resume exactly where the reader left off.
+  // Resume exactly where the reader left off — unless another page handed
+  // us a surah to open (e.g. the home review card).
   useEffect(() => {
     let p = 1;
+    let jumpSurah: number | null = null;
     try {
       p = Number(localStorage.getItem(POS_KEY)) || 1;
       setShowCoach(!localStorage.getItem(HINT_KEY));
+      jumpSurah = Number(sessionStorage.getItem("aqim-jump-surah")) || null;
+      sessionStorage.removeItem("aqim-jump-surah");
     } catch {}
-    setPage(Math.min(604, Math.max(1, p)));
+    if (jumpSurah) {
+      jumpToSurah(jumpSurah).catch(() => setPage(Math.min(604, Math.max(1, p))));
+    } else setPage(Math.min(604, Math.max(1, p)));
     fetch("/api/surahs")
       .then((r) => r.json())
       .then((d) => {
@@ -100,6 +121,89 @@ export default function QuranPage() {
   };
   const [wirdToast, setWirdToast] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
+
+  // ---- Recitation playback (real recorded audio; plays page by page) ----
+  const [playing, setPlaying] = useState<{ s: number; a: number } | null>(null);
+  const [dl, setDl] = useState<"idle" | "busy" | "done">("idle");
+  const [dlDone, setDlDone] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const continueRef = useRef(false);
+  const dataRef = useRef<MushafPage | null>(null);
+  const surahsRef = useRef<SurahMeta[]>([]);
+  dataRef.current = data;
+  surahsRef.current = surahs;
+
+  const stopAudio = () => {
+    continueRef.current = false;
+    audioRef.current?.pause();
+    audioRef.current = null;
+    setPlaying(null);
+  };
+
+  const playFrom = (idx: number) => {
+    const d = dataRef.current;
+    const list = d?.ayahs ?? [];
+    if (!d || surahsRef.current.length === 0) return;
+    if (idx >= list.length) {
+      if (d.page < 604) {
+        continueRef.current = true; // keep reciting onto the next page
+        setPage(d.page + 1);
+      } else stopAudio();
+      return;
+    }
+    const a = list[idx];
+    const g = globalAyahNumber(surahsRef.current, a.surahNumber, a.ayahNumber);
+    if (g == null) {
+      stopAudio();
+      return;
+    }
+    audioRef.current?.pause();
+    const audio = new Audio(ayahAudioUrl(g));
+    audioRef.current = audio;
+    setPlaying({ s: a.surahNumber, a: a.ayahNumber });
+    audio.onended = () => playFrom(idx + 1);
+    audio.onerror = () => stopAudio();
+    audio.play().catch(() => stopAudio());
+  };
+
+  // When the next page's content arrives mid-recitation, keep going;
+  // a manual page turn stops playback instead.
+  useEffect(() => {
+    if (!data) return;
+    if (continueRef.current) {
+      continueRef.current = false;
+      playFrom(0);
+    } else if (audioRef.current) {
+      stopAudio();
+    }
+    // check the download state of this page's main surah
+    const m = data.surahs[data.surahs.length - 1];
+    if (m && surahs.length > 0) {
+      isSurahAudioDownloaded(surahs, m.number)
+        .then((ok) => {
+          setDl(ok ? "done" : "idle");
+        })
+        .catch(() => setDl("idle"));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, surahs]);
+
+  useEffect(() => () => stopAudio(), []); // never leak audio on unmount
+
+  async function downloadCurrentSurah() {
+    const m = dataRef.current?.surahs[dataRef.current.surahs.length - 1];
+    if (!m || dl === "busy") return;
+    setDl("busy");
+    setDlDone(0);
+    try {
+      await downloadSurahAudio(surahsRef.current, m.number, (done) =>
+        setDlDone(done),
+      );
+      setDl("done");
+    } catch {
+      setDl("idle");
+    }
+  }
   useEffect(() => {
     if (page == null) return;
     loadPage(page);
@@ -209,6 +313,41 @@ export default function QuranPage() {
           <Search size={14} />
         </span>
       </button>
+
+      {/* Recitation: listen to this page (continues page after page),
+          download the surah for offline listening */}
+      <div className="flex items-center gap-2 mt-2">
+        <button
+          onClick={playing ? stopAudio : () => playFrom(0)}
+          className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition ${
+            playing ? "bg-accent text-white" : "btn-primary !rounded-full"
+          }`}
+        >
+          {playing ? <Square size={13} /> : <Play size={13} />}
+          {playing ? t("quran.stop") : t("quran.listen")}
+        </button>
+        <span className="flex-1 text-[11px] text-muted truncate">
+          {t("quran.reciter")}
+        </span>
+        <button
+          onClick={downloadCurrentSurah}
+          disabled={dl !== "idle"}
+          aria-label={t("settings.offlineBtn")}
+          className={`w-9 h-9 rounded-full grid place-items-center border transition ${
+            dl === "done"
+              ? "border-secondary/50 bg-secondary-soft text-secondary"
+              : "border-border text-muted hover:text-foreground"
+          }`}
+        >
+          {dl === "done" ? (
+            <Check size={15} strokeWidth={3} />
+          ) : dl === "busy" ? (
+            <span className="text-[9px] font-bold tabular-nums">{dlDone}</span>
+          ) : (
+            <Download size={15} />
+          )}
+        </button>
+      </div>
 
       {navOpen && (
         <MushafNavigator
@@ -338,7 +477,14 @@ export default function QuranPage() {
                       dir="rtl"
                     >
                       {renderAyahs.map((a) => (
-                        <span key={a.n}>
+                        <span
+                          key={a.n}
+                          className={
+                            playing?.s === g.surah.number && playing?.a === a.n
+                              ? "bg-accent-soft rounded-sm"
+                              : undefined
+                          }
+                        >
                           {a.text}
                           <span className="ayah-mark text-accent">
                             {"۝" + toArabicDigits(a.n)}
