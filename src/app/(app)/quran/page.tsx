@@ -7,6 +7,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Maximize2,
   Play,
   Search,
   Square,
@@ -17,10 +18,14 @@ import { useLang } from "@/components/LanguageProvider";
 import { surahName, getBismillahDisplay, cleanAyah } from "@/lib/quranDisplay";
 import { maybeCompleteSurahWird, recordPageRead } from "@/lib/wird";
 import {
+  RECITERS,
   ayahAudioUrl,
   downloadSurahAudio,
   globalAyahNumber,
   isSurahAudioDownloaded,
+  loadReciter,
+  saveReciter,
+  type Reciter,
 } from "@/lib/audio";
 import type { SurahMeta } from "@/lib/types";
 
@@ -122,21 +127,69 @@ export default function QuranPage() {
   const [wirdToast, setWirdToast] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
 
+  // Full-page reading mode: nothing but the Quran; tapping the middle of
+  // the page toggles the info bars. Mode is remembered between visits.
+  const [immersive, setImmersive] = useState(false);
+  const [bars, setBars] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("aqim-quran-full") === "1") setImmersive(true);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    document.body.style.overflow = immersive ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [immersive]);
+
+  function enterImmersive() {
+    setImmersive(true);
+    setBars(false);
+    try {
+      localStorage.setItem("aqim-quran-full", "1");
+    } catch {}
+    try {
+      document.documentElement.requestFullscreen?.();
+    } catch {}
+  }
+  function exitImmersive() {
+    setImmersive(false);
+    try {
+      localStorage.removeItem("aqim-quran-full");
+    } catch {}
+    try {
+      if (document.fullscreenElement) document.exitFullscreen?.();
+    } catch {}
+  }
+
   // ---- Recitation playback (real recorded audio; plays page by page) ----
+  // ONE reusable <audio> element: creating a fresh element per ayah breaks
+  // the user-gesture chain on iOS and playback silently never starts.
   const [playing, setPlaying] = useState<{ s: number; a: number } | null>(null);
+  const [reciter, setReciter] = useState<Reciter>(RECITERS[0]);
   const [dl, setDl] = useState<"idle" | "busy" | "done">("idle");
   const [dlDone, setDlDone] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const continueRef = useRef(false);
   const dataRef = useRef<MushafPage | null>(null);
   const surahsRef = useRef<SurahMeta[]>([]);
+  const reciterRef = useRef<Reciter>(RECITERS[0]);
   dataRef.current = data;
   surahsRef.current = surahs;
+  reciterRef.current = reciter;
+
+  useEffect(() => {
+    setReciter(loadReciter());
+  }, []);
 
   const stopAudio = () => {
     continueRef.current = false;
-    audioRef.current?.pause();
-    audioRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+    }
     setPlaying(null);
   };
 
@@ -157,9 +210,9 @@ export default function QuranPage() {
       stopAudio();
       return;
     }
-    audioRef.current?.pause();
-    const audio = new Audio(ayahAudioUrl(g));
-    audioRef.current = audio;
+    if (!audioRef.current) audioRef.current = new Audio();
+    const audio = audioRef.current;
+    audio.src = ayahAudioUrl(g, reciterRef.current);
     setPlaying({ s: a.surahNumber, a: a.ayahNumber });
     audio.onended = () => playFrom(idx + 1);
     audio.onerror = () => stopAudio();
@@ -176,17 +229,17 @@ export default function QuranPage() {
     } else if (audioRef.current) {
       stopAudio();
     }
-    // check the download state of this page's main surah
+    // check the download state of this page's main surah (per reciter)
     const m = data.surahs[data.surahs.length - 1];
     if (m && surahs.length > 0) {
-      isSurahAudioDownloaded(surahs, m.number)
+      isSurahAudioDownloaded(surahs, m.number, reciter)
         .then((ok) => {
           setDl(ok ? "done" : "idle");
         })
         .catch(() => setDl("idle"));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, surahs]);
+  }, [data, surahs, reciter]);
 
   useEffect(() => () => stopAudio(), []); // never leak audio on unmount
 
@@ -196,7 +249,7 @@ export default function QuranPage() {
     setDl("busy");
     setDlDone(0);
     try {
-      await downloadSurahAudio(surahsRef.current, m.number, (done) =>
+      await downloadSurahAudio(surahsRef.current, m.number, reciterRef.current, (done) =>
         setDlDone(done),
       );
       setDl("done");
@@ -281,6 +334,82 @@ export default function QuranPage() {
 
   const digits = (n: number) => (lang === "ar" ? toArabicDigits(n) : String(n));
 
+  // The framed Mushaf page — shared by the normal view and full-page mode.
+  const pageInner = (
+    <div className="rounded-lg border-2 border-accent/60 bg-surface p-1.5 shadow-sm">
+      <div className="rounded-md border border-accent/35 px-4 sm:px-7 pt-3 pb-5">
+        {/* Mushaf chrome: juz (start) · surah (end) */}
+        <div className="flex items-center justify-between text-[11px] text-muted border-b border-accent/25 pb-2 mb-4">
+          <span>
+            {t("setup.juz")} {digits(data.juz)}
+          </span>
+          <span className="text-sm font-bold text-primary">
+            {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
+          </span>
+        </div>
+
+        {groups.map((g) => {
+          const startsAtOne = g.ayahs[0].ayahNumber === 1;
+          const bism = getBismillahDisplay(
+            g.surah.number,
+            g.ayahs[0].ayahNumber,
+            g.ayahs[0].text,
+          );
+          const renderAyahs = (
+            bism.skipFirstAyah ? g.ayahs.slice(1) : g.ayahs
+          ).map((a, idx) => ({
+            n: a.ayahNumber,
+            text:
+              !bism.skipFirstAyah && idx === 0 && bism.firstAyahText != null
+                ? bism.firstAyahText
+                : cleanAyah(a.text),
+          }));
+          return (
+            <div key={g.surah.number}>
+              {startsAtOne && (
+                <div className="my-3 rounded-lg border-y-2 border-x border-accent/50 bg-accent-soft/40 py-2.5 text-center">
+                  <span className="font-quran text-xl text-primary">
+                    {g.surah.nameArabic}
+                  </span>
+                </div>
+              )}
+              {bism.line && (
+                <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
+                  {bism.line}
+                  {bism.lineIsAyahOne && (
+                    <span className="ayah-mark">{"۝" + toArabicDigits(1)}</span>
+                  )}
+                </p>
+              )}
+              <p className="quran-text !text-justify !leading-[2.3]" dir="rtl">
+                {renderAyahs.map((a) => (
+                  <span
+                    key={a.n}
+                    className={
+                      playing?.s === g.surah.number && playing?.a === a.n
+                        ? "bg-accent-soft rounded-sm"
+                        : undefined
+                    }
+                  >
+                    {a.text}
+                    <span className="ayah-mark text-accent">
+                      {"۝" + toArabicDigits(a.n)}
+                    </span>{" "}
+                  </span>
+                ))}
+              </p>
+            </div>
+          );
+        })}
+
+        {/* page number, centered like a printed Mushaf */}
+        <div className="text-center mt-4 pt-2 border-t border-accent/25 text-sm text-muted tabular-nums">
+          {digits(data.page)}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="pt-1 max-w-2xl mx-auto">
       {/* Reading progress for the current surah */}
@@ -326,9 +455,24 @@ export default function QuranPage() {
           {playing ? <Square size={13} /> : <Play size={13} />}
           {playing ? t("quran.stop") : t("quran.listen")}
         </button>
-        <span className="flex-1 text-[11px] text-muted truncate">
-          {t("quran.reciter")}
-        </span>
+        {/* Choose the reciter — playback and downloads follow the choice */}
+        <select
+          value={reciter.key}
+          onChange={(e) => {
+            const r = RECITERS.find((x) => x.key === e.target.value);
+            if (!r) return;
+            stopAudio();
+            setReciter(r);
+            saveReciter(r.key);
+          }}
+          className="flex-1 min-w-0 rounded-lg border border-border bg-surface px-2 py-1.5 text-[11px] text-muted"
+        >
+          {RECITERS.map((r) => (
+            <option key={r.key} value={r.key}>
+              {lang === "ar" ? r.ar : r.en}
+            </option>
+          ))}
+        </select>
         <button
           onClick={downloadCurrentSurah}
           disabled={dl !== "idle"}
@@ -346,6 +490,14 @@ export default function QuranPage() {
           ) : (
             <Download size={15} />
           )}
+        </button>
+        <button
+          onClick={enterImmersive}
+          aria-label={t("quran.full")}
+          title={t("quran.full")}
+          className="w-9 h-9 rounded-full grid place-items-center border border-border text-muted hover:text-foreground transition"
+        >
+          <Maximize2 size={15} />
         </button>
       </div>
 
@@ -423,89 +575,95 @@ export default function QuranPage() {
         />
 
         <div {...swipe} key={data.page} className="animate-page select-none">
-          <div className="rounded-lg border-2 border-accent/60 bg-surface p-1.5 shadow-sm">
-            <div className="rounded-md border border-accent/35 px-4 sm:px-7 pt-3 pb-5">
-              {/* Mushaf chrome: juz (start) · surah (end) */}
-              <div className="flex items-center justify-between text-[11px] text-muted border-b border-accent/25 pb-2 mb-4">
-                <span>
-                  {t("setup.juz")} {digits(data.juz)}
-                </span>
-                <span className="text-sm font-bold text-primary">
-                  {main
-                    ? surahName(lang, main.nameArabic, main.nameTranslit)
-                    : ""}
-                </span>
-              </div>
-
-              {groups.map((g) => {
-                const startsAtOne = g.ayahs[0].ayahNumber === 1;
-                const bism = getBismillahDisplay(
-                  g.surah.number,
-                  g.ayahs[0].ayahNumber,
-                  g.ayahs[0].text,
-                );
-                const renderAyahs = (
-                  bism.skipFirstAyah ? g.ayahs.slice(1) : g.ayahs
-                ).map((a, idx) => ({
-                  n: a.ayahNumber,
-                  text:
-                    !bism.skipFirstAyah && idx === 0 && bism.firstAyahText != null
-                      ? bism.firstAyahText
-                      : cleanAyah(a.text),
-                }));
-                return (
-                  <div key={g.surah.number}>
-                    {startsAtOne && (
-                      <div className="my-3 rounded-lg border-y-2 border-x border-accent/50 bg-accent-soft/40 py-2.5 text-center">
-                        <span className="font-quran text-xl text-primary">
-                          {g.surah.nameArabic}
-                        </span>
-                      </div>
-                    )}
-                    {bism.line && (
-                      <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
-                        {bism.line}
-                        {bism.lineIsAyahOne && (
-                          <span className="ayah-mark">
-                            {"۝" + toArabicDigits(1)}
-                          </span>
-                        )}
-                      </p>
-                    )}
-                    <p
-                      className="quran-text !text-justify !leading-[2.3]"
-                      dir="rtl"
-                    >
-                      {renderAyahs.map((a) => (
-                        <span
-                          key={a.n}
-                          className={
-                            playing?.s === g.surah.number && playing?.a === a.n
-                              ? "bg-accent-soft rounded-sm"
-                              : undefined
-                          }
-                        >
-                          {a.text}
-                          <span className="ayah-mark text-accent">
-                            {"۝" + toArabicDigits(a.n)}
-                          </span>{" "}
-                        </span>
-                      ))}
-                    </p>
-                  </div>
-                );
-              })}
-
-              {/* page number, centered like a printed Mushaf */}
-              <div className="text-center mt-4 pt-2 border-t border-accent/25 text-sm text-muted tabular-nums">
-                {digits(data.page)}
-              </div>
-            </div>
-          </div>
+          {pageInner}
         </div>
       </div>
 
       <div className="pb-6" />
+
+      {/* FULL-PAGE reading: nothing but the Quran. Tap the middle to show
+          the info bars (surah, juz, pager, progress); edges still turn. */}
+      {immersive && (
+        <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
+          <div
+            {...swipe}
+            key={"full-" + data.page}
+            onClick={() => setBars((b) => !b)}
+            className="min-h-full max-w-2xl mx-auto px-3 py-4 animate-page select-none"
+          >
+            {pageInner}
+          </div>
+
+          {/* edge tap zones */}
+          <button
+            aria-hidden
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation();
+              turn(1);
+            }}
+            className="fixed inset-y-0 left-0 w-[16%] z-10"
+          />
+          <button
+            aria-hidden
+            tabIndex={-1}
+            onClick={(e) => {
+              e.stopPropagation();
+              turn(-1);
+            }}
+            className="fixed inset-y-0 right-0 w-[16%] z-10"
+          />
+
+          {bars && (
+            <div className="fixed top-0 inset-x-0 z-20 bg-background/95 backdrop-blur border-b border-border px-4 pt-3 pb-2.5 space-y-2 animate-rise">
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-bold text-primary truncate">
+                  {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
+                </span>
+                <span className="flex items-center gap-3 shrink-0 text-xs text-muted tabular-nums">
+                  <span>
+                    {t("setup.juz")} {digits(data.juz)}
+                  </span>
+                  <span>
+                    {t("quran.page")} {digits(data.page)} / {digits(604)}
+                  </span>
+                  <button
+                    onClick={exitImmersive}
+                    aria-label="close"
+                    className="w-8 h-8 grid place-items-center rounded-lg text-foreground hover:bg-surface-2"
+                  >
+                    <X size={17} />
+                  </button>
+                </span>
+              </div>
+              <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-secondary transition-all duration-300"
+                  style={{ width: `${progress * 100}%` }}
+                />
+              </div>
+              <div className="flex items-center justify-center gap-6 pt-0.5">
+                <button
+                  onClick={() => turn(-1)}
+                  disabled={data.page <= 1}
+                  aria-label="previous"
+                  className="w-9 h-9 grid place-items-center rounded-full border border-border text-muted disabled:opacity-30"
+                >
+                  <ChevronRight size={17} />
+                </button>
+                <button
+                  onClick={() => turn(1)}
+                  disabled={data.page >= 604}
+                  aria-label="next"
+                  className="w-9 h-9 grid place-items-center rounded-full border border-border text-muted disabled:opacity-30"
+                >
+                  <ChevronLeft size={17} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

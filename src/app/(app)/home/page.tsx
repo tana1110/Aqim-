@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import {
   BookOpen,
   BookOpenText,
@@ -12,12 +11,8 @@ import {
   Sparkles,
   Flame,
   ChevronLeft,
-  Compass,
-  ScrollText,
-  ListChecks,
-  History,
 } from "lucide-react";
-import { LogoLoader } from "@/components/Logo";
+import { Logo, LogoLoader } from "@/components/Logo";
 import { PageLoader } from "@/components/Brand";
 import { ContentCard } from "@/components/ContentCard";
 import { PassageCard } from "@/components/PassageCard";
@@ -34,10 +29,20 @@ import {
   loadReminderConfig,
   saveReminderConfig,
 } from "@/lib/reminder";
-import { focusPayload } from "@/lib/focus";
+import {
+  focusPayload,
+  loadFocus,
+  saveFocus,
+  type FocusConfig,
+} from "@/lib/focus";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, cleanAyah } from "@/lib/quranDisplay";
-import type { Mode, PassageContent, ResolvedPlan } from "@/lib/types";
+import type {
+  Mode,
+  PassageContent,
+  ResolvedPlan,
+  SurahMeta,
+} from "@/lib/types";
 
 // One row of everything the user can pray — tapping a chip sets both the
 // prayer and its mode. No "type" step.
@@ -116,6 +121,15 @@ export default function HomePage() {
         .then((d) => setDaily(d.ayah))
         .catch(() => {}),
     ]).finally(() => setBooted(true));
+  }, []);
+
+  // Signed-in name (optional) — warms up the greeting.
+  const [acctName, setAcctName] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setAcctName(d.account?.name ?? null))
+      .catch(() => {});
   }, []);
 
   // Hijri date for the greeting.
@@ -316,7 +330,20 @@ export default function HomePage() {
   return (
     <div className="pt-2 lg:grid lg:grid-cols-[minmax(340px,400px)_1fr] lg:gap-8 lg:items-start">
       {/* Controls column — fixed, deliberate order */}
-      <div className="space-y-6 lg:sticky lg:top-20">
+      <div className="space-y-5 lg:sticky lg:top-20">
+        {/* Greeting — like a native app's warm header */}
+        <div className="flex items-center gap-3 px-1">
+          <span className="w-11 h-11 rounded-full bg-surface shadow-sm grid place-items-center shrink-0">
+            <Logo variant="icon" size={26} />
+          </span>
+          <div className="min-w-0">
+            <div className="text-lg font-extrabold leading-tight truncate">
+              {t("home.greeting")}
+              {acctName ? (lang === "ar" ? `، ${acctName}` : `, ${acctName}`) : ""}
+            </div>
+            {hijri && <div className="text-xs text-muted">{hijri}</div>}
+          </div>
+        </div>
         {/* ONE hero: either get-started (new user) or the prayer card */}
         {status && !status.hasMemorization ? (
           <section className="rounded-[1.75rem] bg-accent-soft p-6 space-y-4">
@@ -344,15 +371,14 @@ export default function HomePage() {
             </Link>
           </section>
         ) : (
-          <section className="rounded-[1.75rem] bg-primary text-white p-6 space-y-4">
+          <section className="tile tile-blue p-6 space-y-4">
             {/* Next prayer — always the chronological truth */}
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <div className="text-[10px] font-bold text-white/60">
+                <div className="text-[11px] font-bold text-muted">
                   {t("home.nextPrayer")}
-                  {hijri ? ` · ${hijri}` : ""}
                 </div>
-                <div className="text-3xl font-bold leading-tight truncate">
+                <div className="text-3xl font-extrabold leading-tight truncate text-primary">
                   {nextKey
                     ? t(`prayer.${nextKey}`)
                     : prayer === "qiyam"
@@ -361,12 +387,12 @@ export default function HomePage() {
                 </div>
               </div>
               {countdown ? (
-                <div className="text-end shrink-0">
-                  <div className="text-[10px] text-white/60">
+                <div className="text-end shrink-0 rounded-2xl bg-surface px-3.5 py-2 shadow-sm">
+                  <div className="text-[10px] text-muted">
                     {t("home.remaining")}
                   </div>
                   <div
-                    className="text-xl font-bold tabular-nums tracking-wide"
+                    className="text-lg font-bold tabular-nums tracking-wide text-primary"
                     dir="ltr"
                   >
                     {countdown}
@@ -378,7 +404,7 @@ export default function HomePage() {
                   <button
                     onClick={enableLocation}
                     disabled={locBusy}
-                    className="shrink-0 flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-bold disabled:opacity-60"
+                    className="shrink-0 flex items-center gap-1.5 rounded-full bg-surface px-3 py-1.5 text-[11px] font-bold text-primary shadow-sm disabled:opacity-60"
                   >
                     <MapPin size={12} className={locBusy ? "animate-pulse" : ""} />
                     {t("home.locCta.btn")}
@@ -387,14 +413,14 @@ export default function HomePage() {
               )}
             </div>
 
-            {/* Which prayer to suggest for — always visible, clearly labeled */}
+            {/* Which prayer to suggest for — round chips, like a day picker */}
             <div>
-              <div className="text-[11px] font-bold text-white/60 mb-2">
+              <div className="text-[11px] font-bold text-muted mb-2">
                 {t("home.pickPrayer")}
               </div>
               <div
                 ref={chipsRef}
-                className="-mx-6 px-6 flex gap-2 overflow-x-auto no-scrollbar snap-x"
+                className="-mx-6 px-6 flex gap-2.5 overflow-x-auto no-scrollbar snap-x"
               >
                 {(showOther ? CHIPS : CHIPS.slice(0, 5)).map((c) => {
                   const on = prayer === c.key;
@@ -405,10 +431,11 @@ export default function HomePage() {
                         setPrayer(c.key);
                         setMode(c.mode);
                       }}
-                      className={`rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap snap-start shrink-0 active:scale-[0.97] transition ${
+                      data-on={on}
+                      className={`w-16 h-16 rounded-full grid place-items-center text-[13px] font-bold leading-tight text-center whitespace-normal snap-start shrink-0 active:scale-[0.95] transition shadow-sm ${
                         on
-                          ? "bg-white text-primary font-bold"
-                          : "bg-white/10 text-white/85"
+                          ? "bg-primary text-white scale-105"
+                          : "bg-surface text-foreground"
                       }`}
                     >
                       {c.key === "qiyam" ? t("mode.qiyam") : t(`prayer.${c.key}`)}
@@ -418,7 +445,7 @@ export default function HomePage() {
                 {!showOther && (
                   <button
                     onClick={() => setShowOther(true)}
-                    className="rounded-full px-4 py-2 text-sm font-bold whitespace-nowrap snap-start shrink-0 bg-white/10 text-white/85"
+                    className="w-16 h-16 rounded-full grid place-items-center text-[13px] font-bold snap-start shrink-0 bg-surface/60 text-muted shadow-sm"
                   >
                     {t("home.more")}
                   </button>
@@ -427,12 +454,12 @@ export default function HomePage() {
             </div>
 
             {showRakahInput && (
-              <div className="flex items-center justify-between rounded-xl border border-white/25 px-4 py-2.5">
-                <span className="text-sm text-white/80">{t("home.rakahs")}</span>
+              <div className="flex items-center justify-between rounded-2xl bg-surface px-4 py-2.5 shadow-sm">
+                <span className="text-sm text-muted">{t("home.rakahs")}</span>
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setRakahs(Math.max(1, rakahs - 1))}
-                    className="w-8 h-8 rounded-full border border-white/40 grid place-items-center text-lg active:scale-90 transition"
+                    className="w-8 h-8 rounded-full border border-border grid place-items-center text-lg active:scale-90 transition"
                     aria-label="-"
                   >
                     −
@@ -442,7 +469,7 @@ export default function HomePage() {
                   </span>
                   <button
                     onClick={() => setRakahs(Math.min(20, rakahs + 1))}
-                    className="w-8 h-8 rounded-full bg-white text-primary grid place-items-center text-lg active:scale-90 transition"
+                    className="w-8 h-8 rounded-full bg-primary text-white grid place-items-center text-lg active:scale-90 transition"
                     aria-label="+"
                   >
                     +
@@ -452,16 +479,16 @@ export default function HomePage() {
             )}
 
             {locError && (
-              <p className="text-[11px] text-white/75 bg-white/10 rounded-xl p-2.5 text-center">
+              <p className="text-[11px] text-muted bg-surface rounded-2xl p-2.5 text-center">
                 {t("home.locFailed")}
               </p>
             )}
 
             {/* Passage length — asked ONCE, then it lives in Settings only */}
             {!lenChosen && (
-              <div className="rounded-xl bg-white/10 p-3 space-y-2">
+              <div className="rounded-2xl bg-surface p-3 space-y-2 shadow-sm">
                 <div className="text-xs font-bold">{t("home.lenAsk")}</div>
-                <div className="flex items-center gap-1 rounded-full bg-white/10 p-1">
+                <div className="flex items-center gap-1 rounded-full bg-surface-2 p-1">
                   {(["short", "medium", "long"] as const).map((v) => (
                     <button
                       key={v}
@@ -471,13 +498,13 @@ export default function HomePage() {
                           localStorage.setItem("aqim-passage-len", v);
                         } catch {}
                       }}
-                      className="flex-1 rounded-full py-1.5 text-xs font-bold text-white/85 hover:bg-white hover:text-primary transition"
+                      className="flex-1 rounded-full py-1.5 text-xs font-bold text-muted hover:bg-primary hover:text-white transition"
                     >
                       {t(`len.${v}`)}
                     </button>
                   ))}
                 </div>
-                <div className="text-[10px] text-white/50">
+                <div className="text-[10px] text-muted">
                   {t("home.lenAskHint")}
                 </div>
               </div>
@@ -498,7 +525,7 @@ export default function HomePage() {
             </button>
 
             {error && (
-              <div className="text-sm text-white bg-white/10 text-center rounded-xl p-3">
+              <div className="text-sm text-foreground bg-surface text-center rounded-2xl p-3 shadow-sm">
                 {error}
               </div>
             )}
@@ -533,20 +560,17 @@ export default function HomePage() {
           </ContentCard>
         )}
 
-        {/* Today's tasks — wird + adhkar at a glance */}
+        {/* Today's tasks — bento tiles */}
         <TodayCard />
-
-        {/* Spaced review: the memorized surah longest missing from prayer */}
-        {status?.hasMemorization && <ReviewCard />}
-
-        {/* Pick up the Mushaf where the reader left off */}
-        <ContinueReading />
 
         {/* Quick misbaha — count right here, full page one tap away */}
         <MisbahaMini />
 
-        {/* Every section of the app, one tap away */}
-        <QuickGrid />
+        {/* Pick up the Mushaf where the reader left off */}
+        <ContinueReading />
+
+        {/* Review — the user picks what to review (drives Focus mode) */}
+        {status?.hasMemorization && <ReviewPicker />}
       </div>
 
       {/* Results column */}
@@ -564,9 +588,8 @@ export default function HomePage() {
 }
 
 
-// Today's tasks — the wird and the adhkar, each with its done state, so the
-// home page always shows what is left to do today. Full controls stay on
-// their own tabs.
+// Today's tasks — bento tiles: the wird (gold) and the daily adhkar cycle
+// (blue), each with its live state. Full controls stay on their own tabs.
 function TodayCard() {
   const { t } = useLang();
   const [state, setState] = useState<{
@@ -594,91 +617,72 @@ function TodayCard() {
   }, []);
 
   if (!state) return null;
-
-  const Row = ({
-    href,
-    done,
-    label,
-    trailing,
-    circle,
-  }: {
-    href: string;
-    done: boolean;
-    label: string;
-    trailing?: React.ReactNode;
-    circle?: React.ReactNode;
-  }) => (
-    <Link
-      href={href}
-      className="flex items-center justify-between gap-3 px-4 py-3 active:scale-[0.99] transition hover:bg-surface-2"
-    >
-      <span className="flex items-center gap-2.5 text-sm font-medium min-w-0">
-        {circle ?? (
-          <span
-            className={`w-6 h-6 rounded-full grid place-items-center shrink-0 ${
-              done
-                ? "bg-secondary text-white"
-                : "bg-surface-2 border border-border"
-            }`}
-          >
-            {done && <Check size={13} strokeWidth={3} />}
-          </span>
-        )}
-        <span className={`truncate ${done ? "text-muted line-through" : ""}`}>
-          {label}
-        </span>
-      </span>
-      <span className="flex items-center gap-2 shrink-0 text-xs text-muted">
-        {trailing}
-        <ChevronLeft size={15} className="rtl:block hidden" />
-      </span>
-    </Link>
-  );
+  const partsDone = state.adhkarParts.filter(Boolean).length;
 
   return (
-    <section className="card rounded-2xl overflow-hidden">
-      <div className="px-4 pt-3 pb-1 text-xs font-bold text-muted">
-        {t("home.todos")}
-      </div>
-      <div className="divide-y divide-border">
-        <Row
+    <section className="space-y-2.5">
+      <div className="section-title px-1">{t("home.todos")}</div>
+      <div className="grid grid-cols-2 gap-3">
+        {/* Wird tile */}
+        <Link
           href={state.wirdOn ? "/quran" : "/adhkar"}
-          done={state.wirdOn && state.wirdDone}
-          label={
-            !state.wirdOn
-              ? t("home.todo.setupWird")
-              : state.wirdDone
-                ? t("wird.doneToday")
-                : t("home.todo.wird")
-          }
-          trailing={
-            state.wirdOn && state.streak > 0 ? (
-              <span className="flex items-center gap-1 text-accent font-bold">
-                <Flame size={13} />
+          className="tile tile-gold p-4 min-h-36 flex flex-col justify-between active:scale-[0.98] transition"
+        >
+          <span className="flex items-center justify-between">
+            <span
+              className={`w-7 h-7 rounded-full grid place-items-center ${
+                state.wirdOn && state.wirdDone
+                  ? "bg-secondary text-white"
+                  : "bg-surface"
+              }`}
+            >
+              {state.wirdOn && state.wirdDone && (
+                <Check size={14} strokeWidth={3} />
+              )}
+            </span>
+            {state.wirdOn && state.streak > 0 && (
+              <span className="flex items-center gap-1 text-accent font-bold text-sm">
+                <Flame size={15} />
                 {state.streak}
               </span>
-            ) : undefined
-          }
-        />
-        <Row
+            )}
+          </span>
+          <span>
+            <span className="block text-[15px] font-extrabold leading-snug">
+              {!state.wirdOn
+                ? t("home.todo.setupWird")
+                : state.wirdDone
+                  ? t("wird.doneToday")
+                  : t("home.todo.wird")}
+            </span>
+          </span>
+        </Link>
+
+        {/* Adhkar tile — the 3-part daily cycle */}
+        <Link
           href="/adhkar"
-          done={state.adhkarDone}
-          label={
-            state.adhkarDone ? t("adhkar.doneToday") : t("home.todo.adhkar")
-          }
-          circle={
-            state.adhkarDone ? undefined : (
-              <CycleRing parts={state.adhkarParts} />
-            )
-          }
-          trailing={
-            !state.adhkarDone && state.adhkarParts.some(Boolean) ? (
-              <span className="tabular-nums">
-                {state.adhkarParts.filter(Boolean).length}/3
+          className="tile tile-blue p-4 min-h-36 flex flex-col justify-between active:scale-[0.98] transition"
+        >
+          <span className="flex items-center justify-between">
+            {state.adhkarDone ? (
+              <span className="w-7 h-7 rounded-full bg-secondary text-white grid place-items-center">
+                <Check size={14} strokeWidth={3} />
               </span>
-            ) : undefined
-          }
-        />
+            ) : (
+              <span className="w-7 h-7 grid place-items-center">
+                <CycleRing parts={state.adhkarParts} />
+              </span>
+            )}
+            {!state.adhkarDone && partsDone > 0 && (
+              <span className="text-sm font-bold text-primary tabular-nums">
+                {partsDone}/3
+              </span>
+            )}
+          </span>
+          <span className="block text-[15px] font-extrabold leading-snug">
+            {state.adhkarDone ? t("adhkar.doneToday") : t("home.todo.adhkar")}
+          </span>
+        </Link>
       </div>
     </section>
   );
@@ -737,7 +741,7 @@ function MisbahaMini() {
       : String(n);
 
   return (
-    <section className="card rounded-2xl p-4 flex items-center gap-4">
+    <section className="tile tile-teal p-4 flex items-center gap-4">
       <button
         onClick={() => {
           const { next, cycled } = tapTasbih(s);
@@ -747,7 +751,7 @@ function MisbahaMini() {
           } catch {}
         }}
         aria-label={t("tasbih.tap")}
-        className="w-20 h-20 rounded-full bg-primary text-white grid place-items-center shrink-0 active:scale-[0.93] transition select-none shadow-md"
+        className="w-20 h-20 rounded-full bg-secondary text-white grid place-items-center shrink-0 active:scale-[0.93] transition select-none shadow-md"
       >
         <span className="text-2xl font-bold tabular-nums">{digits(s.count)}</span>
       </button>
@@ -773,49 +777,121 @@ function MisbahaMini() {
   );
 }
 
-// Gentle spaced-review nudge: the memorized surah that has gone longest
-// without being recited in prayer. Opens directly in the Mushaf.
-function ReviewCard() {
+// Review — the USER decides what to review: pick a memorized surah and the
+// prayer suggestions lean into it (Focus mode) until turned off.
+function ReviewPicker() {
   const { t, lang } = useLang();
-  const router = useRouter();
-  const [sug, setSug] = useState<{
-    surahNumber: number;
-    nameArabic: string;
-    nameTranslit: string;
-    neverUsed: boolean;
-  } | null>(null);
+  const [cfg, setCfg] = useState<FocusConfig | null>(null);
+  const [choices, setChoices] = useState<
+    { n: number; name: string; lo: number; hi: number }[]
+  >([]);
+  const [sel, setSel] = useState<number | "">("");
 
   useEffect(() => {
-    fetch("/api/review-suggestion")
-      .then((r) => r.json())
-      .then((d) => setSug(d.suggestion))
+    setCfg(loadFocus());
+    Promise.all([
+      fetch("/api/memorization").then((r) => r.json()),
+      fetch("/api/surahs").then((r) => r.json()),
+    ])
+      .then(([m, s]) => {
+        const surahs: SurahMeta[] = s.surahs ?? [];
+        const by = new Map<number, { lo: number; hi: number }>();
+        for (const r of m.memorization ?? []) {
+          const cur = by.get(r.surahNumber);
+          if (!cur) by.set(r.surahNumber, { lo: r.fromAyah, hi: r.toAyah });
+          else {
+            cur.lo = Math.min(cur.lo, r.fromAyah);
+            cur.hi = Math.max(cur.hi, r.toAyah);
+          }
+        }
+        setChoices(
+          [...by.entries()]
+            .sort((a, b) => a[0] - b[0])
+            .map(([n, b]) => {
+              const meta = surahs.find((x) => x.number === n);
+              return {
+                n,
+                name: meta
+                  ? surahName(lang, meta.nameArabic, meta.nameTranslit)
+                  : String(n),
+                lo: b.lo,
+                hi: b.hi,
+              };
+            }),
+        );
+      })
       .catch(() => {});
-  }, []);
+  }, [lang]);
 
-  if (!sug) return null;
-  const name = surahName(lang, sug.nameArabic, sug.nameTranslit);
+  if (!cfg || choices.length === 0) return null;
+
+  function start() {
+    const c = choices.find((x) => x.n === sel);
+    if (!c) return;
+    const next = {
+      ...cfg!,
+      active: true,
+      surahNumber: c.n,
+      fromAyah: c.lo,
+      toAyah: c.hi,
+    };
+    setCfg(next);
+    saveFocus(next);
+  }
+  function stop() {
+    const next = { ...cfg!, active: false };
+    setCfg(next);
+    saveFocus(next);
+  }
 
   return (
-    <section className="card rounded-2xl p-4 space-y-2.5">
-      <div className="text-xs font-bold text-muted">
-        {t("home.review.title")}
-      </div>
-      <p className="text-sm leading-relaxed">
-        {t(sug.neverUsed ? "home.review.never" : "home.review.body", {
-          s: name,
-        })}
-      </p>
-      <button
-        onClick={() => {
-          try {
-            sessionStorage.setItem("aqim-jump-surah", String(sug.surahNumber));
-          } catch {}
-          router.push("/quran");
-        }}
-        className="btn-primary px-4 py-2 text-xs"
-      >
-        {t("home.review.open")}
-      </button>
+    <section className="card p-4 space-y-3">
+      <div className="section-title">{t("home.review.title")}</div>
+      {cfg.active && cfg.surahNumber ? (
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm min-w-0">
+            <span className="text-[11px] text-muted block">{t("review.now")}</span>
+            <b>
+              {choices.find((c) => c.n === cfg.surahNumber)?.name ??
+                cfg.surahNumber}
+            </b>
+            {cfg.fromAyah != null && cfg.toAyah != null && (
+              <span className="text-xs text-muted">
+                {" "}
+                ({cfg.fromAyah}–{cfg.toAyah})
+              </span>
+            )}
+          </span>
+          <button
+            onClick={stop}
+            className="shrink-0 rounded-full border border-border px-4 py-2 text-xs font-bold text-muted hover:text-foreground"
+          >
+            {t("focus.disable")}
+          </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <select
+            value={sel}
+            onChange={(e) => setSel(Number(e.target.value) || "")}
+            className="flex-1 min-w-0 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"
+          >
+            <option value="">{t("review.pick")}</option>
+            {choices.map((c) => (
+              <option key={c.n} value={c.n}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={start}
+            disabled={!sel}
+            className="btn-primary px-4 py-2.5 text-xs disabled:opacity-50 shrink-0"
+          >
+            {t("review.start")}
+          </button>
+        </div>
+      )}
     </section>
   );
 }
@@ -837,125 +913,60 @@ function ContinueReading() {
 
   if (!ready) return null;
 
-  if (!page) {
-    return (
-      <Link
-        href="/quran"
-        className="card rounded-2xl p-4 flex items-center gap-3 active:scale-[0.99] transition hover:border-accent/50"
-      >
-        <span className="w-10 h-10 rounded-xl bg-accent-soft text-accent grid place-items-center shrink-0">
-          <BookOpenText size={19} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-sm font-bold truncate">
-            {t("home.startReading")}
-          </span>
-          <span className="block text-[11px] text-muted mt-0.5">
-            {t("home.startReadingSub")}
-          </span>
-        </span>
-        <ChevronLeft size={16} className="text-muted rtl:block hidden shrink-0" />
-      </Link>
-    );
-  }
-
   const digits = (n: number) =>
     lang === "ar"
       ? String(n).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)])
       : String(n);
 
+  if (!page) {
+    return (
+      <Link
+        href="/quran"
+        className="tile tile-ink p-5 flex items-center gap-3 active:scale-[0.98] transition"
+      >
+        <span className="w-11 h-11 rounded-2xl bg-white/15 grid place-items-center shrink-0">
+          <BookOpenText size={20} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-extrabold truncate">
+            {t("home.startReading")}
+          </span>
+          <span className="block text-[11px] text-white/60 mt-0.5">
+            {t("home.startReadingSub")}
+          </span>
+        </span>
+        <ChevronLeft size={16} className="text-white/60 rtl:block hidden shrink-0" />
+      </Link>
+    );
+  }
+
   return (
     <Link
       href="/quran"
-      className="card rounded-2xl p-4 flex items-center gap-3 active:scale-[0.99] transition hover:border-accent/50"
+      className="tile tile-ink p-5 flex items-center gap-3 active:scale-[0.98] transition"
     >
-      <span className="w-10 h-10 rounded-xl bg-accent-soft text-accent grid place-items-center shrink-0">
-        <BookOpenText size={19} />
+      <span className="w-11 h-11 rounded-2xl bg-white/15 grid place-items-center shrink-0">
+        <BookOpenText size={20} />
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-sm font-bold truncate">
+        <span className="block text-[15px] font-extrabold truncate">
           {t("home.continueReading")}
         </span>
-        <span className="block text-[11px] text-muted mt-0.5">
+        <span className="block text-[11px] text-white/60 mt-0.5">
           {t("quran.page")} {digits(page)} / {digits(604)}
         </span>
-        <span className="block h-1 rounded-full bg-surface-2 overflow-hidden mt-1.5">
+        <span className="block h-1 rounded-full bg-white/20 overflow-hidden mt-1.5">
           <span
             className="block h-full rounded-full bg-accent"
             style={{ width: `${(page / 604) * 100}%` }}
           />
         </span>
       </span>
-      <ChevronLeft size={16} className="text-muted rtl:block hidden shrink-0" />
+      <ChevronLeft size={16} className="text-white/60 rtl:block hidden shrink-0" />
     </Link>
   );
 }
 
-// One tile per section — the whole app reachable from the home page.
-function QuickGrid() {
-  const { t } = useLang();
-  const tiles = [
-    {
-      href: "/quran",
-      icon: <BookOpenText size={18} />,
-      title: t("nav.quran"),
-      sub: t("home.quick.quran"),
-    },
-    {
-      href: "/adhkar",
-      icon: <ScrollText size={18} />,
-      title: t("nav.adhkar"),
-      sub: t("home.quick.adhkar"),
-    },
-    {
-      href: "/setup",
-      icon: <ListChecks size={18} />,
-      title: t("nav.setup"),
-      sub: t("home.quick.setup"),
-    },
-    {
-      href: "/history",
-      icon: <History size={18} />,
-      title: t("nav.history"),
-      sub: t("home.quick.history"),
-    },
-    {
-      href: "/qibla",
-      icon: <Compass size={18} />,
-      title: t("qibla.title"),
-      sub: t("home.quick.qibla"),
-      wide: true,
-    },
-  ];
-  return (
-    <section>
-      <div className="text-xs font-bold text-muted mb-2 px-1">
-        {t("home.quick")}
-      </div>
-      <div className="grid grid-cols-2 gap-2.5">
-        {tiles.map((tl) => (
-          <Link
-            key={tl.href}
-            href={tl.href}
-            className={`card rounded-2xl p-4 active:scale-[0.97] transition hover:border-primary/40 ${
-              tl.wide ? "col-span-2" : ""
-            }`}
-          >
-            <span className="w-9 h-9 rounded-xl bg-primary-soft text-primary grid place-items-center mb-2.5">
-              {tl.icon}
-            </span>
-            <span className="block text-sm font-bold leading-snug">
-              {tl.title}
-            </span>
-            <span className="block text-[11px] text-muted mt-0.5 leading-snug">
-              {tl.sub}
-            </span>
-          </Link>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 function Stepper({
   value,

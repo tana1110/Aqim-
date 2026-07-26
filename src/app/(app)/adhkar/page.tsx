@@ -113,9 +113,25 @@ function AdhkarInner() {
         part: "sleep" as AdhkarPart,
         ch: find("أذكار النوم") ?? find("اذكار النوم"),
       },
+      {
+        key: "adhkar.salah",
+        part: null,
+        ch: find("بعد السلام") ?? find("بعد الصلاة"),
+      },
     ];
   }, [chapters]);
   const [showAll, setShowAll] = useState(false);
+
+  // Push notifications deep-link here with ?goto=salah — resolve it to the
+  // real chapter once the list is loaded.
+  useEffect(() => {
+    if (searchParams.get("goto") !== "salah" || chapters.length === 0) return;
+    const ch =
+      chapters.find((c) => strip(c.title).includes("بعد السلام")) ??
+      chapters.find((c) => strip(c.title).includes("بعد الصلاة"));
+    if (ch) router.replace(`/adhkar?chapter=${ch.index}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chapters, searchParams]);
 
   if (!loaded) return <PageLoader />;
 
@@ -128,7 +144,14 @@ function AdhkarInner() {
         : st.includes("النوم")
           ? "sleep"
           : null;
-    return <ChapterView chapter={open} part={part} onBack={() => setOpen(null)} />;
+    return (
+      <ChapterView
+        chapter={open}
+        part={part}
+        isSalah={st.includes("بعد السلام") || st.includes("بعد الصلاة")}
+        onBack={() => setOpen(null)}
+      />
+    );
   }
 
   const q = query.trim();
@@ -160,34 +183,40 @@ function AdhkarInner() {
       {/* Daily wird — lives here with the daily remembrances */}
       <WirdStrip />
 
-      {/* Featured: the three daily ones — each fills a segment of the
-          daily cycle when finished */}
-      <div className="grid grid-cols-3 gap-2.5">
-        {featured.map(
-          (f) =>
-            f.ch && (
-              <button
-                key={f.key}
-                onClick={() => setOpen(f.ch)}
-                className={`card p-4 flex flex-col items-center justify-center gap-2 text-center hover:border-primary/40 active:scale-[0.97] transition min-h-24 ${
-                  parts[f.part] ? "border-secondary/50 bg-secondary-soft/40" : ""
-                }`}
-              >
+      {/* Featured: the three daily-cycle chapters + after-prayer adhkar */}
+      <div className="grid grid-cols-2 gap-3">
+        {featured.map((f) => {
+          if (!f.ch) return null;
+          const done = f.part ? parts[f.part] : false;
+          return (
+            <button
+              key={f.key}
+              onClick={() => setOpen(f.ch)}
+              className={`tile p-4 flex flex-col items-start justify-between gap-3 text-start active:scale-[0.97] transition min-h-28 ${
+                done
+                  ? "bg-secondary-soft"
+                  : f.key === "adhkar.salah"
+                    ? "tile-gold"
+                    : "tile-blue"
+              }`}
+            >
+              {f.part ? (
                 <span
                   className={`w-6 h-6 rounded-full grid place-items-center ${
-                    parts[f.part]
-                      ? "bg-secondary text-white"
-                      : "bg-surface-2 border border-border"
+                    done ? "bg-secondary text-white" : "bg-surface"
                   }`}
                 >
-                  {parts[f.part] && <Check size={13} strokeWidth={3} />}
+                  {done && <Check size={13} strokeWidth={3} />}
                 </span>
-                <span className="text-[15px] font-bold leading-tight">
-                  {t(f.key)}
-                </span>
-              </button>
-            ),
-        )}
+              ) : (
+                <span className="w-6 h-6 rounded-full bg-surface" />
+              )}
+              <span className="text-[15px] font-extrabold leading-tight">
+                {t(f.key)}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Everything else appears only on search or on demand */}
@@ -256,10 +285,12 @@ function AdhkarInner() {
 function ChapterView({
   chapter,
   part,
+  isSalah = false,
   onBack,
 }: {
   chapter: Chapter;
   part: AdhkarPart | null;
+  isSalah?: boolean;
   onBack: () => void;
 }) {
   const { t } = useLang();
@@ -276,8 +307,10 @@ function ChapterView({
     } catch {}
   }, [chapter.index]);
 
-  // Completing every dhikr of a morning/evening/sleep chapter fills its
-  // segment of the daily cycle; the third segment completes the day.
+  // Completing 10 dhikr cards of a morning/evening/sleep chapter (or all of
+  // them if it has fewer) fills its segment of the daily cycle; the third
+  // segment completes the day. Doing more is welcome — 10 is what counts.
+  const ENOUGH = 10;
   function onCardComplete() {
     if (showTapHint) {
       setShowTapHint(false);
@@ -286,7 +319,8 @@ function ChapterView({
       } catch {}
     }
     if (!part || !items || adhkarPartsToday()[part]) return;
-    if (items.every((it) => loadTaps(it.id) >= it.count)) {
+    const doneCards = items.filter((it) => loadTaps(it.id) >= it.count).length;
+    if (doneCards >= Math.min(ENOUGH, items.length)) {
       const wholeDay = markAdhkarPart(part);
       setToast(
         wholeDay
@@ -310,6 +344,17 @@ function ChapterView({
           {t("adhkar.back")}
         </button>
       </div>
+
+      {/* After-prayer adhkar pair naturally with the misbaha */}
+      {isSalah && (
+        <a
+          href="/tasbih"
+          className="tile tile-teal p-4 flex items-center justify-between gap-3 active:scale-[0.98] transition"
+        >
+          <span className="text-sm font-extrabold">{t("tasbih.title")}</span>
+          <span className="text-xs text-muted">{t("adhkar.openTasbih")}</span>
+        </a>
+      )}
 
       {showTapHint && (
         <p className="text-[11px] text-muted bg-surface-2 rounded-xl p-2.5 text-center">
@@ -348,6 +393,7 @@ function DhikrCard({
 }) {
   const { t } = useLang();
   const [taps, setTaps] = useState(0);
+  const [refOpen, setRefOpen] = useState(false);
   useEffect(() => {
     setTaps(loadTaps(d.id));
   }, [d.id]);
@@ -380,9 +426,33 @@ function DhikrCard({
         {d.text}
       </p>
 
+      {/* Reference / reward — tap to read it in full (no more "…") */}
+      {refOpen && d.reference && (
+        <p
+          className="text-xs text-muted leading-relaxed mt-3 bg-surface-2 rounded-xl p-3"
+          dir="rtl"
+          onClick={(e) => {
+            e.stopPropagation();
+            setRefOpen(false);
+          }}
+        >
+          {d.reference}
+        </p>
+      )}
+
       <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-border">
-        <span className="text-[11px] text-muted truncate">
-          {d.reference ?? ""}
+        <span
+          role={d.reference && !refOpen ? "button" : undefined}
+          onClick={(e) => {
+            if (!d.reference) return;
+            e.stopPropagation();
+            setRefOpen(!refOpen);
+          }}
+          className={`text-[11px] text-muted truncate ${
+            d.reference && !refOpen ? "underline decoration-dotted" : ""
+          }`}
+        >
+          {refOpen ? "" : (d.reference ?? "")}
         </span>
         <span className="flex items-center gap-2 shrink-0">
           {d.count > 1 && (

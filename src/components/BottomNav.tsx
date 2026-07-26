@@ -6,6 +6,8 @@ import {
   Home,
   BookOpenText,
   BookOpen,
+  CircleDot,
+  Compass,
   Heart,
   BarChart3,
   Settings,
@@ -23,15 +25,18 @@ export const TABS = [
   { href: "/settings", key: "nav.settings", Icon: Settings },
 ];
 
-// Mobile: fixed bottom tab bar — the app's 5 main sections always one tap
-// away (Settings stays in the drawer/header). Labels always visible.
+// Mobile: floating pill nav (bento redesign) — dark rounded bar, the active
+// section pops as a light circle. 5 main sections; Settings in the drawer.
 export function BottomTabs() {
   const pathname = usePathname();
   const { t } = useLang();
   const tabs = TABS.filter((x) => x.href !== "/settings");
   return (
-    <nav className="md:hidden fixed inset-x-0 bottom-0 z-30 bg-surface border-t border-border pb-[env(safe-area-inset-bottom)]">
-      <div className="flex">
+    <nav
+      className="md:hidden fixed bottom-3 inset-x-3 z-30"
+      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+    >
+      <div className="mx-auto max-w-md flex items-center justify-between rounded-full bg-primary shadow-lg px-3 py-2">
         {tabs.map(({ href, key, Icon }) => {
           const active = pathname === href;
           const label = key === "nav.adhkar" ? "nav.adhkar.tab" : key;
@@ -40,21 +45,64 @@ export function BottomTabs() {
               key={href}
               href={href}
               aria-current={active ? "page" : undefined}
-              className={`flex-1 flex flex-col items-center gap-0.5 pt-2 pb-1.5 min-h-12 transition-colors ${
-                active ? "text-primary" : "text-muted"
+              aria-label={t(label)}
+              className={`flex flex-col items-center justify-center transition-all ${
+                active
+                  ? "bg-background text-primary rounded-full w-14 h-14 -my-3 shadow-md"
+                  : "text-white/75 w-12 h-11"
               }`}
             >
-              <Icon size={20} strokeWidth={active ? 2.4 : 2} />
-              <span
-                className={`text-[10px] leading-tight ${active ? "font-bold" : ""}`}
-              >
-                {t(label)}
-              </span>
+              <Icon size={21} strokeWidth={active ? 2.4 : 2} />
+              {!active && (
+                <span className="text-[9px] leading-tight mt-0.5">
+                  {t(label)}
+                </span>
+              )}
             </Link>
           );
         })}
       </div>
     </nav>
+  );
+}
+
+// Desktop: side navigation — every section of the app listed down the
+// start side, like a classic dashboard site.
+export function SideNav() {
+  const pathname = usePathname();
+  const { t } = useLang();
+  const sections = [
+    ...TABS,
+    { href: "/tasbih", key: "tasbih.title", Icon: CircleDot },
+    { href: "/qibla", key: "qibla.title", Icon: Compass },
+  ];
+  // Settings last
+  sections.sort((a, b) =>
+    a.href === "/settings" ? 1 : b.href === "/settings" ? -1 : 0,
+  );
+  return (
+    <aside className="hidden md:block w-56 shrink-0">
+      <nav className="sticky top-20 space-y-1">
+        {sections.map(({ href, key, Icon }) => {
+          const active = pathname === href;
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-bold transition-colors ${
+                active
+                  ? "bg-primary text-white shadow-md"
+                  : "text-muted hover:text-foreground hover:bg-surface-2"
+              }`}
+            >
+              <Icon size={18} strokeWidth={active ? 2.4 : 2} />
+              {t(key)}
+            </Link>
+          );
+        })}
+      </nav>
+    </aside>
   );
 }
 

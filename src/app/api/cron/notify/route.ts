@@ -92,6 +92,16 @@ export async function POST(request: Request) {
               url: "/home",
             });
           }
+          // ~25 minutes after the adhan: after-prayer adhkar + tasbih.
+          // Tapping the notification opens that exact section.
+          if (sub.adhkar && due(now, time.getTime() + 25 * 60_000)) {
+            queue.push({
+              key: `${day}:aftersalah-${key}`,
+              title: translate(l, "adhkar.salah"),
+              body: translate(l, "adhkar.salahNotifBody"),
+              url: "/adhkar?goto=salah",
+            });
+          }
         }
       }
     }

@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpenText } from "lucide-react";
+import { BookOpenText, UserRound } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { BrandOverlay } from "@/components/Brand";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -104,6 +104,15 @@ export function Welcome() {
       ),
       title: t("welcome.s4.title"),
       body: t("welcome.s4.body"),
+    },
+    {
+      art: (
+        <div className="w-24 h-24 rounded-3xl bg-primary-soft grid place-items-center">
+          <UserRound size={44} className="text-primary" />
+        </div>
+      ),
+      title: t("welcome.s5.title"),
+      body: t("welcome.s5.body"),
     },
   ];
   const last = step === slides.length - 1;

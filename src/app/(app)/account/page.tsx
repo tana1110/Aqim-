@@ -30,6 +30,7 @@ export default function AccountPage() {
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const googleRef = useRef<HTMLDivElement>(null);
@@ -98,7 +99,7 @@ export default function AccountPage() {
       const r = await fetch(`/api/auth/${tab === "login" ? "login" : "signup"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, name }),
       });
       const d = await r.json();
       if (!r.ok) {
@@ -180,6 +181,18 @@ export default function AccountPage() {
           </div>
 
           <form onSubmit={submit} className="space-y-3">
+            {tab === "signup" && (
+              <label className="block text-xs font-medium text-muted space-y-1.5">
+                <span>{t("account.name")}</span>
+                <input
+                  type="text"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
+                />
+              </label>
+            )}
             <label className="block text-xs font-medium text-muted space-y-1.5">
               <span>{t("account.email")}</span>
               <input

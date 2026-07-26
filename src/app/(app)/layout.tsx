@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Menu } from "lucide-react";
-import { BottomTabs, NavDrawer, TopNav } from "@/components/BottomNav";
+import { BottomTabs, NavDrawer, SideNav } from "@/components/BottomNav";
 import { Logo } from "@/components/Logo";
 import { SplashScreen } from "@/components/SplashScreen";
 import { Welcome } from "@/components/Welcome";
@@ -43,15 +43,15 @@ export default function AppLayout({
             </Link>
           </div>
 
-          <TopNav />
-
           {/* Language switching lives in Settings only (user's preference). */}
           <span className="w-10" aria-hidden />
         </div>
       </header>
 
-      <main className="flex-1 w-full mx-auto max-w-6xl px-4 md:px-8 pb-24 md:pb-12 pt-2">
-        {children}
+      {/* Desktop: side navigation (all sections); mobile: floating pill nav */}
+      <main className="flex-1 w-full mx-auto max-w-6xl px-4 md:px-8 pb-28 md:pb-12 pt-2 md:flex md:gap-8 md:items-start">
+        <SideNav />
+        <div className="flex-1 min-w-0">{children}</div>
       </main>
 
       <BottomTabs />

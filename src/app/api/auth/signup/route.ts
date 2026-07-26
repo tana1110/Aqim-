@@ -6,9 +6,14 @@ import { createSession, validEmail } from "@/lib/auth";
 // Create an email/password account. If the current device user is still
 // anonymous, it is UPGRADED in place — all existing data stays attached.
 export async function POST(request: Request) {
-  const body = (await request.json()) as { email?: string; password?: string };
+  const body = (await request.json()) as {
+    email?: string;
+    password?: string;
+    name?: string;
+  };
   const email = (body.email ?? "").trim().toLowerCase();
   const password = body.password ?? "";
+  const name = (body.name ?? "").trim().slice(0, 60);
 
   if (!validEmail(email)) {
     return Response.json({ error: "bad_email" }, { status: 400 });
@@ -28,13 +33,13 @@ export async function POST(request: Request) {
   if (!device.email && !device.googleSub) {
     user = await prisma.user.update({
       where: { id: device.id },
-      data: { email, passwordHash },
+      data: { email, passwordHash, ...(name ? { name } : {}) },
     });
   } else {
     user = await prisma.user.create({
       data: {
         uid: `acct-${crypto.randomUUID()}`,
-        name: "You",
+        name: name || "You",
         email,
         passwordHash,
         settings: { create: {} },
