@@ -27,7 +27,7 @@ const ar: Dict = {
   "common.startNow": "ابدأ الآن",
 
   // db not ready
-  "db.notReady.title": "قاعدة البيانات غير مهيأة",
+  "db.notReady.title": "التطبيق غير جاهز بعد",
   "db.notReady.body": "شغّل الإعداد لمرة واحدة:",
 
   // home
@@ -39,7 +39,7 @@ const ar: Dict = {
   "home.type": "النوع",
   "home.prayer": "الصلاة",
   "home.rakahs": "عدد الركعات",
-  "home.error": "تعذّر جلب الاقتراح. تأكد من تشغيل قاعدة البيانات.",
+  "home.error": "تعذّر جلب الاقتراح — أعد المحاولة.",
   "home.emptyState": "اختر الصلاة واضغط «أقِم» ليظهر الاقتراح هنا.",
   "home.dailyAyah": "آية اليوم",
   "home.nextPrayer": "صلاتك القادمة",
@@ -116,7 +116,7 @@ const ar: Dict = {
   "setup.noneSelected": "لم تختر بعد",
   "setup.savedTitle": "تم حفظ محفوظاتك",
   "setup.goHome": "الانتقال إلى الرئيسية",
-  "setup.notSeeded": "قاعدة البيانات غير مهيأة بعد.",
+  "setup.notSeeded": "تعذّر تحميل قائمة السور — أعد المحاولة لاحقًا.",
 
   // settings
   "settings.title": "الإعدادات",
@@ -245,6 +245,9 @@ const ar: Dict = {
   "home.quick": "أقسام التطبيق",
   "home.continueReading": "تابع قراءة القرآن",
   "home.ctaHint": "يقترح لك آيات من محفوظاتك لهذه الصلاة",
+  "home.lenAsk": "ما طول الآيات الذي تفضّله في صلاتك؟",
+  "home.lenAskHint": "يمكنك تغييره لاحقًا من الإعدادات",
+  "reminder.autoLocated": "تم تحديد موقعك",
   "setup.partialKept": "لديك {n} مقاطع محفوظة جزئيًا — تبقى كما هي عند الحفظ",
   "home.undo": "تراجع",
   "home.pickPrayer": "لأي صلاة تقرأ الآن؟",
@@ -373,7 +376,7 @@ const en: Dict = {
   "common.source": "Source",
   "common.startNow": "Start now",
 
-  "db.notReady.title": "Database not set up",
+  "db.notReady.title": "The app isn't ready yet",
   "db.notReady.body": "Run the one-time setup:",
 
   "home.greeting": "Peace be upon you",
@@ -384,7 +387,7 @@ const en: Dict = {
   "home.type": "Type",
   "home.prayer": "Prayer",
   "home.rakahs": "Rak'ahs",
-  "home.error": "Couldn't fetch a suggestion. Check the database connection.",
+  "home.error": "Couldn't fetch a suggestion — try again.",
   "home.emptyState": "Pick a prayer and tap Aqim to see the suggestion here.",
   "home.dailyAyah": "Ayah of the day",
   "home.nextPrayer": "Your next prayer",
@@ -457,7 +460,7 @@ const en: Dict = {
   "setup.noneSelected": "None selected yet",
   "setup.savedTitle": "Your memorization is saved",
   "setup.goHome": "Go to home",
-  "setup.notSeeded": "The database isn't set up yet.",
+  "setup.notSeeded": "Couldn't load the surah list — try again later.",
 
   "settings.title": "Settings",
   "settings.language": "Language",
@@ -577,6 +580,9 @@ const en: Dict = {
   "home.quick": "App sections",
   "home.continueReading": "Continue reading the Quran",
   "home.ctaHint": "Suggests ayat from what you've memorized for this prayer",
+  "home.lenAsk": "How long do you prefer your prayer passages?",
+  "home.lenAskHint": "You can change this later in Settings",
+  "reminder.autoLocated": "Your location is set",
   "setup.partialKept": "You have {n} partially memorized passages — they stay as they are when you save",
   "home.undo": "Undo",
   "home.pickPrayer": "Which prayer are you reciting for?",

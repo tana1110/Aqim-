@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Bell, MapPin, Info } from "lucide-react";
+import { Bell, MapPin } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageLoader } from "@/components/Brand";
@@ -127,10 +127,11 @@ export default function SettingsPage() {
       ? CITIES.find((c) => c.key === k)?.ar
       : CITIES.find((c) => c.key === k)?.en;
 
+  // Never show raw coordinates — a city name or a friendly confirmation.
   const locationText = cfg.locationLabel
     ? cityLabel(cfg.locationLabel)
     : cfg.lat != null
-      ? `${cfg.lat}, ${cfg.lng}`
+      ? t("reminder.autoLocated")
       : null;
 
   return (
@@ -228,10 +229,6 @@ export default function SettingsPage() {
             </button>
           </div>
 
-          <p className="text-xs text-muted leading-relaxed">
-            {t("reminder.explain")}
-          </p>
-
           {prePrompt && (
             <div className="rounded-xl bg-primary-soft p-3.5 space-y-2.5">
               <p className="text-xs leading-relaxed">{t("reminder.prePrompt")}</p>
@@ -307,10 +304,6 @@ export default function SettingsPage() {
                 />
               )}
 
-              <p className="text-[11px] text-muted flex items-start gap-1.5">
-                <Info size={12} className="mt-0.5 shrink-0" />
-                {t("reminder.reliability")}
-              </p>
             </>
           )}
 

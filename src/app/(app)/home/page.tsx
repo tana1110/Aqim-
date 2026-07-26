@@ -86,10 +86,11 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [daily, setDaily] = useState<DailyAyah | null>(null);
-  const [lenPref, setLenPref] = useState<string>("medium");
+  // Passage length is asked once; afterwards it's a Settings-only control.
+  const [lenChosen, setLenChosen] = useState(true);
   useEffect(() => {
     try {
-      setLenPref(localStorage.getItem("aqim-passage-len") || "medium");
+      setLenChosen(!!localStorage.getItem("aqim-passage-len"));
     } catch {}
   }, []);
 
@@ -284,15 +285,12 @@ export default function HomePage() {
     return (
       <div className="card p-6 text-center mt-6">
         <h1 className="text-lg font-bold mb-2">{t("db.notReady.title")}</h1>
-        <p className="text-sm text-muted leading-relaxed">
-          {t("db.notReady.body")}
-        </p>
-        <pre
-          className="mt-3 text-left text-xs bg-surface-2 rounded-2xl p-3 overflow-x-auto"
-          dir="ltr"
+        <button
+          onClick={() => window.location.reload()}
+          className="btn-primary px-6 py-2 text-sm mt-2"
         >
-          npm run db:start{"\n"}npm run db:seed
-        </pre>
+          {t("common.retry")}
+        </button>
       </div>
     );
   }
@@ -446,27 +444,31 @@ export default function HomePage() {
               </p>
             )}
 
-            {/* Passage length — the same setting as in Settings, surfaced
-                where it matters most */}
-            <div className="flex items-center justify-center gap-1 rounded-full bg-white/10 p-1">
-              {(["short", "medium", "long"] as const).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => {
-                    setLenPref(v);
-                    try {
-                      localStorage.setItem("aqim-passage-len", v);
-                    } catch {}
-                  }}
-                  aria-pressed={lenPref === v}
-                  className={`flex-1 rounded-full py-1.5 text-xs font-bold transition ${
-                    lenPref === v ? "bg-white text-primary" : "text-white/70"
-                  }`}
-                >
-                  {t(`len.${v}`)}
-                </button>
-              ))}
-            </div>
+            {/* Passage length — asked ONCE, then it lives in Settings only */}
+            {!lenChosen && (
+              <div className="rounded-xl bg-white/10 p-3 space-y-2">
+                <div className="text-xs font-bold">{t("home.lenAsk")}</div>
+                <div className="flex items-center gap-1 rounded-full bg-white/10 p-1">
+                  {(["short", "medium", "long"] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => {
+                        setLenChosen(true);
+                        try {
+                          localStorage.setItem("aqim-passage-len", v);
+                        } catch {}
+                      }}
+                      className="flex-1 rounded-full py-1.5 text-xs font-bold text-white/85 hover:bg-white hover:text-primary transition"
+                    >
+                      {t(`len.${v}`)}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[10px] text-white/50">
+                  {t("home.lenAskHint")}
+                </div>
+              </div>
+            )}
 
             <button
               onClick={aqim}
@@ -481,9 +483,6 @@ export default function HomePage() {
                 </span>
               )}
             </button>
-            <p className="text-[11px] text-white/60 text-center -mt-1">
-              {t("home.ctaHint")}
-            </p>
 
             {error && (
               <div className="text-sm text-white bg-white/10 text-center rounded-xl p-3">
