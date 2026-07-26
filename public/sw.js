@@ -21,10 +21,28 @@ self.addEventListener("fetch", (event) => {
 
   if (!isMushaf && !isAudio) return;
 
+  if (isAudio) {
+    // The audio CDN sends no CORS headers — NEVER force a cors fetch here
+    // (it fails and playback dies). Pass the media element's own request
+    // through untouched; cache full (non-range) responses opportunistically.
+    event.respondWith(
+      caches.open(AUDIO_CACHE).then(async (cache) => {
+        const hit = await cache.match(url.href, { ignoreVary: true });
+        if (hit) return hit;
+        const res = await fetch(event.request);
+        if (!event.request.headers.has("range")) {
+          try {
+            await cache.put(url.href, res.clone());
+          } catch {}
+        }
+        return res;
+      }),
+    );
+    return;
+  }
+
   event.respondWith(
-    caches.open(isAudio ? AUDIO_CACHE : MUSHAF_CACHE).then(async (cache) => {
-      // Match/fetch by URL (ignoring range headers) so partial audio
-      // requests still hit the cached full file.
+    caches.open(MUSHAF_CACHE).then(async (cache) => {
       const hit = await cache.match(url.href, { ignoreVary: true });
       if (hit) return hit;
       const res = await fetch(url.href);

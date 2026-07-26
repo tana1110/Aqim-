@@ -77,8 +77,9 @@ export async function downloadSurahAudio(
       batch.push(
         cache.match(url).then(async (hit) => {
           if (!hit) {
-            const res = await fetch(url);
-            if (res.ok) await cache.put(url, res);
+            // The CDN has no CORS headers — no-cors (opaque) is required.
+            const res = await fetch(url, { mode: "no-cors" });
+            await cache.put(url, res);
           }
           done++;
           onProgress?.(done, meta.ayahCount);

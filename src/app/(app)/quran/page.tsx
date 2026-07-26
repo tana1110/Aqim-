@@ -334,6 +334,68 @@ export default function QuranPage() {
 
   const digits = (n: number) => (lang === "ar" ? toArabicDigits(n) : String(n));
 
+  // The page's text content. bare = full-page mode: NOTHING but the Quran —
+  // no ornament boxes, no borders.
+  const renderGroups = (bare: boolean) =>
+    groups.map((g) => {
+      const startsAtOne = g.ayahs[0].ayahNumber === 1;
+      const bism = getBismillahDisplay(
+        g.surah.number,
+        g.ayahs[0].ayahNumber,
+        g.ayahs[0].text,
+      );
+      const renderAyahs = (bism.skipFirstAyah ? g.ayahs.slice(1) : g.ayahs).map(
+        (a, idx) => ({
+          n: a.ayahNumber,
+          text:
+            !bism.skipFirstAyah && idx === 0 && bism.firstAyahText != null
+              ? bism.firstAyahText
+              : cleanAyah(a.text),
+        }),
+      );
+      return (
+        <div key={g.surah.number}>
+          {startsAtOne &&
+            (bare ? (
+              <p className="font-quran text-xl text-primary text-center my-3">
+                {g.surah.nameArabic}
+              </p>
+            ) : (
+              <div className="my-3 rounded-lg border-y-2 border-x border-accent/50 bg-accent-soft/40 py-2.5 text-center">
+                <span className="font-quran text-xl text-primary">
+                  {g.surah.nameArabic}
+                </span>
+              </div>
+            ))}
+          {bism.line && (
+            <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
+              {bism.line}
+              {bism.lineIsAyahOne && (
+                <span className="ayah-mark">{"۝" + toArabicDigits(1)}</span>
+              )}
+            </p>
+          )}
+          <p className="quran-text !text-justify !leading-[2.3]" dir="rtl">
+            {renderAyahs.map((a) => (
+              <span
+                key={a.n}
+                className={
+                  playing?.s === g.surah.number && playing?.a === a.n
+                    ? "bg-accent-soft rounded-sm"
+                    : undefined
+                }
+              >
+                {a.text}
+                <span className="ayah-mark text-accent">
+                  {"۝" + toArabicDigits(a.n)}
+                </span>{" "}
+              </span>
+            ))}
+          </p>
+        </div>
+      );
+    });
+
   // The framed Mushaf page — shared by the normal view and full-page mode.
   const pageInner = (
     <div className="rounded-lg border-2 border-accent/60 bg-surface p-1.5 shadow-sm">
@@ -348,59 +410,7 @@ export default function QuranPage() {
           </span>
         </div>
 
-        {groups.map((g) => {
-          const startsAtOne = g.ayahs[0].ayahNumber === 1;
-          const bism = getBismillahDisplay(
-            g.surah.number,
-            g.ayahs[0].ayahNumber,
-            g.ayahs[0].text,
-          );
-          const renderAyahs = (
-            bism.skipFirstAyah ? g.ayahs.slice(1) : g.ayahs
-          ).map((a, idx) => ({
-            n: a.ayahNumber,
-            text:
-              !bism.skipFirstAyah && idx === 0 && bism.firstAyahText != null
-                ? bism.firstAyahText
-                : cleanAyah(a.text),
-          }));
-          return (
-            <div key={g.surah.number}>
-              {startsAtOne && (
-                <div className="my-3 rounded-lg border-y-2 border-x border-accent/50 bg-accent-soft/40 py-2.5 text-center">
-                  <span className="font-quran text-xl text-primary">
-                    {g.surah.nameArabic}
-                  </span>
-                </div>
-              )}
-              {bism.line && (
-                <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
-                  {bism.line}
-                  {bism.lineIsAyahOne && (
-                    <span className="ayah-mark">{"۝" + toArabicDigits(1)}</span>
-                  )}
-                </p>
-              )}
-              <p className="quran-text !text-justify !leading-[2.3]" dir="rtl">
-                {renderAyahs.map((a) => (
-                  <span
-                    key={a.n}
-                    className={
-                      playing?.s === g.surah.number && playing?.a === a.n
-                        ? "bg-accent-soft rounded-sm"
-                        : undefined
-                    }
-                  >
-                    {a.text}
-                    <span className="ayah-mark text-accent">
-                      {"۝" + toArabicDigits(a.n)}
-                    </span>{" "}
-                  </span>
-                ))}
-              </p>
-            </div>
-          );
-        })}
+        {renderGroups(false)}
 
         {/* page number, centered like a printed Mushaf */}
         <div className="text-center mt-4 pt-2 border-t border-accent/25 text-sm text-muted tabular-nums">
@@ -585,13 +595,14 @@ export default function QuranPage() {
           the info bars (surah, juz, pager, progress); edges still turn. */}
       {immersive && (
         <div className="fixed inset-0 z-50 bg-background overflow-y-auto">
+          {/* COMPLETELY bare: only the Quran text on the page background */}
           <div
             {...swipe}
             key={"full-" + data.page}
             onClick={() => setBars((b) => !b)}
-            className="min-h-full max-w-2xl mx-auto px-3 py-4 animate-page select-none"
+            className="min-h-full max-w-2xl mx-auto px-5 py-8 animate-page select-none"
           >
-            {pageInner}
+            {renderGroups(true)}
           </div>
 
           {/* edge tap zones */}
