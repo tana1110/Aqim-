@@ -1,0 +1,19 @@
+name: Send reminder notifications
+
+# Web-push reminders (prayer times, wird, adhkar) are computed and sent by
+# the app's /api/cron/notify endpoint. GitHub's scheduler pings it every
+# 5 minutes (delivery can drift a few minutes — the endpoint dedupes).
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping notify endpoint
+        run: |
+          curl -fsS -X POST "https://aqim-eight.vercel.app/api/cron/notify" \
+            -H "x-cron-key: ${{ secrets.CRON_KEY }}" \
+            -m 60

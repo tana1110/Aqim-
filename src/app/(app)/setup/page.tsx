@@ -290,7 +290,7 @@ export default function SetupPage() {
       {/* Save bar — appears AT THE TOP the moment anything is selected and
           stays stuck under the header while scrolling. In normal flow, so it
           never covers the last rows of the list. */}
-      {(isDirty || selectedCount > 0) && (
+      {!savedToast && (isDirty || selectedCount > 0) && (
         <div className="sticky top-[64px] z-10 animate-rise">
           <div className="card flex items-center justify-between gap-3 p-2.5 ps-4 shadow-lg">
             <span className="text-sm font-medium">
@@ -333,9 +333,10 @@ export default function SetupPage() {
           {t("setup.quick")}:
         </span>
         <button
-          onClick={() =>
-            setSelectedJuz((prev) => new Set(prev).add(30))
-          }
+          onClick={() => {
+            // Same path as tapping the juz tile — also checks its surahs.
+            if (!selectedJuz.has(30)) toggleJuz(30);
+          }}
           className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-bold hover:border-primary/40 active:scale-[0.97] transition"
         >
           {t("setup.quick.juzAmma")}

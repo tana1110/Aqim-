@@ -26,8 +26,11 @@ function yesterdayKey(): string {
   return localDayKey(d);
 }
 function groupByDay(rows: HistoryRow[]): { key: string; rows: HistoryRow[] }[] {
+  const sorted = [...rows].sort(
+    (a, b) => new Date(b.usedAt).getTime() - new Date(a.usedAt).getTime(),
+  );
   const groups: { key: string; rows: HistoryRow[] }[] = [];
-  for (const r of rows) {
+  for (const r of sorted) {
     const key = localDayKey(new Date(r.usedAt));
     const last = groups[groups.length - 1];
     if (last && last.key === key) last.rows.push(r);

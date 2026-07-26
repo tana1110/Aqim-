@@ -9,8 +9,8 @@ import { SplashScreen } from "@/components/SplashScreen";
 import { Welcome } from "@/components/Welcome";
 import { ReminderScheduler } from "@/components/ReminderScheduler";
 
-// App shell: header with hamburger → side drawer on mobile, inline tabs on
-// desktop. No bottom bar.
+// App shell: bottom tab bar + hamburger drawer on mobile, inline header
+// tabs on desktop.
 export default function AppLayout({
   children,
 }: {

@@ -8,6 +8,21 @@ const TWO_YEARS = 60 * 60 * 24 * 730;
 // src/proxy.ts on first visit), creating their row + default settings on first
 // use. Each device/browser therefore gets its own dashboard.
 export async function getCurrentUser() {
+  // A signed-in session (optional) takes precedence over the device uid,
+  // so the same account sees the same data on every device.
+  try {
+    const { getSessionUser } = await import("@/lib/auth");
+    const sessionUser = await getSessionUser();
+    if (sessionUser) {
+      if (!sessionUser.settings) {
+        await prisma.settings
+          .create({ data: { userId: sessionUser.id } })
+          .catch(() => undefined);
+      }
+      return sessionUser;
+    }
+  } catch {}
+
   const store = await cookies();
   let uid = store.get(COOKIE)?.value;
 

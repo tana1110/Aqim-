@@ -87,9 +87,60 @@ export function ReminderScheduler() {
       }
     }
 
+    // Keep the server-side push subscription in sync so reminders arrive
+    // even when the app is closed (in-page timers below only cover the
+    // app-open case).
+    function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
+      const padding = "=".repeat((4 - (base64.length % 4)) % 4);
+      const b64 = (base64 + padding).replace(/-/g, "+").replace(/_/g, "/");
+      const raw = atob(b64);
+      const out = new Uint8Array(new ArrayBuffer(raw.length));
+      for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+      return out;
+    }
+
+    async function syncPush() {
+      try {
+        if (
+          typeof Notification === "undefined" ||
+          Notification.permission !== "granted"
+        )
+          return;
+        const key = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!key) return;
+        const reg = await navigator.serviceWorker.ready;
+        if (!reg.pushManager) return;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(key),
+          });
+        }
+        const cfg = loadReminderConfig();
+        const w = loadWird();
+        await fetch("/api/push/subscribe", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subscription: sub.toJSON(),
+            lang: lang(),
+            lat: cfg.lat,
+            lng: cfg.lng,
+            method: cfg.method,
+            prayers: cfg.enabled && cfg.lat != null,
+            wirdTime: w.enabled ? w.time : null,
+            adhkar: true,
+            tzOffset: -new Date().getTimezoneOffset(),
+          }),
+        });
+      } catch {}
+    }
+
     function schedule() {
       clearAll();
       scheduleWird();
+      void syncPush();
       const cfg = loadReminderConfig();
       if (
         !cfg.enabled ||

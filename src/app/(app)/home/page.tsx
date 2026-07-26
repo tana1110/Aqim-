@@ -105,7 +105,9 @@ export default function HomePage() {
         .then((d) =>
           setStatus({ seeded: d.seeded, hasMemorization: d.hasMemorization }),
         )
-        .catch(() => setStatus({ seeded: false, hasMemorization: false })),
+        // A network failure is NOT "not seeded" — degrade gracefully instead
+        // of dead-ending the user on the not-ready screen.
+        .catch(() => setStatus(null)),
       fetch("/api/daily-ayah")
         .then((r) => r.json())
         .then((d) => setDaily(d.ayah))
@@ -225,7 +227,12 @@ export default function HomePage() {
   }
 
 
+  // Discard in-flight suggestions when the request context changes — an old
+  // response must never repopulate a cleared plan (it would log corrupted
+  // history entries).
+  const suggestSeq = useRef(0);
   useEffect(() => {
+    suggestSeq.current++;
     setPlan(null);
   }, [mode, prayer, rakahs]);
 
@@ -258,6 +265,7 @@ export default function HomePage() {
   }, [plan]);
 
   async function aqim() {
+    const seq = suggestSeq.current;
     setLoading(true);
     setError(null);
     try {
@@ -273,12 +281,13 @@ export default function HomePage() {
         }),
       });
       const data = await res.json();
+      if (seq !== suggestSeq.current) return; // context changed mid-flight
       if (data.error) setError(data.error);
       else setPlan(data.plan);
     } catch {
-      setError(t("home.error"));
+      if (seq === suggestSeq.current) setError(t("home.error"));
     } finally {
-      setLoading(false);
+      if (seq === suggestSeq.current) setLoading(false);
     }
   }
 

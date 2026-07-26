@@ -120,12 +120,53 @@ model User {
   uid       String   @unique
   name      String
   createdAt DateTime @default(now()) @map("created_at")
+  // Optional account identity — lets the same history follow the user
+  // across devices. Password accounts store a bcrypt hash; Google accounts
+  // store the Google subject id.
+  email        String? @unique
+  passwordHash String? @map("password_hash")
+  googleSub    String? @unique @map("google_sub")
 
   memorization      Memorization[]
   recitationHistory RecitationHistory[]
   settings          Settings?
+  sessions          AuthSession[]
 
   @@map("users")
+}
+
+model AuthSession {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int      @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("auth_sessions")
+}
+
+// Web-push subscriptions + the minimal prefs needed to compute reminder
+// times on the server (times are computed from coordinates; nothing else).
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  lang      String   @default("ar")
+  lat       Float?
+  lng       Float?
+  method    String   @default("umm_alqura")
+  prayers   Boolean  @default(false) // prayer-time reminders
+  wirdTime  String?  @map("wird_time") // "HH:MM" local, null = off
+  adhkar    Boolean  @default(false) // morning/evening adhkar nudges
+  tzOffset  Int      @default(0) @map("tz_offset") // minutes east of UTC
+  lastSent  String   @default("{}") @map("last_sent") // JSON dedupe map
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("push_subscriptions")
 }
 
 model Memorization {

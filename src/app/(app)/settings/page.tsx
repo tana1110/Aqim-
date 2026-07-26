@@ -139,6 +139,13 @@ export default function SettingsPage() {
       <h1 className="text-xl font-bold">{t("settings.title")}</h1>
 
       <div className="card divide-y divide-border overflow-hidden">
+        {/* Account (optional — saves history across devices) */}
+        <Row label={t("settings.account")}>
+          <a href="/account" className="btn-primary px-4 py-1.5 text-xs">
+            {t("account.title")}
+          </a>
+        </Row>
+
         {/* Language */}
         <Row label={t("settings.language")}>
           <LanguageToggle />

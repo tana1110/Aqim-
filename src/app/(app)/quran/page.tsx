@@ -169,7 +169,8 @@ export default function QuranPage() {
     const last = groups[groups.length - 1];
     if (last && last.surah.number === a.surahNumber) last.ayahs.push(a);
     else {
-      const s = data.surahs.find((x) => x.number === a.surahNumber)!;
+      const s = data.surahs.find((x) => x.number === a.surahNumber);
+      if (!s) continue; // never crash the page on a data mismatch
       groups.push({ surah: s, ayahs: [a] });
     }
   }
