@@ -120,6 +120,44 @@ export function markAdhkarDoneToday() {
   saveSet(ADHKAR_KEY, d);
 }
 
+// The daily adhkar cycle: morning + evening + sleep. Each finished chapter
+// fills one segment; completing all three marks the day done.
+export type AdhkarPart = "morning" | "evening" | "sleep";
+const PARTS_PREFIX = "aqim-adhkar-parts:";
+
+export function adhkarPartsToday(): Record<AdhkarPart, boolean> {
+  try {
+    const arr: string[] = JSON.parse(
+      localStorage.getItem(PARTS_PREFIX + dayKey()) ?? "[]",
+    );
+    return {
+      morning: arr.includes("morning"),
+      evening: arr.includes("evening"),
+      sleep: arr.includes("sleep"),
+    };
+  } catch {
+    return { morning: false, evening: false, sleep: false };
+  }
+}
+
+// Returns true if this part completed the whole daily cycle.
+export function markAdhkarPart(part: AdhkarPart): boolean {
+  try {
+    const key = PARTS_PREFIX + dayKey();
+    const arr = new Set<string>(
+      JSON.parse(localStorage.getItem(key) ?? "[]"),
+    );
+    arr.add(part);
+    localStorage.setItem(key, JSON.stringify([...arr]));
+    if (arr.has("morning") && arr.has("evening") && arr.has("sleep")) {
+      markAdhkarDoneToday();
+      return true;
+    }
+    window.dispatchEvent(new Event("aqim-wird-changed"));
+  } catch {}
+  return false;
+}
+
 // ---------------------------------------------------------------------------
 // Mushaf pages actually read today — auto-credits a pages-mode wird.
 // ---------------------------------------------------------------------------

@@ -24,6 +24,7 @@ import {
   currentStreak,
   loadWird,
   isAdhkarDoneToday,
+  adhkarPartsToday,
 } from "@/lib/wird";
 import {
   computeTimes,
@@ -555,16 +556,20 @@ function TodayCard() {
     wirdDone: boolean;
     streak: number;
     adhkarDone: boolean;
+    adhkarParts: boolean[];
   } | null>(null);
 
   useEffect(() => {
-    const read = () =>
+    const read = () => {
+      const parts = adhkarPartsToday();
       setState({
         wirdOn: loadWird().enabled,
         wirdDone: isDoneToday(),
         streak: currentStreak(),
         adhkarDone: isAdhkarDoneToday(),
+        adhkarParts: [parts.morning, parts.evening, parts.sleep],
       });
+    };
     read();
     window.addEventListener("aqim-wird-changed", read);
     return () => window.removeEventListener("aqim-wird-changed", read);
@@ -577,26 +582,30 @@ function TodayCard() {
     done,
     label,
     trailing,
+    circle,
   }: {
     href: string;
     done: boolean;
     label: string;
     trailing?: React.ReactNode;
+    circle?: React.ReactNode;
   }) => (
     <Link
       href={href}
       className="flex items-center justify-between gap-3 px-4 py-3 active:scale-[0.99] transition hover:bg-surface-2"
     >
       <span className="flex items-center gap-2.5 text-sm font-medium min-w-0">
-        <span
-          className={`w-6 h-6 rounded-full grid place-items-center shrink-0 ${
-            done
-              ? "bg-secondary text-white"
-              : "bg-surface-2 border border-border"
-          }`}
-        >
-          {done && <Check size={13} strokeWidth={3} />}
-        </span>
+        {circle ?? (
+          <span
+            className={`w-6 h-6 rounded-full grid place-items-center shrink-0 ${
+              done
+                ? "bg-secondary text-white"
+                : "bg-surface-2 border border-border"
+            }`}
+          >
+            {done && <Check size={13} strokeWidth={3} />}
+          </span>
+        )}
         <span className={`truncate ${done ? "text-muted line-through" : ""}`}>
           {label}
         </span>
@@ -639,9 +648,54 @@ function TodayCard() {
           label={
             state.adhkarDone ? t("adhkar.doneToday") : t("home.todo.adhkar")
           }
+          circle={
+            state.adhkarDone ? undefined : (
+              <CycleRing parts={state.adhkarParts} />
+            )
+          }
+          trailing={
+            !state.adhkarDone && state.adhkarParts.some(Boolean) ? (
+              <span className="tabular-nums">
+                {state.adhkarParts.filter(Boolean).length}/3
+              </span>
+            ) : undefined
+          }
         />
       </div>
     </section>
+  );
+}
+
+// The daily adhkar cycle: three arc segments (morning, evening, sleep) —
+// each turns green as its chapter is finished.
+function CycleRing({ parts }: { parts: boolean[] }) {
+  const r = 9;
+  const cx = 12;
+  const cy = 12;
+  const gap = 28; // degrees of breathing room between segments
+  const seg = 120 - gap;
+  const arc = (i: number) => {
+    const start = ((-90 + i * 120 + gap / 2) * Math.PI) / 180;
+    const end = ((-90 + i * 120 + gap / 2 + seg) * Math.PI) / 180;
+    const x1 = cx + r * Math.cos(start);
+    const y1 = cy + r * Math.sin(start);
+    const x2 = cx + r * Math.cos(end);
+    const y2 = cy + r * Math.sin(end);
+    return `M ${x1} ${y1} A ${r} ${r} 0 0 1 ${x2} ${y2}`;
+  };
+  return (
+    <svg width={24} height={24} viewBox="0 0 24 24" className="shrink-0">
+      {parts.map((on, i) => (
+        <path
+          key={i}
+          d={arc(i)}
+          fill="none"
+          strokeWidth={3}
+          strokeLinecap="round"
+          className={on ? "stroke-[var(--color-secondary)]" : "stroke-[var(--color-border)]"}
+        />
+      ))}
+    </svg>
   );
 }
 

@@ -6,7 +6,14 @@ import { Search, Check, RotateCcw } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { WirdStrip } from "@/components/WirdCard";
 import { useLang } from "@/components/LanguageProvider";
-import { dayKey, isAdhkarDoneToday, markAdhkarDoneToday } from "@/lib/wird";
+import {
+  adhkarPartsToday,
+  dayKey,
+  isAdhkarDoneToday,
+  markAdhkarDoneToday,
+  markAdhkarPart,
+  type AdhkarPart,
+} from "@/lib/wird";
 
 // Tap counts survive navigation and reload — stored per calendar day, so
 // yesterday's counts never leak into today.
@@ -63,6 +70,11 @@ function AdhkarInner() {
   const [loaded, setLoaded] = useState(false);
   const [query, setQuery] = useState("");
   const [doneToday, setDoneToday] = useState(false);
+  const [parts, setParts] = useState(() => ({
+    morning: false,
+    evening: false,
+    sleep: false,
+  }));
 
   const chapterParam = Number(searchParams.get("chapter")) || null;
   const open = chapterParam
@@ -72,8 +84,14 @@ function AdhkarInner() {
     router.push(c ? `/adhkar?chapter=${c.index}` : "/adhkar");
 
   useEffect(() => {
-    setDoneToday(isAdhkarDoneToday());
-  }, []);
+    const read = () => {
+      setDoneToday(isAdhkarDoneToday());
+      setParts(adhkarPartsToday());
+    };
+    read();
+    window.addEventListener("aqim-wird-changed", read);
+    return () => window.removeEventListener("aqim-wird-changed", read);
+  }, [chapterParam]);
 
   useEffect(() => {
     fetch("/api/adhkar")
@@ -88,9 +106,13 @@ function AdhkarInner() {
     const find = (frag: string) =>
       chapters.find((c) => strip(c.title).includes(frag)) ?? null;
     return [
-      { key: "adhkar.morning", ch: find("الصباح") },
-      { key: "adhkar.evening", ch: find("المساء") },
-      { key: "adhkar.sleep", ch: find("أذكار النوم") ?? find("اذكار النوم") },
+      { key: "adhkar.morning", part: "morning" as AdhkarPart, ch: find("الصباح") },
+      { key: "adhkar.evening", part: "evening" as AdhkarPart, ch: find("المساء") },
+      {
+        key: "adhkar.sleep",
+        part: "sleep" as AdhkarPart,
+        ch: find("أذكار النوم") ?? find("اذكار النوم"),
+      },
     ];
   }, [chapters]);
   const [showAll, setShowAll] = useState(false);
@@ -99,13 +121,14 @@ function AdhkarInner() {
 
   if (open) {
     const st = strip(open.title);
-    return (
-      <ChapterView
-        chapter={open}
-        isDaily={st.includes("الصباح") || st.includes("المساء")}
-        onBack={() => setOpen(null)}
-      />
-    );
+    const part: AdhkarPart | null = st.includes("الصباح")
+      ? "morning"
+      : st.includes("المساء")
+        ? "evening"
+        : st.includes("النوم")
+          ? "sleep"
+          : null;
+    return <ChapterView chapter={open} part={part} onBack={() => setOpen(null)} />;
   }
 
   const q = query.trim();
@@ -137,7 +160,8 @@ function AdhkarInner() {
       {/* Daily wird — lives here with the daily remembrances */}
       <WirdStrip />
 
-      {/* Featured: the three daily ones, front and center */}
+      {/* Featured: the three daily ones — each fills a segment of the
+          daily cycle when finished */}
       <div className="grid grid-cols-3 gap-2.5">
         {featured.map(
           (f) =>
@@ -145,8 +169,19 @@ function AdhkarInner() {
               <button
                 key={f.key}
                 onClick={() => setOpen(f.ch)}
-                className="card p-4 grid place-items-center text-center hover:border-primary/40 active:scale-[0.97] transition min-h-20"
+                className={`card p-4 flex flex-col items-center justify-center gap-2 text-center hover:border-primary/40 active:scale-[0.97] transition min-h-24 ${
+                  parts[f.part] ? "border-secondary/50 bg-secondary-soft/40" : ""
+                }`}
               >
+                <span
+                  className={`w-6 h-6 rounded-full grid place-items-center ${
+                    parts[f.part]
+                      ? "bg-secondary text-white"
+                      : "bg-surface-2 border border-border"
+                  }`}
+                >
+                  {parts[f.part] && <Check size={13} strokeWidth={3} />}
+                </span>
                 <span className="text-[15px] font-bold leading-tight">
                   {t(f.key)}
                 </span>
@@ -220,16 +255,16 @@ function AdhkarInner() {
 
 function ChapterView({
   chapter,
-  isDaily,
+  part,
   onBack,
 }: {
   chapter: Chapter;
-  isDaily: boolean;
+  part: AdhkarPart | null;
   onBack: () => void;
 }) {
   const { t } = useLang();
   const [items, setItems] = useState<Dhikr[] | null>(null);
-  const [autoDone, setAutoDone] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
   const [showTapHint, setShowTapHint] = useState(false);
 
   useEffect(() => {
@@ -241,8 +276,8 @@ function ChapterView({
     } catch {}
   }, [chapter.index]);
 
-  // Completing every dhikr of a morning/evening chapter auto-marks the
-  // daily adhkar as done.
+  // Completing every dhikr of a morning/evening/sleep chapter fills its
+  // segment of the daily cycle; the third segment completes the day.
   function onCardComplete() {
     if (showTapHint) {
       setShowTapHint(false);
@@ -250,11 +285,15 @@ function ChapterView({
         localStorage.setItem("aqim-adhkar-hint", "1");
       } catch {}
     }
-    if (!isDaily || !items || isAdhkarDoneToday()) return;
+    if (!part || !items || adhkarPartsToday()[part]) return;
     if (items.every((it) => loadTaps(it.id) >= it.count)) {
-      markAdhkarDoneToday();
-      setAutoDone(true);
-      setTimeout(() => setAutoDone(false), 5000);
+      const wholeDay = markAdhkarPart(part);
+      setToast(
+        wholeDay
+          ? t("adhkar.doneToday")
+          : t("adhkar.partDone", { c: chapter.title }),
+      );
+      setTimeout(() => setToast(null), 5000);
     }
   }
 
@@ -278,11 +317,11 @@ function ChapterView({
         </p>
       )}
 
-      {autoDone && (
+      {toast && (
         <div className="fixed inset-x-0 top-[72px] z-30 px-4 animate-rise">
           <div className="mx-auto w-fit flex items-center gap-2 rounded-full bg-secondary text-white px-5 py-2.5 text-sm font-bold shadow-lg">
             <Check size={16} strokeWidth={3} />
-            {t("adhkar.doneToday")}
+            {toast}
           </div>
         </div>
       )}
