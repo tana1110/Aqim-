@@ -11,6 +11,7 @@ import {
   markDoneToday,
   currentStreak,
   pagesReadToday,
+  surahWirdProgress,
   wirdWeek,
   adhkarWeek,
   type WirdConfig,
@@ -29,6 +30,7 @@ export function WirdStrip() {
   const [weeks, setWeeks] = useState<{ wird: boolean[]; adhkar: boolean[] }>();
   const [openSetup, setOpenSetup] = useState(false);
   const [surahs, setSurahs] = useState<SurahMeta[]>([]);
+  const [surahQuery, setSurahQuery] = useState("");
 
   const [pagesToday, setPagesToday] = useState(0);
 
@@ -114,55 +116,66 @@ export function WirdStrip() {
           />
         </label>
       );
-    // MULTIPLE surahs: each pick adds a removable chip.
-    const name = (n: number) => {
-      const s = surahs.find((x) => x.number === n);
-      return s ? surahName(lang, s.nameArabic, s.nameTranslit) : String(n);
-    };
+    // MULTIPLE surahs at once: a searchable checklist — tap to toggle.
+    const strip = (x: string) => x.normalize("NFC").replace(/\p{M}/gu, "");
+    const query = strip(surahQuery.trim().toLowerCase());
+    const list = surahs.filter((s) => {
+      if (!query) return true;
+      return (
+        strip(s.nameArabic).includes(query) ||
+        s.nameTranslit.toLowerCase().includes(query) ||
+        String(s.number) === query
+      );
+    });
+    const toggle = (n: number) =>
+      apply({
+        ...c,
+        surahNumbers: c.surahNumbers.includes(n)
+          ? c.surahNumbers.filter((x) => x !== n)
+          : [...c.surahNumbers, n],
+      });
     return (
       <div className="w-full space-y-2">
-        <select
-          value=""
-          onChange={(e) => {
-            const n = Number(e.target.value);
-            if (n && !c.surahNumbers.includes(n))
-              apply({ ...c, surahNumbers: [...c.surahNumbers, n] });
-          }}
-          className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm max-w-52"
-        >
-          <option value="">{t("wird.surahPick")}</option>
-          {surahs
-            .filter((s) => !c.surahNumbers.includes(s.number))
-            .map((s) => (
-              <option key={s.number} value={s.number}>
-                {s.number}. {surahName(lang, s.nameArabic, s.nameTranslit)}
-              </option>
-            ))}
-        </select>
         {c.surahNumbers.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {c.surahNumbers.map((n) => (
-              <span
-                key={n}
-                className="inline-flex items-center gap-1.5 rounded-full bg-primary-soft text-primary px-3 py-1 text-xs font-bold"
-              >
-                {name(n)}
-                <button
-                  onClick={() =>
-                    apply({
-                      ...c,
-                      surahNumbers: c.surahNumbers.filter((x) => x !== n),
-                    })
-                  }
-                  aria-label="remove"
-                  className="hover:opacity-70"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
+          <div className="text-[11px] font-bold text-primary">
+            {t("wird.pickedCount", { n: c.surahNumbers.length })}
           </div>
         )}
+        <input
+          type="search"
+          value={surahQuery}
+          onChange={(e) => setSurahQuery(e.target.value)}
+          placeholder={t("setup.search")}
+          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+        />
+        <div className="max-h-52 overflow-y-auto rounded-xl border border-border divide-y divide-border">
+          {list.map((s) => {
+            const on = c.surahNumbers.includes(s.number);
+            return (
+              <button
+                key={s.number}
+                onClick={() => toggle(s.number)}
+                className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 text-start text-sm ${
+                  on ? "bg-primary-soft text-primary font-bold" : ""
+                }`}
+              >
+                <span>
+                  {s.number}. {surahName(lang, s.nameArabic, s.nameTranslit)}
+                </span>
+                <span
+                  className={`w-5 h-5 rounded-full grid place-items-center shrink-0 ${
+                    on ? "bg-primary text-white" : "bg-surface-2"
+                  }`}
+                >
+                  {on && <Check size={12} strokeWidth={3} />}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-[11px] text-muted leading-relaxed">
+          {t("wird.readToComplete")}
+        </p>
       </div>
     );
   };
@@ -271,18 +284,22 @@ export function WirdStrip() {
           </span>
         </span>
         <span className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => {
-              markDoneToday();
-              refresh();
-            }}
-            disabled={done}
-            className={`px-3.5 py-1.5 text-xs font-bold rounded-full transition ${
-              done ? "bg-secondary text-white" : "btn-accent !rounded-full"
-            } disabled:opacity-90`}
-          >
-            {done ? <Check size={14} /> : t("adhkar.done")}
-          </button>
+          {/* Surah mode has NO manual check — it completes only by actually
+              finishing the reading in the Mushaf. */}
+          {(cfg.mode !== "surah" || done) && (
+            <button
+              onClick={() => {
+                markDoneToday();
+                refresh();
+              }}
+              disabled={done || cfg.mode === "surah"}
+              className={`px-3.5 py-1.5 text-xs font-bold rounded-full transition ${
+                done ? "bg-secondary text-white" : "btn-accent !rounded-full"
+              } disabled:opacity-90`}
+            >
+              {done ? <Check size={14} /> : t("adhkar.done")}
+            </button>
+          )}
           <button
             onClick={() => setOpenSetup(!openSetup)}
             className="text-[10px] text-muted hover:text-foreground"
@@ -309,6 +326,25 @@ export function WirdStrip() {
           </span>
         </div>
       )}
+
+      {/* Surah mode: the reading line itself — done only when it's full */}
+      {cfg.mode === "surah" &&
+        !done &&
+        (() => {
+          const prog = surahWirdProgress(surahs);
+          if (prog.total === 0) return null;
+          return (
+            <div className="text-[11px] text-muted">
+              {t("wird.surahProgress", { n: prog.read, m: prog.total })}
+              <span className="block h-1 rounded-full bg-surface-2 overflow-hidden mt-1">
+                <span
+                  className="block h-full rounded-full bg-secondary transition-all"
+                  style={{ width: `${(prog.read / prog.total) * 100}%` }}
+                />
+              </span>
+            </div>
+          );
+        })()}
 
       {/* Next reminder + weekly trackers */}
       <div className="flex items-center justify-between gap-3 text-[11px] text-muted">

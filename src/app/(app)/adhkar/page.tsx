@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Check, RotateCcw } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
+import { WirdStrip } from "@/components/WirdCard";
 import { useLang } from "@/components/LanguageProvider";
 import { dayKey, isAdhkarDoneToday, markAdhkarDoneToday } from "@/lib/wird";
 
@@ -81,7 +82,8 @@ function AdhkarInner() {
       .finally(() => setLoaded(true));
   }, []);
 
-  // The featured sections (found by normalized title, not fragile indices).
+  // The featured trio (found by normalized title, not fragile indices) —
+  // the rest of the chapters stay hidden until searched or expanded.
   const featured = useMemo(() => {
     const find = (frag: string) =>
       chapters.find((c) => strip(c.title).includes(frag)) ?? null;
@@ -89,9 +91,9 @@ function AdhkarInner() {
       { key: "adhkar.morning", ch: find("الصباح") },
       { key: "adhkar.evening", ch: find("المساء") },
       { key: "adhkar.sleep", ch: find("أذكار النوم") ?? find("اذكار النوم") },
-      { key: "adhkar.istikhara", ch: find("الاستخارة") ?? find("الاستخاره") },
     ];
   }, [chapters]);
+  const [showAll, setShowAll] = useState(false);
 
   if (!loaded) return <PageLoader />;
 
@@ -132,15 +134,18 @@ function AdhkarInner() {
         </button>
       </div>
 
-      {/* Featured */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      {/* Daily wird — lives here with the daily remembrances */}
+      <WirdStrip />
+
+      {/* Featured: the three daily ones, front and center */}
+      <div className="grid grid-cols-3 gap-2.5">
         {featured.map(
           (f) =>
             f.ch && (
               <button
                 key={f.key}
                 onClick={() => setOpen(f.ch)}
-                className="card p-4 grid place-items-center text-center hover:border-primary/40 active:scale-[0.97] transition"
+                className="card p-4 grid place-items-center text-center hover:border-primary/40 active:scale-[0.97] transition min-h-20"
               >
                 <span className="text-[15px] font-bold leading-tight">
                   {t(f.key)}
@@ -150,11 +155,8 @@ function AdhkarInner() {
         )}
       </div>
 
-      {/* All chapters */}
+      {/* Everything else appears only on search or on demand */}
       <div>
-        <div className="text-xs font-bold text-muted mb-2 px-1">
-          {t("adhkar.allChapters")}
-        </div>
         <div className="relative mb-3">
           <Search
             size={16}
@@ -168,18 +170,47 @@ function AdhkarInner() {
             className="w-full rounded-xl border border-border bg-surface ps-9 pe-3 py-2.5 text-sm"
           />
         </div>
-        <div className="card divide-y divide-border overflow-hidden">
-          {list.map((c) => (
-            <button
-              key={c.index}
-              onClick={() => setOpen(c)}
-              className="w-full flex items-center justify-between gap-3 p-3.5 text-start hover:bg-surface-2 transition"
-            >
-              <span className="text-[15px] font-medium">{c.title}</span>
-              <span className="text-[11px] text-muted shrink-0">{c.count}</span>
-            </button>
-          ))}
-        </div>
+
+        {!q && !showAll && (
+          <button
+            onClick={() => setShowAll(true)}
+            className="w-full card p-3.5 text-sm font-bold text-primary text-center hover:border-primary/40 transition"
+          >
+            {t("adhkar.showAll")}
+          </button>
+        )}
+
+        {(q || showAll) && (
+          <>
+            {!q && (
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-xs font-bold text-muted">
+                  {t("adhkar.allChapters")}
+                </span>
+                <button
+                  onClick={() => setShowAll(false)}
+                  className="text-[11px] text-muted hover:text-foreground"
+                >
+                  {t("adhkar.hideAll")}
+                </button>
+              </div>
+            )}
+            <div className="card divide-y divide-border overflow-hidden">
+              {list.map((c) => (
+                <button
+                  key={c.index}
+                  onClick={() => setOpen(c)}
+                  className="w-full flex items-center justify-between gap-3 p-3.5 text-start hover:bg-surface-2 transition"
+                >
+                  <span className="text-[15px] font-medium">{c.title}</span>
+                  <span className="text-[11px] text-muted shrink-0">
+                    {c.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
       <p className="text-[11px] text-muted text-center">{t("adhkar.source")}</p>

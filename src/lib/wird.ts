@@ -157,6 +157,53 @@ export function recordPageRead(page: number): boolean {
   return false;
 }
 
+function readTodaySet(): Set<number> {
+  try {
+    return new Set(
+      JSON.parse(localStorage.getItem(READ_PREFIX + dayKey()) ?? "[]"),
+    );
+  } catch {
+    return new Set();
+  }
+}
+
+// Surah-mode wird: how many of the chosen surahs' Mushaf pages were read
+// today. The wird can ONLY complete by actually finishing this reading.
+export interface SurahSpan {
+  number: number;
+  firstPage?: number | null;
+  lastPage?: number | null;
+}
+
+export function surahWirdProgress(spans: SurahSpan[]): {
+  read: number;
+  total: number;
+} {
+  const cfg = loadWird();
+  const required = new Set<number>();
+  for (const n of cfg.surahNumbers) {
+    const s = spans.find((x) => x.number === n);
+    if (!s || s.firstPage == null || s.lastPage == null) continue;
+    for (let p = s.firstPage; p <= s.lastPage; p++) required.add(p);
+  }
+  const read = readTodaySet();
+  let done = 0;
+  for (const p of required) if (read.has(p)) done++;
+  return { read: done, total: required.size };
+}
+
+// Marks a surah-mode wird done when every required page has been read.
+export function maybeCompleteSurahWird(spans: SurahSpan[]): boolean {
+  const cfg = loadWird();
+  if (!cfg.enabled || cfg.mode !== "surah" || isDoneToday()) return false;
+  const { read, total } = surahWirdProgress(spans);
+  if (total > 0 && read >= total) {
+    markDoneToday();
+    return true;
+  }
+  return false;
+}
+
 // The current week (last 7 local days, oldest→today) as done/not-done flags.
 function weekOf(key: string): boolean[] {
   const days = loadSet(key);

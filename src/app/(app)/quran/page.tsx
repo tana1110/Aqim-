@@ -4,10 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { useSwipeable } from "react-swipeable";
 import { Check, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
-import { WirdStrip } from "@/components/WirdCard";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, getBismillahDisplay, cleanAyah } from "@/lib/quranDisplay";
-import { recordPageRead } from "@/lib/wird";
+import { maybeCompleteSurahWird, recordPageRead } from "@/lib/wird";
 import type { SurahMeta } from "@/lib/types";
 
 // Standard Madani-mushaf start page of each juz (1-30).
@@ -62,7 +61,15 @@ export default function QuranPage() {
     setPage(Math.min(604, Math.max(1, p)));
     fetch("/api/surahs")
       .then((r) => r.json())
-      .then((d) => setSurahs(d.surahs ?? []))
+      .then((d) => {
+        const list = d.surahs ?? [];
+        setSurahs(list);
+        // Re-check with real page spans (first page view may have preceded them).
+        if (maybeCompleteSurahWird(list)) {
+          setWirdToast(true);
+          setTimeout(() => setWirdToast(false), 5000);
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -99,8 +106,11 @@ export default function QuranPage() {
     try {
       localStorage.setItem(POS_KEY, String(page));
     } catch {}
-    // Reading here counts toward a pages-mode wird automatically.
-    if (recordPageRead(page)) {
+    // Reading here counts toward the wird automatically — pages mode by
+    // count, surah mode by finishing every page of the chosen surahs.
+    const donePages = recordPageRead(page);
+    const doneSurahs = maybeCompleteSurahWird(surahs);
+    if (donePages || doneSurahs) {
       setWirdToast(true);
       setTimeout(() => setWirdToast(false), 5000);
     }
@@ -183,11 +193,6 @@ export default function QuranPage() {
             style={{ width: `${progress * 100}%` }}
           />
         </div>
-      </div>
-
-      {/* Daily wird lives with reading */}
-      <div className="mt-3">
-        <WirdStrip />
       </div>
 
       {/* One position button — opens the full navigator (surah/juz/page) */}

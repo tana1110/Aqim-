@@ -47,6 +47,9 @@ export interface SurahMeta {
   nameTranslit: string;
   revelationType: string;
   ayahCount: number;
+  // Mushaf page span (from /api/surahs; null before seeding)
+  firstPage?: number | null;
+  lastPage?: number | null;
 }
 
 export interface AppSettings {

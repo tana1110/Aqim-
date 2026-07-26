@@ -616,7 +616,7 @@ function TodayCard() {
       </div>
       <div className="divide-y divide-border">
         <Row
-          href="/quran"
+          href={state.wirdOn ? "/quran" : "/adhkar"}
           done={state.wirdOn && state.wirdDone}
           label={
             !state.wirdOn
