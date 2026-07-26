@@ -119,7 +119,7 @@ export default function SetupPage() {
       });
       // Stay here — offer (don't force) the trip home via a small toast.
       setSavedToast(true);
-      setTimeout(() => setSavedToast(false), 8000);
+      setTimeout(() => setSavedToast(false), 15000);
     } finally {
       setSaving(false);
     }
@@ -140,29 +140,31 @@ export default function SetupPage() {
 
   return (
     <div className="space-y-5 pt-2 pb-4">
-      {/* Saved — a dismissible offer to go home, never a forced redirect */}
+      {/* Saved — a big, obvious prompt (dismissible, never a forced redirect) */}
       {savedToast && (
-        <div className="fixed inset-x-0 bottom-6 z-30 px-4 animate-rise">
-          <div className="mx-auto max-w-sm card flex items-center justify-between gap-3 p-3 ps-4 shadow-lg">
-            <span className="flex items-center gap-2 text-sm font-bold">
-              <Check size={16} className="text-secondary" />
-              {t("setup.savedTitle")}
-            </span>
-            <span className="flex items-center gap-2">
-              <button
-                onClick={() => router.push("/home")}
-                className="btn-primary px-4 py-1.5 text-xs"
-              >
-                {t("setup.goHome")}
-              </button>
+        <div className="fixed inset-x-0 bottom-8 z-30 px-4 animate-rise">
+          <div className="mx-auto max-w-md rounded-2xl bg-primary text-white p-5 shadow-lg">
+            <div className="flex items-start justify-between gap-3">
+              <span className="flex items-center gap-2.5 text-base font-bold">
+                <span className="w-8 h-8 rounded-full bg-white/15 grid place-items-center shrink-0">
+                  <Check size={18} strokeWidth={3} />
+                </span>
+                {t("setup.savedTitle")}
+              </span>
               <button
                 onClick={() => setSavedToast(false)}
                 aria-label="dismiss"
-                className="text-muted hover:text-foreground px-1"
+                className="text-white/60 hover:text-white shrink-0"
               >
-                <X size={15} />
+                <X size={18} />
               </button>
-            </span>
+            </div>
+            <button
+              onClick={() => router.push("/home")}
+              className="btn-cta w-full !rounded-full py-3 text-base mt-4"
+            >
+              {t("setup.goHome")}
+            </button>
           </div>
         </div>
       )}

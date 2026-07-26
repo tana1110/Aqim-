@@ -8,7 +8,7 @@ export interface WirdConfig {
   enabled: boolean;
   mode: WirdMode; // portion defined by pages, a surah, or minutes of reading
   pages: number; // pages per day (mode: pages)
-  surahNumber: number | null; // (mode: surah)
+  surahNumbers: number[]; // (mode: surah) — one or MANY surahs
   minutes: number; // (mode: minutes)
   time: string; // "HH:MM" local reminder time
 }
@@ -21,7 +21,7 @@ export function defaultWird(): WirdConfig {
     enabled: false,
     mode: "pages",
     pages: 2,
-    surahNumber: null,
+    surahNumbers: [],
     minutes: 15,
     time: "20:00",
   };
@@ -30,7 +30,14 @@ export function defaultWird(): WirdConfig {
 export function loadWird(): WirdConfig {
   try {
     const raw = localStorage.getItem(CFG_KEY);
-    if (raw) return { ...defaultWird(), ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const cfg = { ...defaultWird(), ...parsed };
+      if (!Array.isArray(cfg.surahNumbers)) cfg.surahNumbers = [];
+      if (parsed.surahNumber && !cfg.surahNumbers.includes(parsed.surahNumber))
+        cfg.surahNumbers.push(parsed.surahNumber);
+      return cfg;
+    }
   } catch {}
   return defaultWird();
 }

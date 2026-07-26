@@ -114,7 +114,7 @@ const ar: Dict = {
   "setup.juz": "جزء",
   "setup.selected": "{n} محدّد",
   "setup.noneSelected": "لم تختر بعد",
-  "setup.savedTitle": "تم الحفظ",
+  "setup.savedTitle": "تم حفظ محفوظاتك",
   "setup.goHome": "الانتقال إلى الرئيسية",
   "setup.notSeeded": "قاعدة البيانات غير مهيأة بعد.",
 
@@ -225,7 +225,7 @@ const ar: Dict = {
   "wird.mode.surah": "بسورة",
   "wird.mode.minutes": "بالمدة",
   "wird.minutes": "الدقائق",
-  "wird.surahPick": "اختر السورة",
+  "wird.surahPick": "أضف سورة…",
   "wird.nextAt": "التذكير القادم",
   "wird.weekWird": "الورد",
   "wird.weekAdhkar": "الأذكار",
@@ -245,6 +245,8 @@ const ar: Dict = {
   "home.quick": "أقسام التطبيق",
   "home.todos": "مهام اليوم",
   "home.todo.wird": "أكمل ورد اليوم",
+  "home.todo.adhkar": "اقرأ أذكارك",
+  "home.todo.setupWird": "فعّل وردك اليومي",
   "home.todo.review": "راجع محفوظاتك",
 
   "history.title": "سجلّك",
@@ -396,7 +398,7 @@ const en: Dict = {
   "setup.juz": "Juz",
   "setup.selected": "{n} selected",
   "setup.noneSelected": "None selected yet",
-  "setup.savedTitle": "Saved",
+  "setup.savedTitle": "Your memorization is saved",
   "setup.goHome": "Go to home",
   "setup.notSeeded": "The database isn't set up yet.",
 
@@ -499,7 +501,7 @@ const en: Dict = {
   "wird.mode.surah": "By surah",
   "wird.mode.minutes": "By duration",
   "wird.minutes": "Minutes",
-  "wird.surahPick": "Pick a surah",
+  "wird.surahPick": "Add a surah…",
   "wird.nextAt": "Next reminder",
   "wird.weekWird": "Wird",
   "wird.weekAdhkar": "Adhkar",
@@ -518,6 +520,8 @@ const en: Dict = {
   "home.quick": "App sections",
   "home.todos": "Today's tasks",
   "home.todo.wird": "Complete today's wird",
+  "home.todo.adhkar": "Read your adhkar",
+  "home.todo.setupWird": "Set up your daily wird",
   "home.todo.review": "Review your memorization",
 
   "history.title": "Your history",

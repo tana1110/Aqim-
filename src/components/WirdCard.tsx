@@ -110,21 +110,56 @@ export function WirdStrip() {
           />
         </label>
       );
+    // MULTIPLE surahs: each pick adds a removable chip.
+    const name = (n: number) => {
+      const s = surahs.find((x) => x.number === n);
+      return s ? surahName(lang, s.nameArabic, s.nameTranslit) : String(n);
+    };
     return (
-      <select
-        value={c.surahNumber ?? ""}
-        onChange={(e) =>
-          apply({ ...c, surahNumber: Number(e.target.value) || null })
-        }
-        className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm max-w-44"
-      >
-        <option value="">{t("wird.surahPick")}</option>
-        {surahs.map((s) => (
-          <option key={s.number} value={s.number}>
-            {s.number}. {surahName(lang, s.nameArabic, s.nameTranslit)}
-          </option>
-        ))}
-      </select>
+      <div className="w-full space-y-2">
+        <select
+          value=""
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            if (n && !c.surahNumbers.includes(n))
+              apply({ ...c, surahNumbers: [...c.surahNumbers, n] });
+          }}
+          className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm max-w-52"
+        >
+          <option value="">{t("wird.surahPick")}</option>
+          {surahs
+            .filter((s) => !c.surahNumbers.includes(s.number))
+            .map((s) => (
+              <option key={s.number} value={s.number}>
+                {s.number}. {surahName(lang, s.nameArabic, s.nameTranslit)}
+              </option>
+            ))}
+        </select>
+        {c.surahNumbers.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {c.surahNumbers.map((n) => (
+              <span
+                key={n}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary-soft text-primary px-3 py-1 text-xs font-bold"
+              >
+                {name(n)}
+                <button
+                  onClick={() =>
+                    apply({
+                      ...c,
+                      surahNumbers: c.surahNumbers.filter((x) => x !== n),
+                    })
+                  }
+                  aria-label="remove"
+                  className="hover:opacity-70"
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
     );
   };
 

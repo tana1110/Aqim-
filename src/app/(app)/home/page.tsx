@@ -15,7 +15,12 @@ import { LogoLoader } from "@/components/Logo";
 import { PageLoader } from "@/components/Brand";
 import { ContentCard } from "@/components/ContentCard";
 import { PassageCard } from "@/components/PassageCard";
-import { isDoneToday, currentStreak, loadWird } from "@/lib/wird";
+import {
+  isDoneToday,
+  currentStreak,
+  loadWird,
+  isAdhkarDoneToday,
+} from "@/lib/wird";
 import {
   computeTimes,
   loadReminderConfig,
@@ -473,8 +478,8 @@ export default function HomePage() {
           </ContentCard>
         )}
 
-        {/* Slim wird status — full controls live in the Quran tab */}
-        <WirdMini />
+        {/* Today's tasks — wird + adhkar at a glance */}
+        {status?.hasMemorization && <TodayCard />}
       </div>
 
       {/* Results column */}
@@ -492,56 +497,103 @@ export default function HomePage() {
 }
 
 
-// Slim wird status row — the full wird controls live on the Quran tab.
-function WirdMini() {
+// Today's tasks — the wird and the adhkar, each with its done state, so the
+// home page always shows what is left to do today. Full controls stay on
+// their own tabs.
+function TodayCard() {
   const { t } = useLang();
   const [state, setState] = useState<{
-    on: boolean;
-    done: boolean;
+    wirdOn: boolean;
+    wirdDone: boolean;
     streak: number;
+    adhkarDone: boolean;
   } | null>(null);
 
   useEffect(() => {
     const read = () =>
       setState({
-        on: loadWird().enabled,
-        done: isDoneToday(),
+        wirdOn: loadWird().enabled,
+        wirdDone: isDoneToday(),
         streak: currentStreak(),
+        adhkarDone: isAdhkarDoneToday(),
       });
     read();
     window.addEventListener("aqim-wird-changed", read);
     return () => window.removeEventListener("aqim-wird-changed", read);
   }, []);
 
-  if (!state?.on) return null;
+  if (!state) return null;
 
-  return (
+  const Row = ({
+    href,
+    done,
+    label,
+    trailing,
+  }: {
+    href: string;
+    done: boolean;
+    label: string;
+    trailing?: React.ReactNode;
+  }) => (
     <Link
-      href="/quran"
-      className="card rounded-xl px-4 py-3 flex items-center justify-between gap-3 active:scale-[0.99] transition"
+      href={href}
+      className="flex items-center justify-between gap-3 px-4 py-3 active:scale-[0.99] transition hover:bg-surface-2"
     >
-      <span className="flex items-center gap-2 text-sm font-medium min-w-0">
+      <span className="flex items-center gap-2.5 text-sm font-medium min-w-0">
         <span
           className={`w-6 h-6 rounded-full grid place-items-center shrink-0 ${
-            state.done ? "bg-secondary text-white" : "bg-surface-2 border border-border"
+            done
+              ? "bg-secondary text-white"
+              : "bg-surface-2 border border-border"
           }`}
         >
-          {state.done && <Check size={13} strokeWidth={3} />}
+          {done && <Check size={13} strokeWidth={3} />}
         </span>
-        <span className="truncate">
-          {state.done ? t("wird.doneToday") : t("home.todo.wird")}
+        <span className={`truncate ${done ? "text-muted line-through" : ""}`}>
+          {label}
         </span>
       </span>
       <span className="flex items-center gap-2 shrink-0 text-xs text-muted">
-        {state.streak > 0 && (
-          <span className="flex items-center gap-1 text-accent font-bold">
-            <Flame size={13} />
-            {state.streak}
-          </span>
-        )}
+        {trailing}
         <ChevronLeft size={15} className="rtl:block hidden" />
       </span>
     </Link>
+  );
+
+  return (
+    <section className="card rounded-2xl overflow-hidden">
+      <div className="px-4 pt-3 pb-1 text-xs font-bold text-muted">
+        {t("home.todos")}
+      </div>
+      <div className="divide-y divide-border">
+        <Row
+          href="/quran"
+          done={state.wirdOn && state.wirdDone}
+          label={
+            !state.wirdOn
+              ? t("home.todo.setupWird")
+              : state.wirdDone
+                ? t("wird.doneToday")
+                : t("home.todo.wird")
+          }
+          trailing={
+            state.wirdOn && state.streak > 0 ? (
+              <span className="flex items-center gap-1 text-accent font-bold">
+                <Flame size={13} />
+                {state.streak}
+              </span>
+            ) : undefined
+          }
+        />
+        <Row
+          href="/adhkar"
+          done={state.adhkarDone}
+          label={
+            state.adhkarDone ? t("adhkar.doneToday") : t("home.todo.adhkar")
+          }
+        />
+      </div>
+    </section>
   );
 }
 
