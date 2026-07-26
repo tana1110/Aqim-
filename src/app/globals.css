@@ -8,25 +8,23 @@
 --------------------------------------------------------------------------- */
 
 @theme {
-  /* --- Ink-canvas palette: deep navy canvas, light pastel blocks ---
-     Same Dome-of-the-Rock hues, rearranged per the bento-ink design:
-     the canvas is the deep charcoal-navy; content blocks are light. */
-  --color-background: #1e2b34; /* ink canvas */
-  --color-text-primary: #e9ece9; /* light ink-canvas text */
-  --color-primary: #7fa3b7; /* tile-blue, lifted for dark canvas */
-  --color-primary-hover: #8fb2c5;
-  --color-secondary: #7fa894; /* teal-green, lifted */
-  --color-accent: #c9a671; /* mustard-gold, lifted */
-  --color-border: #354550; /* subtle divider on ink */
+  /* --- Core palette (light) --- */
+  --color-background: #f3eee3; /* warm ivory */
+  --color-text-primary: #26333d; /* deep muted charcoal-navy */
+  --color-primary: #33546a; /* muted deep tile-blue */
+  --color-primary-hover: #28414f; /* darker tile-blue */
+  --color-secondary: #5f8a78; /* muted teal-green */
+  --color-accent: #b99257; /* muted mustard-gold */
+  --color-border: #d8d1c0; /* soft blue-gray divider */
 
-  /* --- Supporting neutrals / soft tints --- */
-  --color-foreground: #e9ece9;
-  --color-surface: #26343f; /* raised ink card */
-  --color-surface-2: #2e3e4a; /* nested ink surface */
-  --color-muted: #98a6b0; /* secondary text on ink */
-  --color-primary-soft: #293945; /* faint blue wash (on ink) */
-  --color-secondary-soft: #273830; /* faint teal wash (on ink) */
-  --color-accent-soft: #34301f; /* faint gold wash (on ink) */
+  /* --- Supporting neutrals / soft tints (desaturated) --- */
+  --color-foreground: #26333d; /* alias of text-primary for utilities */
+  --color-surface: #faf7ef; /* card surface */
+  --color-surface-2: #ece6d7; /* nested surface */
+  --color-muted: #66727c; /* secondary text */
+  --color-primary-soft: #dfe6ea; /* faint tile-blue wash */
+  --color-secondary-soft: #e3eae6; /* faint teal wash */
+  --color-accent-soft: #efe7d8; /* faint gold wash */
 
   /* --- Typography --- */
   --font-heading: var(--font-amiri), "Lateef", serif;
@@ -36,18 +34,47 @@
     system-ui, sans-serif;
   --font-sans: var(--font-ui);
 
-  /* --- Shape / depth (bento-ink: big soft radii, pill buttons) --- */
+  /* --- Shape / depth (bento redesign: big soft radii, chunky blocks) --- */
   --radius-card: 1.5rem; /* 24px */
-  --radius-btn: 9999px; /* full pill, like the reference */
+  --radius-btn: 1rem; /* 16px */
 }
 
-/* The ink canvas IS the theme now — light and dark system modes render the
-   same deliberate design (light pastel blocks on deep navy). */
+/* --- Dark mode: deep muted navy, same desaturated relationships --- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-background: #1c2830;
+    --color-text-primary: #e6eae9;
+    --color-primary: #6e93a8;
+    --color-primary-hover: #7fa3b7;
+    --color-secondary: #7fa894;
+    --color-accent: #c9a671;
+    --color-border: #33454f;
+
+    --color-foreground: #e6eae9;
+    --color-surface: #22303a;
+    --color-surface-2: #2a3a45;
+    --color-muted: #93a2ac;
+    --color-primary-soft: #253742;
+    --color-secondary-soft: #24342e;
+    --color-accent-soft: #322b1e;
+  }
+}
 
 :root {
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3);
-  /* Chart data-mark color — validated (chroma + contrast) on the ink canvas. */
-  --chart-line: #d4ac5c;
+  --shadow-soft: 0 1px 2px rgba(38, 51, 61, 0.06),
+    0 1px 1px rgba(38, 51, 61, 0.04);
+  /* Chart data-mark color — validated (chroma + contrast) per mode. */
+  --chart-line: #b9772c;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --chart-line: #d4ac5c;
+  }
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3);
+  }
 }
 
 /* User font-size setting: one root scale that every rem-based size (all
@@ -105,56 +132,29 @@ body {
   box-shadow: var(--shadow-soft);
 }
 
-/* Bento tiles — LIGHT pastel blocks popping off the ink canvas (the
-   design's signature), always carrying dark ink text of their own. */
+/* Bento tiles — the redesign's colored blocks. Borderless, big radius. */
 .tile {
   border-radius: 1.75rem;
   box-shadow: var(--shadow-soft);
 }
 .tile-gold {
-  background: #e7d9bd; /* pastel gold */
+  background: var(--color-accent-soft);
 }
 .tile-blue {
-  background: #ccdbe4; /* pastel tile-blue */
+  background: var(--color-primary-soft);
 }
 .tile-teal {
-  background: #d2e3da; /* pastel teal */
-}
-.tile-gold,
-.tile-blue,
-.tile-teal {
-  color: #26333d;
-}
-/* Utility colors re-grounded inside light tiles (the app-wide vars are for
-   the dark canvas and would wash out here). */
-:is(.tile-gold, .tile-blue, .tile-teal) .text-muted {
-  color: #55636e;
-}
-:is(.tile-gold, .tile-blue, .tile-teal) .text-primary {
-  color: #33546a;
-}
-:is(.tile-gold, .tile-blue, .tile-teal) .text-foreground {
-  color: #26333d;
-}
-:is(.tile-gold, .tile-blue, .tile-teal) .bg-surface {
-  background: rgba(255, 255, 255, 0.82);
-  color: #26333d;
-}
-:is(.tile-gold, .tile-blue, .tile-teal) .bg-surface-2 {
-  background: rgba(255, 255, 255, 0.5);
-}
-:is(.tile-gold, .tile-blue, .tile-teal) .bg-primary {
-  background: #33546a;
+  background: var(--color-secondary-soft);
 }
 .tile-ink {
-  background: #33546a; /* deep tile-blue block */
+  background: var(--color-primary);
   color: #fff;
 }
 
 /* Section headings in the bento style — short, heavy, close to the tiles. */
 .section-title {
   font-weight: 800;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   letter-spacing: -0.01em;
 }
 
@@ -239,15 +239,16 @@ body {
   justify-content: safe center;
 }
 
-/* Floating bottom pill nav — a darker raised bar on the ink canvas; the
-   active section pops as an ivory circle. */
+/* Floating bottom pill nav — solid deep navy in light mode; in dark mode a
+   dark raised surface (the light-blue "primary" there would look washed). */
 .nav-pill {
-  background: #16222b;
-  border: 1px solid var(--color-border);
+  background: var(--color-primary);
 }
-.nav-active {
-  background: #f3eee3;
-  color: #33546a;
+@media (prefers-color-scheme: dark) {
+  .nav-pill {
+    background: #17242d;
+    border: 1px solid var(--color-border);
+  }
 }
 
 /* Safe-area helpers for the app-like bottom nav. */

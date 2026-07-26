@@ -66,7 +66,7 @@ export function BottomTabs() {
               aria-label={t(label)}
               className={`flex flex-col items-center justify-center transition-all ${
                 active
-                  ? "nav-active rounded-full w-14 h-14 -my-3 shadow-md"
+                  ? "bg-background text-primary rounded-full w-14 h-14 -my-3 shadow-md"
                   : "text-white/75 w-12 h-11"
               }`}
             >

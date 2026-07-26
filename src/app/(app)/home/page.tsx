@@ -387,7 +387,7 @@ export default function HomePage() {
                 <div className="text-[11px] font-bold text-muted">
                   {t("home.nextPrayer")}
                 </div>
-                <div className="text-4xl font-extrabold leading-tight truncate text-primary">
+                <div className="text-3xl font-extrabold leading-tight truncate text-primary">
                   {nextKey
                     ? t(`prayer.${nextKey}`)
                     : prayer === "qiyam"
@@ -401,7 +401,7 @@ export default function HomePage() {
                     {t("home.remaining")}
                   </div>
                   <div
-                    className="text-3xl font-extrabold tabular-nums tracking-tight text-primary"
+                    className="text-lg font-bold tabular-nums tracking-wide text-primary"
                     dir="ltr"
                   >
                     {countdown}
@@ -764,7 +764,7 @@ function MisbahaMini() {
         aria-label={t("tasbih.tap")}
         className="w-20 h-20 rounded-full bg-secondary text-white grid place-items-center shrink-0 active:scale-[0.93] transition select-none shadow-md"
       >
-        <span className="text-3xl font-extrabold tabular-nums">{digits(s.count)}</span>
+        <span className="text-2xl font-bold tabular-nums">{digits(s.count)}</span>
       </button>
       <div className="min-w-0 flex-1">
         <div className="text-xs font-bold text-muted mb-0.5">
