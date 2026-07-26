@@ -11,6 +11,7 @@ import {
   Sparkles,
   Flame,
   ChevronLeft,
+  Menu,
 } from "lucide-react";
 import { Logo, LogoLoader } from "@/components/Logo";
 import { PageLoader } from "@/components/Brand";
@@ -331,18 +332,25 @@ export default function HomePage() {
     <div className="pt-2 lg:grid lg:grid-cols-[minmax(340px,400px)_1fr] lg:gap-8 lg:items-start">
       {/* Controls column — fixed, deliberate order */}
       <div className="space-y-5 lg:sticky lg:top-20">
-        {/* Greeting — like a native app's warm header */}
-        <div className="flex items-center gap-3 px-1">
+        {/* Greeting — THE home header on phones (the brand bar hides here) */}
+        <div className="flex items-center gap-3 px-1 pt-1">
           <span className="w-11 h-11 rounded-full bg-surface shadow-sm grid place-items-center shrink-0">
             <Logo variant="icon" size={26} />
           </span>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="text-lg font-extrabold leading-tight truncate">
               {t("home.greeting")}
               {acctName ? (lang === "ar" ? `، ${acctName}` : `, ${acctName}`) : ""}
             </div>
             {hijri && <div className="text-xs text-muted">{hijri}</div>}
           </div>
+          <button
+            onClick={() => window.dispatchEvent(new Event("aqim-open-nav"))}
+            aria-label="menu"
+            className="md:hidden w-10 h-10 grid place-items-center rounded-full bg-surface shadow-sm text-foreground active:scale-95 transition shrink-0"
+          >
+            <Menu size={20} />
+          </button>
         </div>
         {/* ONE hero: either get-started (new user) or the prayer card */}
         {status && !status.hasMemorization ? (

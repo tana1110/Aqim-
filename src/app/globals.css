@@ -221,6 +221,18 @@ body {
   color: #fff;
 }
 
+/* Floating bottom pill nav — solid deep navy in light mode; in dark mode a
+   dark raised surface (the light-blue "primary" there would look washed). */
+.nav-pill {
+  background: var(--color-primary);
+}
+@media (prefers-color-scheme: dark) {
+  .nav-pill {
+    background: #17242d;
+    border: 1px solid var(--color-border);
+  }
+}
+
 /* Safe-area helpers for the app-like bottom nav. */
 .pb-safe {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);

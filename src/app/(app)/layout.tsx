@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu } from "lucide-react";
 import { BottomTabs, NavDrawer, SideNav } from "@/components/BottomNav";
 import { Logo } from "@/components/Logo";
@@ -17,6 +18,17 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   const [navOpen, setNavOpen] = useState(false);
+  const pathname = usePathname();
+  // Home carries its own greeting header on phones — showing the brand bar
+  // above it reads as two clashing headers.
+  const isHome = pathname === "/home";
+
+  // Pages without the app header (home on mobile) can still open the drawer.
+  useEffect(() => {
+    const open = () => setNavOpen(true);
+    window.addEventListener("aqim-open-nav", open);
+    return () => window.removeEventListener("aqim-open-nav", open);
+  }, []);
 
   return (
     <div className="min-h-dvh flex flex-col">
@@ -25,7 +37,11 @@ export default function AppLayout({
       <ReminderScheduler />
       <NavDrawer open={navOpen} onClose={() => setNavOpen(false)} />
 
-      <header className="sticky top-0 z-20 bg-background border-b border-border">
+      <header
+        className={`sticky top-0 z-20 bg-background border-b border-border ${
+          isHome ? "hidden md:block" : ""
+        }`}
+      >
         <div className="mx-auto max-w-6xl px-3 md:px-8 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">
             <button

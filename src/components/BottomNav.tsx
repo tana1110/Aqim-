@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -26,17 +27,34 @@ export const TABS = [
 ];
 
 // Mobile: floating pill nav (bento redesign) — dark rounded bar, the active
-// section pops as a light circle. 5 main sections; Settings in the drawer.
+// section pops as a light circle. Slides away while scrolling down so it
+// never covers content; returns the moment the user scrolls up.
 export function BottomTabs() {
   const pathname = usePathname();
   const { t } = useLang();
+  const [hidden, setHidden] = useState(false);
   const tabs = TABS.filter((x) => x.href !== "/settings");
+
+  useEffect(() => {
+    let last = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      if (y > last + 6 && y > 90) setHidden(true);
+      else if (y < last - 6) setHidden(false);
+      last = y;
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
     <nav
-      className="md:hidden fixed bottom-3 inset-x-3 z-30"
+      className={`md:hidden fixed bottom-3 inset-x-3 z-30 transition-transform duration-300 ${
+        hidden ? "translate-y-[140%]" : ""
+      }`}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto max-w-md flex items-center justify-between rounded-full bg-primary shadow-lg px-3 py-2">
+      <div className="mx-auto max-w-md flex items-center justify-between rounded-full nav-pill shadow-lg px-3 py-2">
         {tabs.map(({ href, key, Icon }) => {
           const active = pathname === href;
           const label = key === "nav.adhkar" ? "nav.adhkar.tab" : key;
