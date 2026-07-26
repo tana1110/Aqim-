@@ -336,6 +336,16 @@ export default function QuranPage() {
     trackTouch: true,
     trackMouse: false,
   });
+  // The full-page overlay needs its OWN handler instance — sharing one set
+  // of swipe props between two mounted elements detaches the first.
+  const swipeFull = useSwipeable({
+    onSwipedRight: () => turn(1),
+    onSwipedLeft: () => turn(-1),
+    delta: 50,
+    preventScrollOnSwipe: false,
+    trackTouch: true,
+    trackMouse: false,
+  });
 
   if (page != null && loadError && !data) {
     return (
@@ -636,10 +646,10 @@ export default function QuranPage() {
       {immersive && (
         <div className="fixed inset-0 z-50 bg-background overflow-hidden">
           <div
-            {...swipe}
+            {...swipeFull}
             key={"full-" + data.page}
             onClick={() => setBars((b) => !b)}
-            className="h-full max-w-2xl mx-auto px-4 flex flex-col justify-center overflow-hidden select-none"
+            className="h-full max-w-2xl mx-auto px-4 fit-center overflow-hidden select-none"
             style={{
               paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
               paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
@@ -647,7 +657,7 @@ export default function QuranPage() {
           >
             <div
               ref={fitRef}
-              className="animate-page [&_.quran-text]:!text-[length:1em] [&_.quran-text]:!leading-[1.9] [&_.bismillah-line]:!text-[length:0.85em] [&_.bismillah-line]:!leading-[1.7]"
+              className="animate-page fit-quran"
               style={{ fontSize: `${fitSize}px` }}
             >
               {renderGroups(true)}

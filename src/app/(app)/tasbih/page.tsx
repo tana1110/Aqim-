@@ -170,7 +170,7 @@ export default function TasbihPage() {
             )}
           </svg>
           <span className="relative text-center">
-            <span className="block text-5xl font-bold tabular-nums text-primary">
+            <span className="block text-7xl font-extrabold tabular-nums text-primary">
               {digits(s.count)}
             </span>
             {s.target > 0 && (

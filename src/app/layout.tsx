@@ -51,7 +51,7 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f3eee3" },
+    { media: "(prefers-color-scheme: light)", color: "#1e2b34" },
     { media: "(prefers-color-scheme: dark)", color: "#1c2830" },
   ],
   width: "device-width",
@@ -75,7 +75,7 @@ export default function RootLayout({
         <style
           dangerouslySetInnerHTML={{
             __html:
-              "html{background:#f3eee3}@media (prefers-color-scheme:dark){html{background:#1c2830}}",
+              "html{background:#1e2b34}",
           }}
         />
         {/* Apply the saved language before paint to avoid a flash of the wrong

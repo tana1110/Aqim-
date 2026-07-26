@@ -13,8 +13,8 @@ export default function manifest(): MetadataRoute.Manifest {
     // The marketing landing page at "/" is for browser visitors.
     start_url: "/home",
     display: "standalone",
-    background_color: "#f3eee3",
-    theme_color: "#33546a",
+    background_color: "#1e2b34",
+    theme_color: "#1e2b34",
     dir: "rtl",
     lang: "ar",
     icons: [
