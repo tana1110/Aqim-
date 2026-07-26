@@ -30,6 +30,7 @@ interface MushafPage {
 }
 
 const POS_KEY = "aqim-quran-page";
+const HINT_KEY = "aqim-quran-hint-seen";
 
 function toArabicDigits(n: number): string {
   return String(n).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]);
@@ -40,6 +41,8 @@ export default function QuranPage() {
   const [data, setData] = useState<MushafPage | null>(null);
   const [surahs, setSurahs] = useState<SurahMeta[]>([]);
   const [page, setPage] = useState<number | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [showCoach, setShowCoach] = useState(false);
   const fetchSeq = useRef(0);
 
   // Resume exactly where the reader left off.
@@ -47,6 +50,7 @@ export default function QuranPage() {
     let p = 1;
     try {
       p = Number(localStorage.getItem(POS_KEY)) || 1;
+      setShowCoach(!localStorage.getItem(HINT_KEY));
     } catch {}
     setPage(Math.min(604, Math.max(1, p)));
     fetch("/api/surahs")
@@ -55,21 +59,39 @@ export default function QuranPage() {
       .catch(() => {});
   }, []);
 
+  function dismissCoach() {
+    setShowCoach(false);
+    try {
+      localStorage.setItem(HINT_KEY, "1");
+    } catch {}
+  }
+
   // Load the page's content; stale responses are discarded (fetchSeq) so fast
-  // turning can never render the wrong page.
-  useEffect(() => {
-    if (page == null) return;
+  // turning can never render the wrong page. A failed load shows a retry —
+  // never an eternal spinner.
+  const loadPage = (p: number) => {
     const seq = ++fetchSeq.current;
-    fetch(`/api/mushaf?page=${page}`)
-      .then((r) => r.json())
+    setLoadError(false);
+    fetch(`/api/mushaf?page=${p}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((d) => {
         if (seq === fetchSeq.current) setData(d);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (seq === fetchSeq.current) setLoadError(true);
+      });
+  };
+  useEffect(() => {
+    if (page == null) return;
+    loadPage(page);
     try {
       localStorage.setItem(POS_KEY, String(page));
     } catch {}
     window.scrollTo({ top: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   async function jumpToSurah(n: number) {
@@ -82,6 +104,7 @@ export default function QuranPage() {
   // zones). The next page physically sits on the LEFT in an Arabic book:
   // swiping it toward the right turns forward.
   function turn(delta: 1 | -1) {
+    if (showCoach) dismissCoach();
     setPage((p) => Math.min(604, Math.max(1, (p ?? 1) + delta)));
   }
   const swipe = useSwipeable({
@@ -92,6 +115,20 @@ export default function QuranPage() {
     trackTouch: true,
     trackMouse: false,
   });
+
+  if (page != null && loadError && !data) {
+    return (
+      <div className="card p-6 text-center mt-6 space-y-3">
+        <p className="text-sm text-muted">{t("quran.loadFailed")}</p>
+        <button
+          onClick={() => loadPage(page)}
+          className="btn-primary px-6 py-2 text-sm"
+        >
+          {t("common.retry")}
+        </button>
+      </div>
+    );
+  }
 
   if (page == null || !data) return <PageLoader />;
 
@@ -178,6 +215,33 @@ export default function QuranPage() {
           <ChevronRight size={18} />
         </button>
 
+        {/* First-visit coach mark — disappears after the first page turn */}
+        {showCoach && (
+          <button
+            onClick={dismissCoach}
+            className="absolute top-3 inset-x-0 z-20 mx-auto w-fit flex items-center gap-2 rounded-full bg-primary text-white px-4 py-2 text-xs font-bold shadow-lg animate-rise"
+          >
+            <ChevronRight size={13} className="animate-pulse" />
+            {t("quran.coach")}
+            <span className="text-white/60 ms-1">×</span>
+          </button>
+        )}
+
+        {/* Edge tap zones (mobile): tap left edge = next page (Arabic book
+            order), right edge = previous. One turn per tap. */}
+        <button
+          aria-hidden
+          tabIndex={-1}
+          onClick={() => turn(1)}
+          className="sm:hidden absolute inset-y-0 left-0 w-[18%] z-10"
+        />
+        <button
+          aria-hidden
+          tabIndex={-1}
+          onClick={() => turn(-1)}
+          className="sm:hidden absolute inset-y-0 right-0 w-[18%] z-10"
+        />
+
         <div {...swipe} key={data.page} className="animate-page select-none">
           <div className="rounded-lg border-2 border-accent/60 bg-surface p-1.5 shadow-sm">
             <div className="rounded-md border border-accent/35 px-4 sm:px-7 pt-3 pb-5">
@@ -254,9 +318,7 @@ export default function QuranPage() {
         </div>
       </div>
 
-      <p className="text-center text-[11px] text-muted mt-3 pb-6">
-        {t("quran.swipeHint")}
-      </p>
+      <div className="pb-6" />
     </div>
   );
 }

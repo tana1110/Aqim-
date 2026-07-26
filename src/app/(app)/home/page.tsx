@@ -86,6 +86,12 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [daily, setDaily] = useState<DailyAyah | null>(null);
+  const [lenPref, setLenPref] = useState<string>("medium");
+  useEffect(() => {
+    try {
+      setLenPref(localStorage.getItem("aqim-passage-len") || "medium");
+    } catch {}
+  }, []);
 
   // Everything renders at once, in a fixed order, only after the core data
   // has settled — no sections popping in one by one.
@@ -206,7 +212,12 @@ export default function HomePage() {
     return `${h}:${pad(m)}:${pad(s)}`;
   })();
 
+  const [locBusy, setLocBusy] = useState(false);
+  const [locError, setLocError] = useState(false);
+
   function enableLocation() {
+    setLocError(false);
+    setLocBusy(true);
     navigator.geolocation?.getCurrentPosition(
       (pos) => {
         const cfg = loadReminderConfig();
@@ -217,8 +228,12 @@ export default function HomePage() {
           locationLabel: null,
         });
         loadTimes();
+        setLocBusy(false);
       },
-      () => {},
+      () => {
+        setLocBusy(false);
+        setLocError(true);
+      },
       { timeout: 12000, maximumAge: 600000 },
     );
   }
@@ -253,7 +268,6 @@ export default function HomePage() {
   async function aqim() {
     setLoading(true);
     setError(null);
-    const started = Date.now();
     try {
       const res = await fetch("/api/suggest", {
         method: "POST",
@@ -267,11 +281,6 @@ export default function HomePage() {
         }),
       });
       const data = await res.json();
-      // Let the sujood animation complete its current cycle before revealing —
-      // the dot always reaches the ground and rises (LogoLoader dur = 1.8s).
-      const CYCLE = 1800;
-      const elapsed = Date.now() - started;
-      await new Promise((r) => setTimeout(r, CYCLE - (elapsed % CYCLE)));
       if (data.error) setError(data.error);
       else setPlan(data.plan);
     } catch {
@@ -364,9 +373,10 @@ export default function HomePage() {
                 !locCtaDismissed && (
                   <button
                     onClick={enableLocation}
-                    className="shrink-0 flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-bold"
+                    disabled={locBusy}
+                    className="shrink-0 flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-[11px] font-bold disabled:opacity-60"
                   >
-                    <MapPin size={12} />
+                    <MapPin size={12} className={locBusy ? "animate-pulse" : ""} />
                     {t("home.locCta.btn")}
                   </button>
                 )
@@ -398,6 +408,34 @@ export default function HomePage() {
               </div>
             )}
 
+            {locError && (
+              <p className="text-[11px] text-white/75 bg-white/10 rounded-xl p-2.5 text-center">
+                {t("home.locFailed")}
+              </p>
+            )}
+
+            {/* Passage length — the same setting as in Settings, surfaced
+                where it matters most */}
+            <div className="flex items-center justify-center gap-1 rounded-full bg-white/10 p-1">
+              {(["short", "medium", "long"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => {
+                    setLenPref(v);
+                    try {
+                      localStorage.setItem("aqim-passage-len", v);
+                    } catch {}
+                  }}
+                  aria-pressed={lenPref === v}
+                  className={`flex-1 rounded-full py-1.5 text-xs font-bold transition ${
+                    lenPref === v ? "bg-white text-primary" : "text-white/70"
+                  }`}
+                >
+                  {t(`len.${v}`)}
+                </button>
+              ))}
+            </div>
+
             <button
               onClick={aqim}
               disabled={loading}
@@ -411,6 +449,9 @@ export default function HomePage() {
                 </span>
               )}
             </button>
+            <p className="text-[11px] text-white/60 text-center -mt-1">
+              {t("home.ctaHint")}
+            </p>
 
             {error && (
               <div className="text-sm text-white bg-white/10 text-center rounded-xl p-3">
@@ -456,7 +497,7 @@ export default function HomePage() {
         )}
 
         {/* آية اليوم */}
-        {daily && status?.hasMemorization && (
+        {daily && (
           <ContentCard
             label={t("home.dailyAyah")}
             icon={<BookOpen size={13} />}
@@ -483,7 +524,7 @@ export default function HomePage() {
         )}
 
         {/* Today's tasks — wird + adhkar at a glance */}
-        {status?.hasMemorization && <TodayCard />}
+        <TodayCard />
 
         {/* Pick up the Mushaf where the reader left off */}
         <ContinueReading />
@@ -607,20 +648,44 @@ function TodayCard() {
   );
 }
 
-// Resume the Mushaf exactly where the reader stopped — only shown once they
-// have actually started reading (saved page > 1).
+// Resume the Mushaf exactly where the reader stopped; before they've started,
+// the same card invites them to begin from page one.
 function ContinueReading() {
   const { t, lang } = useLang();
-  const [page, setPage] = useState<number | null>(null);
+  const [page, setPage] = useState<number>(0);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     try {
       const p = Number(localStorage.getItem("aqim-quran-page")) || 0;
       if (p > 1) setPage(Math.min(604, p));
     } catch {}
+    setReady(true);
   }, []);
 
-  if (!page) return null;
+  if (!ready) return null;
+
+  if (!page) {
+    return (
+      <Link
+        href="/quran"
+        className="card rounded-2xl p-4 flex items-center gap-3 active:scale-[0.99] transition hover:border-accent/50"
+      >
+        <span className="w-10 h-10 rounded-xl bg-accent-soft text-accent grid place-items-center shrink-0">
+          <BookOpenText size={19} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-bold truncate">
+            {t("home.startReading")}
+          </span>
+          <span className="block text-[11px] text-muted mt-0.5">
+            {t("home.startReadingSub")}
+          </span>
+        </span>
+        <ChevronLeft size={16} className="text-muted rtl:block hidden shrink-0" />
+      </Link>
+    );
+  }
 
   const digits = (n: number) =>
     lang === "ar"

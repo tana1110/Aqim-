@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { BookOpenText } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { BrandOverlay } from "@/components/Brand";
@@ -15,6 +16,7 @@ const FLAG = "aqim-onboarded";
 // to the dashboard and never see this again.
 export function Welcome() {
   const { t, lang } = useLang();
+  const router = useRouter();
   const [visible, setVisible] = useState(false);
   const [ready, setReady] = useState(false);
   const [step, setStep] = useState(0);
@@ -55,12 +57,13 @@ export function Welcome() {
   // so all its elements animate in together.
   if (!ready) return <div className="fixed inset-0 z-40 bg-background" />;
 
-  function finish() {
+  function finish(toSetup = false) {
     try {
       localStorage.setItem(FLAG, "1");
     } catch {}
-    // Brief brand transition, then reveal the HOME screen (which carries its
-    // own get-started call-to-action) — never dropped straight into setup.
+    // Brief brand transition. Finishing the tour lands on the first real
+    // task — marking memorization; skipping goes to the home screen.
+    if (toSetup) router.push("/setup");
     setLeaving(true);
     setTimeout(() => {
       document.documentElement.removeAttribute("data-welcome");
@@ -162,10 +165,10 @@ export function Welcome() {
           ))}
         </div>
         <button
-          onClick={() => (last ? finish() : setStep(step + 1))}
+          onClick={() => (last ? finish(true) : setStep(step + 1))}
           className={`${last ? "btn-cta" : "btn-primary"} w-full max-w-sm py-4 text-lg`}
         >
-          {last ? t("welcome.start") : t("welcome.next")}
+          {last ? t("welcome.startSetup") : t("welcome.next")}
         </button>
       </div>
     </div>

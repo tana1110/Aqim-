@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flame, Check, Bell } from "lucide-react";
+import { Flame, Check, Bell, ChevronDown } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import {
@@ -193,15 +193,12 @@ export function WirdStrip() {
             className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
           />
         </label>
-        {!cfg.enabled && (
-          <button
-            onClick={enable}
-            className="btn-primary px-4 py-1.5 text-xs ms-auto"
-          >
-            {t("wird.enable")}
-          </button>
-        )}
       </div>
+      {!cfg.enabled && (
+        <button onClick={enable} className="btn-cta w-full py-2.5 text-sm">
+          {t("wird.begin")}
+        </button>
+      )}
     </div>
   );
 
@@ -231,16 +228,25 @@ export function WirdStrip() {
       <div className="card rounded-xl px-4 py-3">
         <button
           onClick={() => setOpenSetup(!openSetup)}
+          aria-expanded={openSetup}
           className="w-full flex items-center justify-between gap-3 text-sm"
         >
           <span className="flex items-center gap-2 font-medium">
             <Bell size={15} className="text-muted" />
             {t("wird.start")}
           </span>
-          <span className="text-xs text-primary font-bold">
-            {openSetup ? "×" : "+"}
+          <span className="w-8 h-8 grid place-items-center rounded-full text-primary">
+            <ChevronDown
+              size={17}
+              className={`transition-transform ${openSetup ? "rotate-180" : ""}`}
+            />
           </span>
         </button>
+        {!openSetup && (
+          <p className="text-[11px] text-muted mt-1 leading-relaxed">
+            {t("wird.explain")}
+          </p>
+        )}
         {openSetup && setupForm}
       </div>
     );

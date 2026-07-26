@@ -145,23 +145,42 @@ export default function SettingsPage() {
         </Row>
 
         {/* Suggested passage length */}
-        <Row label={t("settings.passageLen")}>
-          <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
-            {(["short", "medium", "long"] as const).map((v) => (
-              <button
-                key={v}
-                onClick={() => applyPassLen(v)}
-                aria-pressed={passLen === v}
-                className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap ${
-                  passLen === v
-                    ? "bg-primary text-white"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                {t(`len.${v}`)}
-              </button>
-            ))}
+        <div className="p-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm font-medium">{t("settings.passageLen")}</span>
+            <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
+              {(["short", "medium", "long"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => applyPassLen(v)}
+                  aria-pressed={passLen === v}
+                  className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap ${
+                    passLen === v
+                      ? "bg-primary text-white"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {t(`len.${v}`)}
+                </button>
+              ))}
+            </div>
           </div>
+          <p className="text-[11px] text-muted mt-1.5">{t("settings.lenHint")}</p>
+        </div>
+
+        {/* Replay the intro tour */}
+        <Row label={t("settings.replayTour")}>
+          <button
+            onClick={() => {
+              try {
+                localStorage.removeItem("aqim-onboarded");
+              } catch {}
+              window.location.href = "/home";
+            }}
+            className="btn-primary px-4 py-1.5 text-xs"
+          >
+            {t("settings.replayTourHint")}
+          </button>
         </Row>
 
         {/* Prayer reminder */}

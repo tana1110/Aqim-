@@ -1,10 +1,33 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Search, Check } from "lucide-react";
+import { Search, Check, RotateCcw } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
-import { isAdhkarDoneToday, markAdhkarDoneToday } from "@/lib/wird";
+import { dayKey, isAdhkarDoneToday, markAdhkarDoneToday } from "@/lib/wird";
+
+// Tap counts survive navigation and reload — stored per calendar day, so
+// yesterday's counts never leak into today.
+function tapsStorageKey(): string {
+  return `aqim-adhkar-taps:${dayKey()}`;
+}
+function loadTaps(id: number): number {
+  try {
+    const m = JSON.parse(localStorage.getItem(tapsStorageKey()) ?? "{}");
+    return Number(m[id]) || 0;
+  } catch {
+    return 0;
+  }
+}
+function saveTaps(id: number, taps: number) {
+  try {
+    const key = tapsStorageKey();
+    const m = JSON.parse(localStorage.getItem(key) ?? "{}");
+    if (taps > 0) m[id] = taps;
+    else delete m[id];
+    localStorage.setItem(key, JSON.stringify(m));
+  } catch {}
+}
 
 interface Chapter {
   index: number;
@@ -180,14 +203,30 @@ function ChapterView({
 }
 
 // One dhikr with a tasbih-style tap counter toward its prescribed count.
+// Counts persist per day and keep going past the target (e.g. 35/33).
 function DhikrCard({ d }: { d: Dhikr }) {
   const { t } = useLang();
   const [taps, setTaps] = useState(0);
+  useEffect(() => {
+    setTaps(loadTaps(d.id));
+  }, [d.id]);
   const done = taps >= d.count;
+
+  function bump() {
+    const next = taps + 1;
+    setTaps(next);
+    saveTaps(d.id, next);
+  }
+  function reset(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (taps > 10 && !window.confirm(t("adhkar.resetConfirm"))) return;
+    setTaps(0);
+    saveTaps(d.id, 0);
+  }
 
   return (
     <button
-      onClick={() => !done && setTaps(taps + 1)}
+      onClick={bump}
       className={`card w-full text-start p-5 transition active:scale-[0.995] ${
         done ? "border-secondary/50 bg-secondary-soft/40" : ""
       }`}
@@ -207,24 +246,23 @@ function DhikrCard({ d }: { d: Dhikr }) {
             </span>
           )}
           <span
-            className={`min-w-11 h-8 px-2.5 rounded-full grid place-items-center text-sm font-bold tabular-nums ${
+            className={`min-w-11 h-8 px-2.5 rounded-full flex items-center justify-center gap-1 text-sm font-bold tabular-nums ${
               done
                 ? "bg-secondary text-white"
                 : "bg-primary-soft text-primary"
             }`}
           >
-            {done ? <Check size={16} /> : `${taps}/${d.count}`}
+            {done && <Check size={14} />}
+            {`${taps}/${d.count}`}
           </span>
           {taps > 0 && (
             <span
               role="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                setTaps(0);
-              }}
-              className="text-[11px] text-muted underline"
+              aria-label={t("adhkar.reset")}
+              onClick={reset}
+              className="w-8 h-8 rounded-full grid place-items-center text-muted hover:text-foreground hover:bg-surface-2 transition"
             >
-              {t("adhkar.reset")}
+              <RotateCcw size={15} />
             </span>
           )}
         </span>

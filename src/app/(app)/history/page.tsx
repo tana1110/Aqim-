@@ -147,11 +147,6 @@ export default function HistoryPage() {
         </section>
       </div>
 
-      {/* Focus mode — active memorization-review tool */}
-      <div className="lg:col-span-2">
-        <FocusPanel memo={memo} surahMap={surahMap} />
-      </div>
-
       <div>
         <div className="text-sm font-bold mb-2 px-1">{t("history.recent")}</div>
         {rows.length === 0 ? (
@@ -190,6 +185,11 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
+
+      {/* Focus mode — a secondary tool, collapsed below the history itself */}
+      <div>
+        <FocusPanel memo={memo} surahMap={surahMap} />
+      </div>
     </div>
   );
 }
@@ -205,9 +205,12 @@ function FocusPanel({
 }) {
   const { t, lang } = useLang();
   const [cfg, setCfg] = useState<FocusConfig | null>(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    setCfg(loadFocus());
+    const c = loadFocus();
+    setCfg(c);
+    setOpen(c.active); // an active focus is worth seeing at a glance
   }, []);
 
   if (!cfg) return null;
@@ -234,6 +237,48 @@ function FocusPanel({
     const s = surahMap.get(n);
     return s ? surahName(lang, s.nameArabic, s.nameTranslit) : String(n);
   };
+
+  // Collapsed: one summary row — the full form only on demand.
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="card w-full p-4 flex items-center justify-between gap-3 text-start active:scale-[0.99] transition"
+      >
+        <span className="text-sm font-bold flex items-center gap-1.5">
+          <Crosshair size={15} className="text-primary" />
+          {t("focus.title")}
+        </span>
+        <span
+          className={`text-xs font-bold ${
+            cfg.active ? "text-secondary" : "text-muted"
+          }`}
+        >
+          {cfg.active && cfg.surahNumber
+            ? `${t("focus.statusOn")} · ${name(cfg.surahNumber)}`
+            : t("focus.statusOff")}
+        </span>
+      </button>
+    );
+  }
+
+  // No memorization yet — the pickers would be empty; guide to setup instead.
+  if (choices.length === 0) {
+    return (
+      <section className="card p-4 sm:p-5 space-y-3">
+        <h2 className="text-sm font-bold flex items-center gap-1.5">
+          <Crosshair size={15} className="text-primary" />
+          {t("focus.title")}
+        </h2>
+        <p className="text-xs text-muted leading-relaxed">
+          {t("focus.needMemo")}
+        </p>
+        <a href="/setup" className="btn-primary inline-block px-5 py-2 text-xs">
+          {t("home.getStarted.btn")}
+        </a>
+      </section>
+    );
+  }
 
   return (
     <section className="card p-4 sm:p-5 space-y-4">
@@ -333,13 +378,18 @@ function FocusPanel({
       {/* Enable sits IMMEDIATELY under the pickers — visible the moment a
           surah is chosen, no scrolling needed. */}
       {!cfg.active && (
-        <button
-          onClick={() => cfg.surahNumber && apply({ ...cfg, active: true })}
-          disabled={!cfg.surahNumber}
-          className="btn-cta w-full sm:w-auto px-8 py-3 text-sm disabled:opacity-50"
-        >
-          {t("focus.enable")}
-        </button>
+        <div className="space-y-1.5">
+          <button
+            onClick={() => cfg.surahNumber && apply({ ...cfg, active: true })}
+            disabled={!cfg.surahNumber}
+            className="btn-cta w-full sm:w-auto px-8 py-3 text-sm disabled:opacity-50"
+          >
+            {t("focus.enable")}
+          </button>
+          {!cfg.surahNumber && (
+            <p className="text-[11px] text-muted">{t("focus.pickFirst")}</p>
+          )}
+        </div>
       )}
 
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">

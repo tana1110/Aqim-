@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Menu } from "lucide-react";
 import { NavDrawer, TopNav } from "@/components/BottomNav";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { Logo } from "@/components/Logo";
 import { SplashScreen } from "@/components/SplashScreen";
 import { Welcome } from "@/components/Welcome";
@@ -45,8 +46,7 @@ export default function AppLayout({
 
           <TopNav />
 
-          {/* Language switching lives in Settings only (by design). */}
-          <span className="w-10" aria-hidden />
+          <LanguageToggle />
         </div>
       </header>
 

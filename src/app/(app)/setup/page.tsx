@@ -18,6 +18,15 @@ interface Juz {
   segments: JuzSegment[];
 }
 
+// Order-independent fingerprint of a selection, for dirty-state tracking.
+function selectionKey(surahs: Set<number>, juz: Set<number>): string {
+  return (
+    [...surahs].sort((a, b) => a - b).join(",") +
+    "|" +
+    [...juz].sort((a, b) => a - b).join(",")
+  );
+}
+
 // The saved memorization = every fully-selected surah, plus the segments of
 // each selected juz (minus surahs already covered in full).
 function buildRangesFrom(
@@ -57,7 +66,10 @@ export default function SetupPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedToast, setSavedToast] = useState(false);
+  const [saveError, setSaveError] = useState(false);
   const [seeded, setSeeded] = useState(true);
+  // Snapshot of the last-saved selection — the save bar appears on any change.
+  const [savedKey, setSavedKey] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -80,6 +92,7 @@ export default function SetupPage() {
         }
       }
       setSelectedSurahs(preselect);
+      setSavedKey(selectionKey(preselect, new Set()));
       setLoading(false);
     }
     load().catch(() => setLoading(false));
@@ -110,22 +123,34 @@ export default function SetupPage() {
   }
 
   async function save() {
+    // Saving with nothing selected wipes the memorization — confirm first.
+    if (
+      selectedSurahs.size + selectedJuz.size === 0 &&
+      !window.confirm(t("setup.confirmClear"))
+    )
+      return;
     setSaving(true);
+    setSaveError(false);
     try {
-      await fetch("/api/memorization", {
+      const res = await fetch("/api/memorization", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ranges: buildRanges() }),
       });
-      // Stay here — offer (don't force) the trip home via a small toast.
+      if (!res.ok) throw new Error(String(res.status));
+      setSavedKey(selectionKey(selectedSurahs, selectedJuz));
+      // Stay here — offer (don't force) the trip home. Card stays until
+      // dismissed.
       setSavedToast(true);
-      setTimeout(() => setSavedToast(false), 15000);
+    } catch {
+      setSaveError(true);
     } finally {
       setSaving(false);
     }
   }
 
   const selectedCount = selectedSurahs.size + selectedJuz.size;
+  const isDirty = selectionKey(selectedSurahs, selectedJuz) !== savedKey;
 
 
   if (loading) return <Loading />;
@@ -177,18 +202,23 @@ export default function SetupPage() {
       {/* Save bar — appears AT THE TOP the moment anything is selected and
           stays stuck under the header while scrolling. In normal flow, so it
           never covers the last rows of the list. */}
-      {selectedCount > 0 && (
+      {(isDirty || selectedCount > 0) && (
         <div className="sticky top-[64px] z-10 animate-rise">
           <div className="card flex items-center justify-between gap-3 p-2.5 ps-4 shadow-lg">
             <span className="text-sm font-medium">
-              {t("setup.selected", { n: selectedCount })}
+              {t("setup.selMix", {
+                s: selectedSurahs.size,
+                j: selectedJuz.size,
+              })}
             </span>
             <button
               onClick={save}
-              disabled={saving}
+              disabled={saving || !isDirty}
               className="btn-cta px-8 py-2.5 text-sm flex items-center gap-1.5 disabled:opacity-70"
             >
               {saving ? (
+                t("setup.saving")
+              ) : !isDirty ? (
                 <>
                   <Check size={16} /> {t("common.saved")}
                 </>
@@ -197,22 +227,76 @@ export default function SetupPage() {
               )}
             </button>
           </div>
+          {saveError && (
+            <div className="card mt-2 p-3 text-sm flex items-center justify-between gap-3 border-accent/60">
+              <span>{t("setup.saveFailed")}</span>
+              <button onClick={save} className="btn-primary px-4 py-1.5 text-xs">
+                {t("common.retry")}
+              </button>
+            </div>
+          )}
         </div>
       )}
 
 
-      <div className="flex gap-2 p-1 bg-surface-2 rounded-2xl">
-        {(["surah", "juz"] as const).map((tb) => (
+      {/* Quick select — the most common bundles in one tap */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-bold text-muted">
+          {t("setup.quick")}:
+        </span>
+        <button
+          onClick={() =>
+            setSelectedJuz((prev) => new Set(prev).add(30))
+          }
+          className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-bold hover:border-primary/40 active:scale-[0.97] transition"
+        >
+          {t("setup.quick.juzAmma")}
+        </button>
+        <button
+          onClick={() =>
+            setSelectedSurahs((prev) => {
+              const next = new Set(prev);
+              for (let n = 105; n <= 114; n++) next.add(n);
+              return next;
+            })
+          }
+          className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-bold hover:border-primary/40 active:scale-[0.97] transition"
+        >
+          {t("setup.quick.last10")}
+        </button>
+        {selectedCount > 0 && (
           <button
-            key={tb}
-            onClick={() => setTab(tb)}
-            className={`flex-1 rounded-xl py-2 text-sm font-bold transition ${
-              tab === tb ? "bg-surface text-primary shadow-sm" : "text-muted"
-            }`}
+            onClick={() => {
+              setSelectedSurahs(new Set());
+              setSelectedJuz(new Set());
+            }}
+            className="rounded-full px-3.5 py-1.5 text-xs font-bold text-muted hover:text-foreground active:scale-[0.97] transition"
           >
-            {tb === "surah" ? t("setup.bySurah") : t("setup.byJuz")}
+            {t("setup.clearAll")}
           </button>
-        ))}
+        )}
+      </div>
+
+      <div className="flex gap-2 p-1 bg-surface-2 rounded-2xl">
+        {(["surah", "juz"] as const).map((tb) => {
+          const count = tb === "surah" ? selectedSurahs.size : selectedJuz.size;
+          return (
+            <button
+              key={tb}
+              onClick={() => setTab(tb)}
+              className={`flex-1 rounded-xl py-2 text-sm font-bold transition flex items-center justify-center gap-1.5 ${
+                tab === tb ? "bg-surface text-primary shadow-sm" : "text-muted"
+              }`}
+            >
+              {tb === "surah" ? t("setup.bySurah") : t("setup.byJuz")}
+              {count > 0 && (
+                <span className="min-w-5 h-5 px-1 rounded-full bg-primary text-white text-[10px] grid place-items-center tabular-nums">
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {tab === "surah" && (
