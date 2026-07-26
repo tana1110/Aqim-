@@ -10,6 +10,7 @@ import {
   isDoneToday,
   markDoneToday,
   currentStreak,
+  pagesReadToday,
   wirdWeek,
   adhkarWeek,
   type WirdConfig,
@@ -29,10 +30,13 @@ export function WirdStrip() {
   const [openSetup, setOpenSetup] = useState(false);
   const [surahs, setSurahs] = useState<SurahMeta[]>([]);
 
+  const [pagesToday, setPagesToday] = useState(0);
+
   function refresh() {
     setCfg(loadWird());
     setDone(isDoneToday());
     setStreak(currentStreak());
+    setPagesToday(pagesReadToday());
     setWeeks({ wird: wirdWeek(), adhkar: adhkarWeek() });
   }
   useEffect(() => {
@@ -287,6 +291,24 @@ export function WirdStrip() {
           </button>
         </span>
       </div>
+
+      {/* Live reading progress (pages mode) — filled by the Mushaf itself */}
+      {cfg.mode === "pages" && !done && (
+        <div className="text-[11px] text-muted">
+          {t("wird.todayPages", {
+            n: Math.min(pagesToday, cfg.pages),
+            m: cfg.pages,
+          })}
+          <span className="block h-1 rounded-full bg-surface-2 overflow-hidden mt-1">
+            <span
+              className="block h-full rounded-full bg-secondary transition-all"
+              style={{
+                width: `${Math.min(100, (pagesToday / cfg.pages) * 100)}%`,
+              }}
+            />
+          </span>
+        </div>
+      )}
 
       {/* Next reminder + weekly trackers */}
       <div className="flex items-center justify-between gap-3 text-[11px] text-muted">

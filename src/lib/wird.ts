@@ -120,6 +120,43 @@ export function markAdhkarDoneToday() {
   saveSet(ADHKAR_KEY, d);
 }
 
+// ---------------------------------------------------------------------------
+// Mushaf pages actually read today — auto-credits a pages-mode wird.
+// ---------------------------------------------------------------------------
+const READ_PREFIX = "aqim-wird-read:";
+
+export function pagesReadToday(): number {
+  try {
+    const raw = localStorage.getItem(READ_PREFIX + dayKey());
+    return raw ? (JSON.parse(raw) as number[]).length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+// Record a viewed page; returns true if this completed today's pages-mode
+// wird (which is then auto-marked done).
+export function recordPageRead(page: number): boolean {
+  try {
+    const key = READ_PREFIX + dayKey();
+    const set = new Set<number>(JSON.parse(localStorage.getItem(key) ?? "[]"));
+    set.add(page);
+    localStorage.setItem(key, JSON.stringify([...set]));
+    const cfg = loadWird();
+    if (
+      cfg.enabled &&
+      cfg.mode === "pages" &&
+      set.size >= cfg.pages &&
+      !isDoneToday()
+    ) {
+      markDoneToday();
+      return true;
+    }
+    window.dispatchEvent(new Event("aqim-wird-changed"));
+  } catch {}
+  return false;
+}
+
 // The current week (last 7 local days, oldest→today) as done/not-done flags.
 function weekOf(key: string): boolean[] {
   const days = loadSet(key);

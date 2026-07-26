@@ -37,6 +37,17 @@ export async function POST(request: Request) {
   return Response.json({ ok: true, entry });
 }
 
+// Undo a logged recitation (only the user's own entries).
+export async function DELETE(request: Request) {
+  const user = await getOrCreateDefaultUser();
+  const id = Number(new URL(request.url).searchParams.get("id"));
+  if (!id) return Response.json({ error: "Invalid id" }, { status: 400 });
+  await prisma.recitationHistory.deleteMany({
+    where: { id, userId: user.id },
+  });
+  return Response.json({ ok: true });
+}
+
 // Recent history list.
 export async function GET() {
   const user = await getOrCreateDefaultUser();

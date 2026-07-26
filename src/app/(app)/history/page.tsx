@@ -15,6 +15,27 @@ interface MemoRange {
   toAyah: number;
 }
 
+// Local calendar keys for day grouping.
+function localDayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+const todayKey = () => localDayKey(new Date());
+function yesterdayKey(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return localDayKey(d);
+}
+function groupByDay(rows: HistoryRow[]): { key: string; rows: HistoryRow[] }[] {
+  const groups: { key: string; rows: HistoryRow[] }[] = [];
+  for (const r of rows) {
+    const key = localDayKey(new Date(r.usedAt));
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.rows.push(r);
+    else groups.push({ key, rows: [r] });
+  }
+  return groups;
+}
+
 interface HistoryRow {
   id: number;
   prayerType: string;
@@ -154,34 +175,48 @@ export default function HistoryPage() {
             {t("history.empty")}
           </div>
         ) : (
-          <div className="card divide-y divide-border overflow-hidden">
-            {rows.map((r) => {
-              const s = surahMap.get(r.surahNumber);
-              const name = s
-                ? surahName(lang, s.nameArabic, s.nameTranslit)
-                : `${r.surahNumber}`;
-              return (
-                <div
-                  key={r.id}
-                  className="flex items-center justify-between p-3.5 gap-3"
-                >
-                  <span
-                    className="text-sm font-medium"
-                  >
-                    {name}{" "}
-                    <span className="text-xs text-muted">
-                      ({r.fromAyah}–{r.toAyah})
-                    </span>
-                  </span>
-                  <span className="text-xs text-muted whitespace-nowrap">
-                    {t(`prayer.${r.prayerType}`)} ·{" "}
-                    {new Date(r.usedAt).toLocaleDateString(
-                      lang === "ar" ? "ar" : "en",
-                    )}
-                  </span>
+          <div className="space-y-3">
+            {groupByDay(rows).map((g) => (
+              <div key={g.key}>
+                <div className="text-[11px] font-bold text-muted mb-1.5 px-1">
+                  {g.key === todayKey()
+                    ? t("history.today")
+                    : g.key === yesterdayKey()
+                      ? t("history.yesterday")
+                      : new Date(g.rows[0].usedAt).toLocaleDateString(
+                          lang === "ar" ? "ar" : "en",
+                          { weekday: "long", day: "numeric", month: "long" },
+                        )}
                 </div>
-              );
-            })}
+                <div className="card divide-y divide-border overflow-hidden">
+                  {g.rows.map((r) => {
+                    const s = surahMap.get(r.surahNumber);
+                    const name = s
+                      ? surahName(lang, s.nameArabic, s.nameTranslit)
+                      : `${r.surahNumber}`;
+                    return (
+                      <div
+                        key={r.id}
+                        className="flex items-center justify-between p-3.5 gap-3"
+                      >
+                        <span className="text-sm font-medium min-w-0 truncate">
+                          {name}{" "}
+                          <span className="text-xs text-muted">
+                            ({r.fromAyah}–{r.toAyah})
+                          </span>
+                        </span>
+                        <span className="text-xs text-muted whitespace-nowrap shrink-0">
+                          {t(`prayer.${r.prayerType}`)}
+                          <span className="ms-1.5 rounded-full bg-surface-2 px-2 py-0.5 text-[10px]">
+                            {t(`mode.${r.mode}`)}
+                          </span>
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -233,6 +268,15 @@ function FocusPanel({
   }
 
   const bounds = cfg.surahNumber ? bySurah.get(cfg.surahNumber) : null;
+
+  // Visible validation instead of silently rewriting what the user typed.
+  const rangeErr = (() => {
+    if (!bounds || cfg.fromAyah == null || cfg.toAyah == null) return null;
+    if (cfg.fromAyah < bounds.lo || cfg.toAyah > bounds.hi)
+      return t("focus.rangeErr", { a: bounds.lo, b: bounds.hi });
+    if (cfg.fromAyah > cfg.toAyah) return t("focus.orderErr");
+    return null;
+  })();
   const name = (n: number) => {
     const s = surahMap.get(n);
     return s ? surahName(lang, s.nameArabic, s.nameTranslit) : String(n);
@@ -372,6 +416,9 @@ function FocusPanel({
               className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
             />
           </div>
+          {rangeErr && (
+            <p className="text-[11px] text-accent font-medium">{rangeErr}</p>
+          )}
         </div>
       </div>
 
@@ -380,8 +427,10 @@ function FocusPanel({
       {!cfg.active && (
         <div className="space-y-1.5">
           <button
-            onClick={() => cfg.surahNumber && apply({ ...cfg, active: true })}
-            disabled={!cfg.surahNumber}
+            onClick={() =>
+              cfg.surahNumber && !rangeErr && apply({ ...cfg, active: true })
+            }
+            disabled={!cfg.surahNumber || !!rangeErr}
             className="btn-cta w-full sm:w-auto px-8 py-3 text-sm disabled:opacity-50"
           >
             {t("focus.enable")}

@@ -23,6 +23,41 @@ export const TABS = [
   { href: "/settings", key: "nav.settings", Icon: Settings },
 ];
 
+// Mobile: fixed bottom tab bar — the app's 5 main sections always one tap
+// away (Settings stays in the drawer/header). Labels always visible.
+export function BottomTabs() {
+  const pathname = usePathname();
+  const { t } = useLang();
+  const tabs = TABS.filter((x) => x.href !== "/settings");
+  return (
+    <nav className="md:hidden fixed inset-x-0 bottom-0 z-30 bg-surface border-t border-border pb-[env(safe-area-inset-bottom)]">
+      <div className="flex">
+        {tabs.map(({ href, key, Icon }) => {
+          const active = pathname === href;
+          const label = key === "nav.adhkar" ? "nav.adhkar.tab" : key;
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={`flex-1 flex flex-col items-center gap-0.5 pt-2 pb-1.5 min-h-12 transition-colors ${
+                active ? "text-primary" : "text-muted"
+              }`}
+            >
+              <Icon size={20} strokeWidth={active ? 2.4 : 2} />
+              <span
+                className={`text-[10px] leading-tight ${active ? "font-bold" : ""}`}
+              >
+                {t(label)}
+              </span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
+  );
+}
+
 // Desktop: inline horizontal tabs inside the header.
 export function TopNav() {
   const pathname = usePathname();

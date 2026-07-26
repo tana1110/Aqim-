@@ -2,12 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useSwipeable } from "react-swipeable";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { WirdStrip } from "@/components/WirdCard";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, getBismillahDisplay, cleanAyah } from "@/lib/quranDisplay";
+import { recordPageRead } from "@/lib/wird";
 import type { SurahMeta } from "@/lib/types";
+
+// Standard Madani-mushaf start page of each juz (1-30).
+const JUZ_PAGES = [
+  1, 22, 42, 62, 82, 102, 121, 142, 162, 182, 201, 222, 242, 262, 282, 302,
+  322, 342, 362, 382, 402, 422, 441, 462, 482, 502, 522, 542, 562, 582,
+];
 
 interface PageAyah {
   surahNumber: number;
@@ -84,12 +91,19 @@ export default function QuranPage() {
         if (seq === fetchSeq.current) setLoadError(true);
       });
   };
+  const [wirdToast, setWirdToast] = useState(false);
+  const [navOpen, setNavOpen] = useState(false);
   useEffect(() => {
     if (page == null) return;
     loadPage(page);
     try {
       localStorage.setItem(POS_KEY, String(page));
     } catch {}
+    // Reading here counts toward a pages-mode wird automatically.
+    if (recordPageRead(page)) {
+      setWirdToast(true);
+      setTimeout(() => setWirdToast(false), 5000);
+    }
     window.scrollTo({ top: 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
@@ -176,24 +190,45 @@ export default function QuranPage() {
         <WirdStrip />
       </div>
 
-      {/* Controls */}
-      <div className="flex items-center gap-2 mt-3">
-        <select
-          value=""
-          onChange={(e) => e.target.value && jumpToSurah(Number(e.target.value))}
-          className="flex-1 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm"
-        >
-          <option value="">{t("quran.jump")}</option>
-          {surahs.map((s) => (
-            <option key={s.number} value={s.number}>
-              {s.number}. {surahName(lang, s.nameArabic, s.nameTranslit)}
-            </option>
-          ))}
-        </select>
-        <span className="text-xs text-muted whitespace-nowrap tabular-nums">
-          {t("quran.page")} {digits(data.page)} / {digits(604)}
+      {/* One position button — opens the full navigator (surah/juz/page) */}
+      <button
+        onClick={() => setNavOpen(true)}
+        className="w-full mt-3 card rounded-xl px-4 py-3 flex items-center justify-between gap-3 text-sm active:scale-[0.99] transition"
+      >
+        <span className="font-bold text-primary truncate">
+          {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
         </span>
-      </div>
+        <span className="flex items-center gap-2 text-xs text-muted whitespace-nowrap tabular-nums">
+          {t("quran.page")} {digits(data.page)} / {digits(604)}
+          <Search size={14} />
+        </span>
+      </button>
+
+      {navOpen && (
+        <MushafNavigator
+          surahs={surahs}
+          currentSurah={main?.number ?? null}
+          onClose={() => setNavOpen(false)}
+          onSurah={(n) => {
+            setNavOpen(false);
+            jumpToSurah(n);
+          }}
+          onPage={(p) => {
+            setNavOpen(false);
+            setPage(Math.min(604, Math.max(1, p)));
+          }}
+        />
+      )}
+
+      {/* Wird completed by reading — quiet confirmation */}
+      {wirdToast && (
+        <div className="fixed inset-x-0 top-[72px] z-30 px-4 animate-rise">
+          <div className="mx-auto w-fit flex items-center gap-2 rounded-full bg-secondary text-white px-5 py-2.5 text-sm font-bold shadow-lg">
+            <Check size={16} strokeWidth={3} />
+            {t("wird.autoDone")}
+          </div>
+        </div>
+      )}
 
       {/* ONE page, framed like a printed Mushaf. Swipe to turn; side arrows
           serve desktop. */}
@@ -319,6 +354,146 @@ export default function QuranPage() {
       </div>
 
       <div className="pb-6" />
+    </div>
+  );
+}
+
+// Bottom-sheet navigator: jump by surah (searchable), juz, or page number.
+function MushafNavigator({
+  surahs,
+  currentSurah,
+  onClose,
+  onSurah,
+  onPage,
+}: {
+  surahs: SurahMeta[];
+  currentSurah: number | null;
+  onClose: () => void;
+  onSurah: (n: number) => void;
+  onPage: (p: number) => void;
+}) {
+  const { t, lang } = useLang();
+  const [tab, setTab] = useState<"surah" | "juz" | "page">("surah");
+  const [q, setQ] = useState("");
+  const [pageInput, setPageInput] = useState("");
+
+  const strip = (s: string) => s.normalize("NFC").replace(/\p{M}/gu, "");
+  const list = surahs.filter((s) => {
+    const query = strip(q.trim().toLowerCase());
+    if (!query) return true;
+    return (
+      strip(s.nameArabic).includes(query) ||
+      s.nameTranslit.toLowerCase().includes(query) ||
+      s.nameEnglish.toLowerCase().includes(query) ||
+      String(s.number) === query
+    );
+  });
+
+  return (
+    <div className="fixed inset-0 z-40">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
+      <div className="absolute inset-x-0 bottom-0 max-h-[80dvh] bg-surface rounded-t-3xl shadow-lg flex flex-col animate-rise">
+        <div className="flex items-center justify-between p-4 pb-2">
+          <span className="text-sm font-bold">{t("quran.navTitle")}</span>
+          <button
+            onClick={onClose}
+            aria-label="close"
+            className="w-9 h-9 grid place-items-center rounded-lg text-muted hover:text-foreground"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex gap-2 px-4 pb-3">
+          {(["surah", "juz", "page"] as const).map((tb) => (
+            <button
+              key={tb}
+              onClick={() => setTab(tb)}
+              className={`flex-1 rounded-xl py-2 text-sm font-bold transition ${
+                tab === tb
+                  ? "bg-primary text-white"
+                  : "bg-surface-2 text-muted"
+              }`}
+            >
+              {t(`quran.tab.${tb}`)}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-4 pb-8">
+          {tab === "surah" && (
+            <>
+              <div className="relative mb-2">
+                <Search
+                  size={15}
+                  className="absolute start-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+                />
+                <input
+                  type="search"
+                  value={q}
+                  onChange={(e) => setQ(e.target.value)}
+                  placeholder={t("setup.search")}
+                  className="w-full rounded-xl border border-border bg-surface ps-9 pe-3 py-2.5 text-sm"
+                />
+              </div>
+              <div className="divide-y divide-border">
+                {list.map((s) => (
+                  <button
+                    key={s.number}
+                    onClick={() => onSurah(s.number)}
+                    className={`w-full flex items-center justify-between gap-3 py-3 text-start min-h-12 ${
+                      s.number === currentSurah ? "text-primary font-bold" : ""
+                    }`}
+                  >
+                    <span className="text-sm">
+                      {s.number}. {surahName(lang, s.nameArabic, s.nameTranslit)}
+                    </span>
+                    {s.number === currentSurah && <Check size={15} />}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+
+          {tab === "juz" && (
+            <div className="grid grid-cols-5 gap-2">
+              {JUZ_PAGES.map((p, i) => (
+                <button
+                  key={i}
+                  onClick={() => onPage(p)}
+                  className="aspect-square rounded-xl border border-border bg-surface grid place-items-center text-sm font-bold hover:border-primary/40 active:scale-[0.95] transition"
+                >
+                  {i + 1}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {tab === "page" && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const p = Number(pageInput);
+                if (p >= 1 && p <= 604) onPage(p);
+              }}
+              className="flex items-center gap-2 pt-2"
+            >
+              <input
+                type="number"
+                min={1}
+                max={604}
+                value={pageInput}
+                onChange={(e) => setPageInput(e.target.value)}
+                placeholder="1 – 604"
+                className="flex-1 rounded-xl border border-border bg-surface px-3 py-3 text-sm tabular-nums"
+              />
+              <button type="submit" className="btn-primary px-6 py-3 text-sm">
+                {t("quran.go")}
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

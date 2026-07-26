@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Check, RotateCcw } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
@@ -43,13 +44,31 @@ interface Dhikr {
 
 const strip = (s: string) => s.normalize("NFC").replace(/\p{M}/gu, "");
 
+// The chapter lives in the URL (?chapter=N) so the phone's back gesture
+// returns to the list and a refresh restores the open chapter.
 export default function AdhkarPage() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <AdhkarInner />
+    </Suspense>
+  );
+}
+
+function AdhkarInner() {
   const { t } = useLang();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [open, setOpen] = useState<Chapter | null>(null);
   const [query, setQuery] = useState("");
   const [doneToday, setDoneToday] = useState(false);
+
+  const chapterParam = Number(searchParams.get("chapter")) || null;
+  const open = chapterParam
+    ? (chapters.find((c) => c.index === chapterParam) ?? null)
+    : null;
+  const setOpen = (c: Chapter | null) =>
+    router.push(c ? `/adhkar?chapter=${c.index}` : "/adhkar");
 
   useEffect(() => {
     setDoneToday(isAdhkarDoneToday());
@@ -77,7 +96,14 @@ export default function AdhkarPage() {
   if (!loaded) return <PageLoader />;
 
   if (open) {
-    return <ChapterView chapter={open} onBack={() => setOpen(null)} />;
+    const st = strip(open.title);
+    return (
+      <ChapterView
+        chapter={open}
+        isDaily={st.includes("الصباح") || st.includes("المساء")}
+        onBack={() => setOpen(null)}
+      />
+    );
   }
 
   const q = query.trim();
@@ -163,19 +189,43 @@ export default function AdhkarPage() {
 
 function ChapterView({
   chapter,
+  isDaily,
   onBack,
 }: {
   chapter: Chapter;
+  isDaily: boolean;
   onBack: () => void;
 }) {
   const { t } = useLang();
   const [items, setItems] = useState<Dhikr[] | null>(null);
+  const [autoDone, setAutoDone] = useState(false);
+  const [showTapHint, setShowTapHint] = useState(false);
 
   useEffect(() => {
     fetch(`/api/adhkar?chapter=${chapter.index}`)
       .then((r) => r.json())
       .then((d) => setItems(d.items ?? []));
+    try {
+      setShowTapHint(!localStorage.getItem("aqim-adhkar-hint"));
+    } catch {}
   }, [chapter.index]);
+
+  // Completing every dhikr of a morning/evening chapter auto-marks the
+  // daily adhkar as done.
+  function onCardComplete() {
+    if (showTapHint) {
+      setShowTapHint(false);
+      try {
+        localStorage.setItem("aqim-adhkar-hint", "1");
+      } catch {}
+    }
+    if (!isDaily || !items || isAdhkarDoneToday()) return;
+    if (items.every((it) => loadTaps(it.id) >= it.count)) {
+      markAdhkarDoneToday();
+      setAutoDone(true);
+      setTimeout(() => setAutoDone(false), 5000);
+    }
+  }
 
   if (!items) return <PageLoader />;
 
@@ -191,8 +241,23 @@ function ChapterView({
         </button>
       </div>
 
+      {showTapHint && (
+        <p className="text-[11px] text-muted bg-surface-2 rounded-xl p-2.5 text-center">
+          {t("adhkar.tapHint")}
+        </p>
+      )}
+
+      {autoDone && (
+        <div className="fixed inset-x-0 top-[72px] z-30 px-4 animate-rise">
+          <div className="mx-auto w-fit flex items-center gap-2 rounded-full bg-secondary text-white px-5 py-2.5 text-sm font-bold shadow-lg">
+            <Check size={16} strokeWidth={3} />
+            {t("adhkar.doneToday")}
+          </div>
+        </div>
+      )}
+
       {items.map((d) => (
-        <DhikrCard key={d.id} d={d} />
+        <DhikrCard key={d.id} d={d} onComplete={onCardComplete} />
       ))}
 
       <p className="text-[11px] text-muted text-center pb-4">
@@ -204,7 +269,13 @@ function ChapterView({
 
 // One dhikr with a tasbih-style tap counter toward its prescribed count.
 // Counts persist per day and keep going past the target (e.g. 35/33).
-function DhikrCard({ d }: { d: Dhikr }) {
+function DhikrCard({
+  d,
+  onComplete,
+}: {
+  d: Dhikr;
+  onComplete?: () => void;
+}) {
   const { t } = useLang();
   const [taps, setTaps] = useState(0);
   useEffect(() => {
@@ -216,6 +287,10 @@ function DhikrCard({ d }: { d: Dhikr }) {
     const next = taps + 1;
     setTaps(next);
     saveTaps(d.id, next);
+    try {
+      navigator.vibrate?.(10);
+    } catch {}
+    if (next >= d.count) onComplete?.();
   }
   function reset(e: React.MouseEvent) {
     e.stopPropagation();

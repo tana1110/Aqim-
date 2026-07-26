@@ -7,8 +7,11 @@ import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageLoader } from "@/components/Brand";
 import {
   CITIES,
+  METHOD_KEYS,
+  computeTimes,
   loadReminderConfig,
   saveReminderConfig,
+  type MethodKey,
   type ReminderConfig,
 } from "@/lib/reminder";
 
@@ -59,14 +62,30 @@ export default function SettingsPage() {
     });
   }
 
+  const [prePrompt, setPrePrompt] = useState(false);
+
   async function toggleReminder() {
     if (!cfg) return;
     setNotice(null);
     if (cfg.enabled) {
       update({ enabled: false });
+      setPrePrompt(false);
       return;
     }
-    // Ask for notification permission only now — when the user opts in.
+    // First tap: explain what the browser is about to ask, THEN request.
+    if (
+      !prePrompt &&
+      typeof Notification !== "undefined" &&
+      Notification.permission === "default"
+    ) {
+      setPrePrompt(true);
+      return;
+    }
+    await requestAndEnable();
+  }
+
+  async function requestAndEnable() {
+    setPrePrompt(false);
     try {
       const perm = await Notification.requestPermission();
       if (perm !== "granted") {
@@ -213,11 +232,20 @@ export default function SettingsPage() {
             {t("reminder.explain")}
           </p>
 
+          {prePrompt && (
+            <div className="rounded-xl bg-primary-soft p-3.5 space-y-2.5">
+              <p className="text-xs leading-relaxed">{t("reminder.prePrompt")}</p>
+              <button
+                onClick={requestAndEnable}
+                className="btn-primary px-5 py-2 text-xs"
+              >
+                {t("common.continue")}
+              </button>
+            </div>
+          )}
+
           {cfg.enabled && (
             <>
-              {/* Calculation method is intentionally NOT user-facing — a
-                  sensible default (Umm al-Qura) is hardcoded in lib/reminder. */}
-
               {/* Location */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-4">
@@ -253,6 +281,32 @@ export default function SettingsPage() {
                 </div>
               </div>
 
+              {/* Calculation method — the default (Umm al-Qura) is only
+                  right in some regions */}
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm font-medium">{t("reminder.method")}</span>
+                <select
+                  value={cfg.method}
+                  onChange={(e) => update({ method: e.target.value as MethodKey })}
+                  className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs max-w-[55%]"
+                >
+                  {METHOD_KEYS.map((k) => (
+                    <option key={k} value={k}>
+                      {t(`method.${k}`)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Today's five times — immediate proof it's set up right */}
+              {cfg.lat != null && cfg.lng != null && (
+                <TodayTimes
+                  lat={cfg.lat}
+                  lng={cfg.lng}
+                  method={cfg.method}
+                />
+              )}
+
               <p className="text-[11px] text-muted flex items-start gap-1.5">
                 <Info size={12} className="mt-0.5 shrink-0" />
                 {t("reminder.reliability")}
@@ -266,6 +320,56 @@ export default function SettingsPage() {
             </p>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+// Today's five prayer times, next one highlighted.
+function TodayTimes({
+  lat,
+  lng,
+  method,
+}: {
+  lat: number;
+  lng: number;
+  method: MethodKey;
+}) {
+  const { t, lang } = useLang();
+  const times = computeTimes(lat, lng, method);
+  const order = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
+  const now = Date.now();
+  const nextKey = order.find((k) => times[k].getTime() > now);
+  const fmt = (d: Date) =>
+    d.toLocaleTimeString(lang === "ar" ? "ar" : "en", {
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  return (
+    <div>
+      <div className="text-[11px] font-bold text-muted mb-1.5">
+        {t("reminder.todayTimes")}
+      </div>
+      <div className="grid grid-cols-5 gap-1.5 text-center">
+        {order.map((k) => (
+          <div
+            key={k}
+            className={`rounded-xl py-2 px-1 ${
+              k === nextKey
+                ? "bg-primary text-white"
+                : "bg-surface-2 text-foreground"
+            }`}
+          >
+            <div
+              className={`text-[10px] ${k === nextKey ? "text-white/70" : "text-muted"}`}
+            >
+              {t(`prayer.${k}`)}
+            </div>
+            <div className="text-[11px] font-bold tabular-nums whitespace-nowrap">
+              {fmt(times[k])}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );

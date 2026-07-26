@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Menu } from "lucide-react";
-import { NavDrawer, TopNav } from "@/components/BottomNav";
+import { BottomTabs, NavDrawer, TopNav } from "@/components/BottomNav";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { Logo } from "@/components/Logo";
 import { SplashScreen } from "@/components/SplashScreen";
@@ -50,9 +50,11 @@ export default function AppLayout({
         </div>
       </header>
 
-      <main className="flex-1 w-full mx-auto max-w-6xl px-4 md:px-8 pb-12 pt-2">
+      <main className="flex-1 w-full mx-auto max-w-6xl px-4 md:px-8 pb-24 md:pb-12 pt-2">
         {children}
       </main>
+
+      <BottomTabs />
     </div>
   );
 }

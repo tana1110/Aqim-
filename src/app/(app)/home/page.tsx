@@ -181,27 +181,11 @@ export default function HomePage() {
     return () => clearInterval(iv);
   }, [times]);
 
-  // Which real prayer time the selected chip maps to (sunnahs → their prayer).
-  const TIME_KEY: Record<string, keyof ReturnType<typeof computeTimes> | null> =
-    {
-      fajr: "fajr",
-      dhuhr: "dhuhr",
-      asr: "asr",
-      maghrib: "maghrib",
-      isha: "isha",
-      "fajr-sunnah": "fajr",
-      "dhuhr-nafl": "dhuhr",
-      "maghrib-sunnah": "maghrib",
-      "isha-shaf": "isha",
-      witr: "isha",
-      free: null,
-      qiyam: "fajr", // night prayer ends at Fajr — count down to it
-    };
-
+  // The countdown is HONEST: always to the chronologically next prayer,
+  // regardless of which prayer is selected for suggestions below.
   const countdown = (() => {
-    if (!times) return null;
-    const k = TIME_KEY[prayer];
-    if (!k) return null;
+    if (!times || !nextKey) return null;
+    const k = nextKey as keyof ReturnType<typeof computeTimes>;
     const todayAt = times.today[k].getTime();
     const target = todayAt > now ? todayAt : times.tomorrow[k].getTime();
     const ms = Math.max(0, target - now);
@@ -242,6 +226,12 @@ export default function HomePage() {
   useEffect(() => {
     setPlan(null);
   }, [mode, prayer, rakahs]);
+
+  // If the selected prayer isn't one of the 5 always-visible fard chips,
+  // expand the row so the selection is never invisible.
+  useEffect(() => {
+    if (!CHIPS.slice(0, 5).some((c) => c.key === prayer)) setShowOther(true);
+  }, [prayer]);
 
   // Keep the selected chip visible inside its scrolling row.
   const chipsRef = useRef<HTMLDivElement>(null);
@@ -344,16 +334,19 @@ export default function HomePage() {
           </section>
         ) : (
           <section className="rounded-[1.75rem] bg-primary text-white p-6 space-y-4">
+            {/* Next prayer — always the chronological truth */}
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <div className="text-[10px] font-bold text-white/60">
-                  {prayer === nextKey || !times
-                    ? t("home.nextPrayer")
-                    : t("home.selectedPrayer")}
+                  {t("home.nextPrayer")}
                   {hijri ? ` · ${hijri}` : ""}
                 </div>
                 <div className="text-3xl font-bold leading-tight truncate">
-                  {prayer === "qiyam" ? t("mode.qiyam") : t(`prayer.${prayer}`)}
+                  {nextKey
+                    ? t(`prayer.${nextKey}`)
+                    : prayer === "qiyam"
+                      ? t("mode.qiyam")
+                      : t(`prayer.${prayer}`)}
                 </div>
               </div>
               {countdown ? (
@@ -381,6 +374,45 @@ export default function HomePage() {
                   </button>
                 )
               )}
+            </div>
+
+            {/* Which prayer to suggest for — always visible, clearly labeled */}
+            <div>
+              <div className="text-[11px] font-bold text-white/60 mb-2">
+                {t("home.pickPrayer")}
+              </div>
+              <div
+                ref={chipsRef}
+                className="-mx-6 px-6 flex gap-2 overflow-x-auto no-scrollbar snap-x"
+              >
+                {(showOther ? CHIPS : CHIPS.slice(0, 5)).map((c) => {
+                  const on = prayer === c.key;
+                  return (
+                    <button
+                      key={c.key}
+                      onClick={() => {
+                        setPrayer(c.key);
+                        setMode(c.mode);
+                      }}
+                      className={`rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap snap-start shrink-0 active:scale-[0.97] transition ${
+                        on
+                          ? "bg-white text-primary font-bold"
+                          : "bg-white/10 text-white/85"
+                      }`}
+                    >
+                      {c.key === "qiyam" ? t("mode.qiyam") : t(`prayer.${c.key}`)}
+                    </button>
+                  );
+                })}
+                {!showOther && (
+                  <button
+                    onClick={() => setShowOther(true)}
+                    className="rounded-full px-4 py-2 text-sm font-bold whitespace-nowrap snap-start shrink-0 bg-white/10 text-white/85"
+                  >
+                    {t("home.more")}
+                  </button>
+                )}
+              </div>
             </div>
 
             {showRakahInput && (
@@ -459,40 +491,6 @@ export default function HomePage() {
               </div>
             )}
 
-            <div className="text-center">
-              <button
-                onClick={() => setShowOther(!showOther)}
-                className="text-xs font-bold text-white/60 hover:text-white"
-              >
-                {t("home.otherPrayer")}
-              </button>
-            </div>
-            {showOther && (
-              <div
-                ref={chipsRef}
-                className="-mx-6 px-6 flex gap-2 overflow-x-auto no-scrollbar snap-x"
-              >
-                {CHIPS.map((c) => {
-                  const on = prayer === c.key;
-                  return (
-                    <button
-                      key={c.key}
-                      onClick={() => {
-                        setPrayer(c.key);
-                        setMode(c.mode);
-                      }}
-                      className={`rounded-full px-4 py-2 text-sm font-medium whitespace-nowrap snap-start shrink-0 active:scale-[0.97] transition ${
-                        on
-                          ? "bg-white text-primary font-bold"
-                          : "bg-white/10 text-white/85"
-                      }`}
-                    >
-                      {c.key === "qiyam" ? t("mode.qiyam") : t(`prayer.${c.key}`)}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </section>
         )}
 
@@ -837,6 +835,8 @@ function PlanView({
         </p>
       )}
 
+      <p className="text-[11px] text-muted px-1">{t("home.logHint")}</p>
+
       {plan.slots.map((slot, i) => (
         <SlotView
           key={i}
@@ -875,11 +875,13 @@ function SlotView({
   const { t } = useLang();
   const [content, setContent] = useState<PassageContent | null>(initial);
   const [used, setUsed] = useState(false);
+  const [entryId, setEntryId] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
     setContent(initial);
     setUsed(false);
+    setEntryId(null);
   }, [initial]);
 
   const rakahLabel =
@@ -938,9 +940,21 @@ function SlotView({
   }
 
   async function markUsed() {
+    // Already logged? A second tap is the undo.
+    if (used && entryId != null) {
+      setBusy(true);
+      try {
+        await fetch(`/api/history?id=${entryId}`, { method: "DELETE" });
+        setUsed(false);
+        setEntryId(null);
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     setBusy(true);
     try {
-      await fetch("/api/history", {
+      const res = await fetch("/api/history", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -952,6 +966,8 @@ function SlotView({
           toAyah: content!.toAyah,
         }),
       });
+      const data = await res.json();
+      setEntryId(data.entry?.id ?? null);
       setUsed(true);
     } finally {
       setBusy(false);
@@ -972,7 +988,7 @@ function SlotView({
         <div className="flex gap-2">
           <button
             onClick={markUsed}
-            disabled={busy || used}
+            disabled={busy}
             className={`flex-1 py-2.5 text-sm font-bold flex items-center justify-center gap-1.5 transition ${
               used
                 ? "bg-accent-soft text-accent border border-accent/40 rounded-lg"
@@ -981,7 +997,7 @@ function SlotView({
           >
             {used ? (
               <>
-                <Check size={16} /> {t("home.logged")}
+                <Check size={16} /> {t("home.logged")} · {t("home.undo")}
               </>
             ) : (
               t("home.usedThis")

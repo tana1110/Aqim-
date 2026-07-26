@@ -18,6 +18,26 @@ interface Juz {
   segments: JuzSegment[];
 }
 
+// Does this set of ranges fully cover [a, b] of surah n (merging overlaps)?
+function coveredBy(
+  ranges: JuzSegment[],
+  n: number,
+  a: number,
+  b: number,
+): boolean {
+  const list = ranges
+    .filter((r) => r.surahNumber === n)
+    .map((r) => [r.fromAyah, r.toAyah] as [number, number])
+    .sort((x, y) => x[0] - y[0]);
+  const merged: [number, number][] = [];
+  for (const iv of list) {
+    const last = merged[merged.length - 1];
+    if (last && iv[0] <= last[1] + 1) last[1] = Math.max(last[1], iv[1]);
+    else merged.push([...iv]);
+  }
+  return merged.some(([x, y]) => x <= a && b <= y);
+}
+
 // Order-independent fingerprint of a selection, for dirty-state tracking.
 function selectionKey(surahs: Set<number>, juz: Set<number>): string {
   return (
@@ -70,6 +90,9 @@ export default function SetupPage() {
   const [seeded, setSeeded] = useState(true);
   // Snapshot of the last-saved selection — the save bar appears on any change.
   const [savedKey, setSavedKey] = useState("");
+  // Saved partial ranges that the surah/juz pickers can't represent — kept
+  // untouched on every save so re-saving never silently deletes them.
+  const [extras, setExtras] = useState<JuzSegment[]>([]);
 
   useEffect(() => {
     async function load() {
@@ -84,15 +107,38 @@ export default function SetupPage() {
       setSeeded(s.length === 114);
 
       const byNumber = new Map(s.map((x) => [x.number, x]));
+      const saved: JuzSegment[] = mRes.memorization ?? [];
       const preselect = new Set<number>();
-      for (const r of mRes.memorization ?? []) {
+      for (const r of saved) {
         const meta = byNumber.get(r.surahNumber);
         if (meta && r.fromAyah === 1 && r.toAyah >= meta.ayahCount) {
           preselect.add(r.surahNumber);
         }
       }
+      // Reconstruct juz selections: a juz is selected iff every one of its
+      // segments is covered by what was saved.
+      const preJuz = new Set<number>();
+      for (const j of (jRes.juz ?? []) as Juz[]) {
+        if (
+          j.segments.length > 0 &&
+          j.segments.every((seg) =>
+            coveredBy(saved, seg.surahNumber, seg.fromAyah, seg.toAyah),
+          )
+        )
+          preJuz.add(j.juz);
+      }
+      // Anything saved that the pickers above don't represent (partial
+      // ranges) is preserved verbatim.
+      const counts = new Map(s.map((x) => [x.number, x.ayahCount]));
+      const implied = buildRangesFrom(preselect, preJuz, jRes.juz ?? [], counts);
+      setExtras(
+        saved.filter(
+          (r) => !coveredBy(implied, r.surahNumber, r.fromAyah, r.toAyah),
+        ),
+      );
       setSelectedSurahs(preselect);
-      setSavedKey(selectionKey(preselect, new Set()));
+      setSelectedJuz(preJuz);
+      setSavedKey(selectionKey(preselect, preJuz));
       setLoading(false);
     }
     load().catch(() => setLoading(false));
@@ -111,9 +157,27 @@ export default function SetupPage() {
     });
   }
   function toggleJuz(j: number) {
+    const adding = !selectedJuz.has(j);
     setSelectedJuz((prev) => {
       const next = new Set(prev);
-      next.has(j) ? next.delete(j) : next.add(j);
+      adding ? next.add(j) : next.delete(j);
+      return next;
+    });
+    // Picking a juz also checks every surah fully contained in it, so the
+    // selection is visible on the surah tab too.
+    const juz = juzList.find((x) => x.juz === j);
+    if (!juz) return;
+    const fullSurahs = juz.segments
+      .filter(
+        (seg) =>
+          seg.fromAyah === 1 &&
+          seg.toAyah >= (ayahCountBySurah.get(seg.surahNumber) ?? Infinity),
+      )
+      .map((seg) => seg.surahNumber);
+    if (fullSurahs.length === 0) return;
+    setSelectedSurahs((prev) => {
+      const next = new Set(prev);
+      for (const n of fullSurahs) adding ? next.add(n) : next.delete(n);
       return next;
     });
   }
@@ -132,10 +196,19 @@ export default function SetupPage() {
     setSaving(true);
     setSaveError(false);
     try {
+      // The pickers' ranges plus every preserved partial range that the new
+      // selection doesn't already cover.
+      const built = buildRanges();
+      const ranges = [
+        ...built,
+        ...extras.filter(
+          (e) => !coveredBy(built, e.surahNumber, e.fromAyah, e.toAyah),
+        ),
+      ];
       const res = await fetch("/api/memorization", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ranges: buildRanges() }),
+        body: JSON.stringify({ ranges }),
       });
       if (!res.ok) throw new Error(String(res.status));
       setSavedKey(selectionKey(selectedSurahs, selectedJuz));
@@ -152,6 +225,14 @@ export default function SetupPage() {
   const selectedCount = selectedSurahs.size + selectedJuz.size;
   const isDirty = selectionKey(selectedSurahs, selectedJuz) !== savedKey;
 
+  // Leaving the tab/app with unsaved changes gets a browser confirm.
+  useEffect(() => {
+    if (!isDirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
+
 
   if (loading) return <Loading />;
 
@@ -165,9 +246,10 @@ export default function SetupPage() {
 
   return (
     <div className="space-y-5 pt-2 pb-4">
-      {/* Saved — a big, obvious prompt (dismissible, never a forced redirect) */}
+      {/* Saved — a big, obvious prompt AT THE TOP (dismissible, never a
+          forced redirect) */}
       {savedToast && (
-        <div className="fixed inset-x-0 bottom-8 z-30 px-4 animate-rise">
+        <div className="fixed inset-x-0 top-[72px] z-30 px-4 animate-rise">
           <div className="mx-auto max-w-md rounded-2xl bg-primary text-white p-5 shadow-lg">
             <div className="flex items-start justify-between gap-3">
               <span className="flex items-center gap-2.5 text-base font-bold">
@@ -198,6 +280,12 @@ export default function SetupPage() {
         <h1 className="text-xl font-bold mb-1">{t("setup.title")}</h1>
         <p className="text-sm text-muted">{t("setup.subtitle")}</p>
       </div>
+
+      {extras.length > 0 && (
+        <p className="text-xs text-muted bg-surface-2 rounded-xl p-3">
+          {t("setup.partialKept", { n: extras.length })}
+        </p>
+      )}
 
       {/* Save bar — appears AT THE TOP the moment anything is selected and
           stays stuck under the header while scrolling. In normal flow, so it
@@ -337,22 +425,51 @@ export default function SetupPage() {
       )}
 
       {tab === "juz" && (
-        <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 xl:grid-cols-10 gap-2.5">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5">
           {juzList.map((j) => {
             const on = selectedJuz.has(j.juz);
+            const first = j.segments[0];
+            const last = j.segments[j.segments.length - 1];
+            const nameOf = (n?: number) => {
+              const meta = n ? surahs.find((x) => x.number === n) : null;
+              return meta
+                ? surahName(lang as "ar" | "en", meta.nameArabic, meta.nameTranslit)
+                : "";
+            };
+            const span =
+              first && last
+                ? first.surahNumber === last.surahNumber
+                  ? nameOf(first.surahNumber)
+                  : `${nameOf(first.surahNumber)} — ${nameOf(last.surahNumber)}`
+                : "";
             return (
               <button
                 key={j.juz}
                 onClick={() => toggleJuz(j.juz)}
-                className={`aspect-square rounded-2xl border grid place-items-center transition active:scale-[0.95] ${
+                className={`text-start rounded-2xl border p-3 transition active:scale-[0.97] ${
                   on
                     ? "border-transparent bg-primary text-white shadow-md"
                     : "border-border bg-surface hover:border-primary/30"
                 }`}
               >
-                <div className="text-center leading-tight">
-                  <div className="text-[9px] opacity-70">{t("setup.juz")}</div>
-                  <div className="text-lg font-bold">{j.juz}</div>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className="text-sm font-bold">
+                    {t("setup.juz")} {j.juz}
+                  </span>
+                  <span
+                    className={`w-5 h-5 rounded-full grid place-items-center ${
+                      on ? "bg-white/20" : "bg-surface-2"
+                    }`}
+                  >
+                    {on && <Check size={12} strokeWidth={3} />}
+                  </span>
+                </div>
+                <div
+                  className={`text-[11px] leading-snug truncate ${
+                    on ? "text-white/75" : "text-muted"
+                  }`}
+                >
+                  {span}
                 </div>
               </button>
             );
