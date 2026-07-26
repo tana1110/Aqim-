@@ -204,6 +204,7 @@ export default function SettingsPage() {
             onClick={() => {
               try {
                 localStorage.removeItem("aqim-onboarded");
+                localStorage.removeItem("aqim-tour-done");
               } catch {}
               window.location.href = "/home";
             }}

@@ -14,6 +14,7 @@ import {
   Menu,
 } from "lucide-react";
 import { Logo, LogoLoader } from "@/components/Logo";
+import { HomeTour } from "@/components/HomeTour";
 import { PageLoader } from "@/components/Brand";
 import { ContentCard } from "@/components/ContentCard";
 import { PassageCard } from "@/components/PassageCard";
@@ -354,7 +355,7 @@ export default function HomePage() {
         </div>
         {/* ONE hero: either get-started (new user) or the prayer card */}
         {status && !status.hasMemorization ? (
-          <section className="rounded-[1.75rem] bg-accent-soft p-6 space-y-4">
+          <section data-tour="aqim" className="rounded-[1.75rem] bg-accent-soft p-6 space-y-4">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[11px] font-bold text-accent">
               <Sparkles size={12} />
               {t("home.getStarted.title")}
@@ -379,7 +380,7 @@ export default function HomePage() {
             </Link>
           </section>
         ) : (
-          <section className="tile tile-blue p-6 space-y-4">
+          <section data-tour="aqim" className="tile tile-blue p-6 space-y-4">
             {/* Next prayer — always the chronological truth */}
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
@@ -581,6 +582,8 @@ export default function HomePage() {
         {status?.hasMemorization && <ReviewPicker />}
       </div>
 
+      <HomeTour />
+
       {/* Results column */}
       <div ref={resultsRef} className="mt-6 lg:mt-0 scroll-mt-20">
         {plan ? (
@@ -628,7 +631,7 @@ function TodayCard() {
   const partsDone = state.adhkarParts.filter(Boolean).length;
 
   return (
-    <section className="space-y-2.5">
+    <section data-tour="tasks" className="space-y-2.5">
       <div className="section-title px-1">{t("home.todos")}</div>
       <div className="grid grid-cols-2 gap-3">
         {/* Wird tile */}
@@ -749,7 +752,7 @@ function MisbahaMini() {
       : String(n);
 
   return (
-    <section className="tile tile-teal p-4 flex items-center gap-4">
+    <section data-tour="misbaha" className="tile tile-teal p-4 flex items-center gap-4">
       <button
         onClick={() => {
           const { next, cycled } = tapTasbih(s);
@@ -930,6 +933,7 @@ function ContinueReading() {
     return (
       <Link
         href="/quran"
+        data-tour="continue"
         className="tile tile-ink p-5 flex items-center gap-3 active:scale-[0.98] transition"
       >
         <span className="w-11 h-11 rounded-2xl bg-white/15 grid place-items-center shrink-0">

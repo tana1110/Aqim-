@@ -61,6 +61,8 @@ export function Welcome() {
     try {
       localStorage.setItem(FLAG, "1");
     } catch {}
+    // Lets the home tour start right after the welcome closes.
+    window.dispatchEvent(new Event("aqim-onboarded"));
     // Brief brand transition. Finishing the tour lands on the first real
     // task — marking memorization; skipping goes to the home screen.
     if (toSetup) router.push("/setup");

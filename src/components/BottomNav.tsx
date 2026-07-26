@@ -54,7 +54,7 @@ export function BottomTabs() {
       }`}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <div className="mx-auto max-w-md flex items-center justify-between rounded-full nav-pill shadow-lg px-3 py-2">
+      <div data-tour="nav" className="mx-auto max-w-md flex items-center justify-between rounded-full nav-pill shadow-lg px-3 py-2">
         {tabs.map(({ href, key, Icon }) => {
           const active = pathname === href;
           const label = key === "nav.adhkar" ? "nav.adhkar.tab" : key;
