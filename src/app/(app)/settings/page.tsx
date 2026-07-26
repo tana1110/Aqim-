@@ -23,12 +23,14 @@ const FONT_STEPS = [
 export default function SettingsPage() {
   const { t, lang } = useLang();
   const [fontScale, setFontScale] = useState("1");
+  const [passLen, setPassLen] = useState("medium");
   const [cfg, setCfg] = useState<ReminderConfig | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     try {
       setFontScale(localStorage.getItem("aqim-font-scale") || "1");
+      setPassLen(localStorage.getItem("aqim-passage-len") || "medium");
     } catch {}
     setCfg(loadReminderConfig());
   }, []);
@@ -39,6 +41,13 @@ export default function SettingsPage() {
       localStorage.setItem("aqim-font-scale", v);
     } catch {}
     document.documentElement.style.setProperty("--font-scale", v);
+  }
+
+  function applyPassLen(v: string) {
+    setPassLen(v);
+    try {
+      localStorage.setItem("aqim-passage-len", v);
+    } catch {}
   }
 
   function update(patch: Partial<ReminderConfig>) {
@@ -130,6 +139,26 @@ export default function SettingsPage() {
                 }`}
               >
                 {t(s.key)}
+              </button>
+            ))}
+          </div>
+        </Row>
+
+        {/* Suggested passage length */}
+        <Row label={t("settings.passageLen")}>
+          <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
+            {(["short", "medium", "long"] as const).map((v) => (
+              <button
+                key={v}
+                onClick={() => applyPassLen(v)}
+                aria-pressed={passLen === v}
+                className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap ${
+                  passLen === v
+                    ? "bg-primary text-white"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                {t(`len.${v}`)}
               </button>
             ))}
           </div>

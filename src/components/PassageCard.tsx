@@ -56,7 +56,7 @@ export function PassageCard({
       {/* Header band */}
       <div className="flex items-center justify-between gap-3 px-5 py-3.5 bg-primary-soft border-b border-border">
         <div className="flex items-baseline gap-2 min-w-0">
-          <span className="font-quran text-xl text-primary truncate">
+          <span className="text-lg font-bold text-primary truncate">
             {t("passage.surah")} {name}
           </span>
         </div>

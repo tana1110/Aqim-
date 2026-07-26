@@ -141,7 +141,7 @@ export function Welcome() {
             )}
           </>
         )}
-        <h1 className="font-heading text-[1.9rem] md:text-4xl font-bold text-primary leading-snug max-w-md">
+        <h1 className="text-[1.8rem] md:text-4xl font-bold text-primary leading-snug max-w-md">
           {s.title}
         </h1>
         <p className="text-[15px] md:text-base text-muted leading-relaxed max-w-sm">

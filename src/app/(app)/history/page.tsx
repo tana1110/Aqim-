@@ -171,7 +171,7 @@ export default function HistoryPage() {
                   className="flex items-center justify-between p-3.5 gap-3"
                 >
                   <span
-                    className={lang === "ar" ? "font-quran text-base" : "text-sm font-medium"}
+                    className="text-sm font-medium"
                   >
                     {name}{" "}
                     <span className="text-xs text-muted">
@@ -260,7 +260,7 @@ function FocusPanel({
       {cfg.active && cfg.surahNumber ? (
         <div className="rounded-xl bg-primary-soft p-3.5 text-sm">
           {t("focus.active")}{" "}
-          <b className={lang === "ar" ? "font-quran text-base" : ""}>
+          <b>
             {name(cfg.surahNumber)}
           </b>
           {cfg.fromAyah != null && cfg.toAyah != null && (

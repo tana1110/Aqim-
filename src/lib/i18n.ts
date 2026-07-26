@@ -12,7 +12,7 @@ const ar: Dict = {
   // nav / shell
   "nav.home": "الرئيسية",
   "nav.quran": "القرآن",
-  "nav.adhkar": "أذكاري",
+  "nav.adhkar": "والذاكرين الله كثيراً",
   "nav.setup": "محفوظاتي",
   "nav.history": "السجل",
   "nav.settings": "الإعدادات",
@@ -114,12 +114,18 @@ const ar: Dict = {
   "setup.juz": "جزء",
   "setup.selected": "{n} محدّد",
   "setup.noneSelected": "لم تختر بعد",
+  "setup.savedTitle": "تم الحفظ",
+  "setup.goHome": "الانتقال إلى الرئيسية",
   "setup.notSeeded": "قاعدة البيانات غير مهيأة بعد.",
 
   // settings
   "settings.title": "الإعدادات",
   "settings.language": "اللغة",
   "settings.fontSize": "حجم الخط",
+  "settings.passageLen": "طول الآيات المقترحة",
+  "len.short": "قصيرة",
+  "len.medium": "متوسطة",
+  "len.long": "طويلة",
   "font.small": "صغير",
   "font.normal": "عادي",
   "font.large": "كبير",
@@ -161,8 +167,6 @@ const ar: Dict = {
   "settings.shortSurah.hint": "لاختيار الفرائض من مقاطع أقصر.",
   "settings.tafsirSource": "مصدر التفسير",
   "settings.tafsirSource.value": "تفسير الميسّر — مجمع الملك فهد",
-  "settings.fiqhNote":
-    "الخيارات الفقهية (مثل عدد ركعات الوتر) قابلة للضبط وتعكس ما هو شائع — يُرجى مراجعة أهل العلم للتأكد مما يناسبك.",
   "settings.saveSettings": "حفظ الإعدادات",
   "settings.settingsSaved": "حُفظت الإعدادات",
 
@@ -191,8 +195,8 @@ const ar: Dict = {
   "focus.pickSurah": "اختر سورة من محفوظاتك",
 
   // adhkar
-  "adhkar.title": "أذكاري",
-  "adhkar.subtitle": "من كتاب حصن المسلم — نص موثّق، لا يُولّد ولا يُعدّل.",
+  "adhkar.title": "والذاكرين الله كثيراً",
+  "adhkar.subtitle": "أذكار الصباح والمساء والأدعية من كتاب حصن المسلم.",
   "adhkar.morning": "أذكار الصباح",
   "adhkar.evening": "أذكار المساء",
   "adhkar.sleep": "أذكار النوم",
@@ -200,6 +204,7 @@ const ar: Dict = {
   "adhkar.allChapters": "كل الفصول",
   "adhkar.searchPh": "ابحث في الفصول…",
   "adhkar.reps": "التكرار",
+  "adhkar.doneToday": "أتممت أذكاري اليوم",
   "adhkar.done": "تم",
   "adhkar.reset": "إعادة",
   "adhkar.back": "→ الفصول",
@@ -216,6 +221,14 @@ const ar: Dict = {
   "wird.title": "الورد اليومي",
   "wird.desc": "حدّد جزءاً تقرؤه كل يوم، وسنذكّرك في وقتك المفضّل.",
   "wird.pages": "عدد الصفحات يومياً",
+  "wird.mode.pages": "بالصفحات",
+  "wird.mode.surah": "بسورة",
+  "wird.mode.minutes": "بالمدة",
+  "wird.minutes": "الدقائق",
+  "wird.surahPick": "اختر السورة",
+  "wird.nextAt": "التذكير القادم",
+  "wird.weekWird": "الورد",
+  "wird.weekAdhkar": "الأذكار",
   "wird.time": "وقت التذكير",
   "wird.enable": "تفعيل الورد",
   "wird.disable": "إيقاف الورد",
@@ -266,8 +279,7 @@ const ar: Dict = {
   "landing.why1.body":
     "سنة الفجر وبعد المغرب دايماً الكافرون والإخلاص في مكانها الصح — ما بتتبدل ولا بتتخلط.",
   "landing.why2.title": "نص موثوق، صفر توليد آلي",
-  "landing.why2.body":
-    "كل آية جايه من نص عثماني موثّق ومخزّن مسبقاً — التطبيق ما بيولّد أو يخمّن أي نص قرآني.",
+  "landing.why2.body": "",
   "landing.why3.title": "ما بتقرا نفس السورة كل مرة",
   "landing.why3.body":
     "يتابع شنو قريت قبل كدة ويقترح ليك حاجة مختلفة من محفوظاتك، بدل التكرار اللاواعي.",
@@ -280,8 +292,6 @@ const ar: Dict = {
   "landing.step3.title": "اضغط «أقِم»",
   "landing.step3.body":
     "يظهر لك المقترح بنصّه وتفسيره، مع «استخدمت هذه» و«اقترح غيرها».",
-  "landing.trust":
-    "النصوص من مشروع تنزيل عبر al-Quran Cloud، والتفسير من تفسير الميسّر (مجمع الملك فهد)، والترجمة الإنجليزية من Saheeh International. محقّقة ومُخزّنة محلياً — لا تُولّد ولا تُعدّل.",
   "landing.cta.title": "جرّب أقم في صلاتك القادمة",
   "landing.cta.body":
     "ما محتاجة وقت طويل — اختاري صلاتك، وخلي «أقم» يفتح ليك آية تقراها بخشوع.",
@@ -386,11 +396,17 @@ const en: Dict = {
   "setup.juz": "Juz",
   "setup.selected": "{n} selected",
   "setup.noneSelected": "None selected yet",
+  "setup.savedTitle": "Saved",
+  "setup.goHome": "Go to home",
   "setup.notSeeded": "The database isn't set up yet.",
 
   "settings.title": "Settings",
   "settings.language": "Language",
   "settings.fontSize": "Font size",
+  "settings.passageLen": "Suggested passage length",
+  "len.short": "Short",
+  "len.medium": "Medium",
+  "len.long": "Long",
   "font.small": "Small",
   "font.normal": "Normal",
   "font.large": "Large",
@@ -431,8 +447,6 @@ const en: Dict = {
   "settings.shortSurah.hint": "Keeps obligatory picks to shorter passages.",
   "settings.tafsirSource": "Tafsir source",
   "settings.tafsirSource.value": "Tafsir al-Muyassar — King Fahd Complex",
-  "settings.fiqhNote":
-    "Fiqh choices (like the number of Witr rak'ahs) are configurable and reflect common practice — please consult a scholar for what's correct for you.",
   "settings.saveSettings": "Save settings",
   "settings.settingsSaved": "Settings saved",
 
@@ -457,8 +471,8 @@ const en: Dict = {
   "focus.active": "Focus mode is active on",
   "focus.pickSurah": "Pick a surah from your memorization",
 
-  "adhkar.title": "My Adhkar",
-  "adhkar.subtitle": "From Hisn al-Muslim — verified text, never generated or altered.",
+  "adhkar.title": "والذاكرين الله كثيراً",
+  "adhkar.subtitle": "Morning and evening adhkar and du'as from Hisn al-Muslim.",
   "adhkar.morning": "Morning Adhkar",
   "adhkar.evening": "Evening Adhkar",
   "adhkar.sleep": "Sleep Adhkar",
@@ -466,6 +480,7 @@ const en: Dict = {
   "adhkar.allChapters": "All chapters",
   "adhkar.searchPh": "Search chapters…",
   "adhkar.reps": "Repetitions",
+  "adhkar.doneToday": "I finished my adhkar today",
   "adhkar.done": "Done",
   "adhkar.reset": "Reset",
   "adhkar.back": "← Chapters",
@@ -480,6 +495,14 @@ const en: Dict = {
   "wird.title": "Daily Wird",
   "wird.desc": "Set a daily reading portion and we'll remind you at your preferred time.",
   "wird.pages": "Pages per day",
+  "wird.mode.pages": "By pages",
+  "wird.mode.surah": "By surah",
+  "wird.mode.minutes": "By duration",
+  "wird.minutes": "Minutes",
+  "wird.surahPick": "Pick a surah",
+  "wird.nextAt": "Next reminder",
+  "wird.weekWird": "Wird",
+  "wird.weekAdhkar": "Adhkar",
   "wird.time": "Reminder time",
   "wird.enable": "Enable wird",
   "wird.disable": "Turn off wird",
@@ -527,8 +550,7 @@ const en: Dict = {
   "landing.why1.body":
     "The Fajr and post-Maghrib Sunnahs always keep Al-Kafirun and Al-Ikhlas in their right place — never swapped or mixed up.",
   "landing.why2.title": "Verified text, zero AI generation",
-  "landing.why2.body":
-    "Every verse comes from a verified Uthmani source stored in advance — the app never generates or guesses any Quranic text.",
+  "landing.why2.body": "",
   "landing.why3.title": "Never the same surah every time",
   "landing.why3.body":
     "It tracks what you read before and suggests something different from your memorization, instead of unconscious repetition.",
@@ -541,8 +563,6 @@ const en: Dict = {
   "landing.step3.title": "Tap “Aqim”",
   "landing.step3.body":
     "You get the passage with its text and meaning, plus “I recited this” and “Suggest another”.",
-  "landing.trust":
-    "Text from the Tanzil project via al-Quran Cloud, tafsir from Tafsir al-Muyassar (King Fahd Complex), and the English translation from Saheeh International. Verified and stored locally — never generated or altered.",
   "landing.cta.title": "Try Aqim in your next prayer",
   "landing.cta.body":
     "It takes no time — pick your prayer and let Aqim open a verse for you to recite with devotion.",

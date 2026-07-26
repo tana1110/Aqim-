@@ -20,6 +20,7 @@ export async function POST(request: Request) {
       repeat: boolean;
       chunk: number;
     } | null;
+    lengthPref?: string;
   };
 
   const mode = (body.mode ?? "faraid") as Mode;
@@ -42,6 +43,11 @@ export async function POST(request: Request) {
             chunk: Math.min(30, Math.max(1, body.focus.chunk ?? 5)),
           }
         : null,
+    lengthPref: (["short", "medium", "long"] as const).includes(
+      body.lengthPref as "short",
+    )
+      ? (body.lengthPref as "short" | "medium" | "long")
+      : "medium",
   };
 
   const plan = await buildSuggestion(user.id, req);

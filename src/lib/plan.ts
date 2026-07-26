@@ -3,6 +3,7 @@ import { getPassageContent, type PassageContent } from "@/lib/content";
 import {
   selectPassages,
   type FocusSpec,
+  type LengthPref,
   type Passage,
 } from "@/lib/selection";
 import {
@@ -47,6 +48,7 @@ export interface SuggestionRequest {
   exclude?: Passage[];
   // Temporary review spotlight (focus mode) — never edits memorization.
   focus?: FocusSpec | null;
+  lengthPref?: LengthPref;
 }
 
 async function getSettings(userId: number) {
@@ -104,6 +106,7 @@ export async function buildSuggestion(
     settings,
     req.exclude ?? [],
     req.focus ?? null,
+    req.lengthPref ?? "medium",
   );
 
   // Map each suggest slot to one selected passage (in order).

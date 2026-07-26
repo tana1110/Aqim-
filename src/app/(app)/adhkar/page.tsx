@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Search, Check } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
+import { isAdhkarDoneToday, markAdhkarDoneToday } from "@/lib/wird";
 
 interface Chapter {
   index: number;
@@ -25,6 +26,11 @@ export default function AdhkarPage() {
   const [loaded, setLoaded] = useState(false);
   const [open, setOpen] = useState<Chapter | null>(null);
   const [query, setQuery] = useState("");
+  const [doneToday, setDoneToday] = useState(false);
+
+  useEffect(() => {
+    setDoneToday(isAdhkarDoneToday());
+  }, []);
 
   useEffect(() => {
     fetch("/api/adhkar")
@@ -58,9 +64,23 @@ export default function AdhkarPage() {
 
   return (
     <div className="space-y-5 pt-2 max-w-3xl">
-      <div>
-        <h1 className="text-xl font-bold mb-1">{t("adhkar.title")}</h1>
-        <p className="text-sm text-muted">{t("adhkar.subtitle")}</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold mb-1">{t("adhkar.title")}</h1>
+          <p className="text-sm text-muted">{t("adhkar.subtitle")}</p>
+        </div>
+        <button
+          onClick={() => {
+            markAdhkarDoneToday();
+            setDoneToday(true);
+          }}
+          disabled={doneToday}
+          className={`shrink-0 px-3.5 py-2 text-xs font-bold rounded-full transition ${
+            doneToday ? "bg-secondary text-white" : "btn-accent !rounded-full"
+          } disabled:opacity-90`}
+        >
+          {doneToday ? <Check size={14} /> : t("adhkar.doneToday")}
+        </button>
       </div>
 
       {/* Featured */}
@@ -73,7 +93,7 @@ export default function AdhkarPage() {
                 onClick={() => setOpen(f.ch)}
                 className="card p-4 grid place-items-center text-center hover:border-primary/40 active:scale-[0.97] transition"
               >
-                <span className="font-heading text-[15px] font-bold leading-tight">
+                <span className="text-[15px] font-bold leading-tight">
                   {t(f.key)}
                 </span>
               </button>
@@ -106,7 +126,7 @@ export default function AdhkarPage() {
               onClick={() => setOpen(c)}
               className="w-full flex items-center justify-between gap-3 p-3.5 text-start hover:bg-surface-2 transition"
             >
-              <span className="font-heading text-[15px]">{c.title}</span>
+              <span className="text-[15px] font-medium">{c.title}</span>
               <span className="text-[11px] text-muted shrink-0">{c.count}</span>
             </button>
           ))}
@@ -139,7 +159,7 @@ function ChapterView({
   return (
     <div className="space-y-4 pt-2 max-w-3xl">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="font-heading text-xl font-bold">{chapter.title}</h1>
+        <h1 className="text-xl font-bold">{chapter.title}</h1>
         <button
           onClick={onBack}
           className="text-sm text-primary font-bold whitespace-nowrap"
@@ -172,7 +192,7 @@ function DhikrCard({ d }: { d: Dhikr }) {
         done ? "border-secondary/50 bg-secondary-soft/40" : ""
       }`}
     >
-      <p className="font-heading text-lg leading-[1.9]" dir="rtl">
+      <p className="font-quran text-xl leading-[2] " dir="rtl">
         {d.text}
       </p>
 

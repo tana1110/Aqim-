@@ -95,13 +95,6 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Arabic headers in the classical manuscript face. */
-h1,
-h2,
-h3 {
-  font-family: var(--font-heading);
-}
-
 /* Quranic verse text: larger than UI, full tashkeel, comfortable line-height. */
 .quran-text {
   font-family: var(--font-quran);

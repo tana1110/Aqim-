@@ -18,6 +18,7 @@ export async function POST(request: Request) {
       repeat: boolean;
       chunk: number;
     } | null;
+    lengthPref?: string;
   };
   const mode = (body.mode ?? "faraid") as Mode;
   const focus =
@@ -46,6 +47,9 @@ export async function POST(request: Request) {
     },
     body.exclude ?? [],
     focus,
+    (["short", "medium", "long"] as const).includes(body.lengthPref as "short")
+      ? (body.lengthPref as "short" | "medium" | "long")
+      : "medium",
   );
 
   const passage = result.passages[0];

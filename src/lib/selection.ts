@@ -20,6 +20,8 @@ interface SelectionSettings {
 
 // A temporary review spotlight (from the History screen's focus mode): prefer
 // passages inside this range, optionally allowing intentional repetition.
+export type LengthPref = "short" | "medium" | "long";
+
 export interface FocusSpec {
   surahNumber: number;
   fromAyah: number | null;
@@ -78,6 +80,7 @@ async function buildCandidates(
   userId: number,
   mode: Mode,
   settings: SelectionSettings,
+  lengthPref: LengthPref = "medium",
 ): Promise<Candidate[]> {
   const [memorization, surahs] = await Promise.all([
     prisma.memorization.findMany({ where: { userId } }),
@@ -100,8 +103,11 @@ async function buildCandidates(
     wordsByAyah.set(`${r.surahNumber}:${r.ayahNumber}`, countWords(r.arabicText));
   }
 
-  // Fara'id/Nafl favour short-to-medium; Qiyam allows longer passages.
-  const maxLen = mode === "qiyam" ? 30 : settings.maxAyahShort;
+  // Fara'id/Nafl favour short-to-medium; Qiyam allows longer passages. The
+  // user's length preference widens or tightens the chunking.
+  const prefLen =
+    lengthPref === "short" ? 5 : lengthPref === "long" ? 20 : settings.maxAyahShort;
+  const maxLen = mode === "qiyam" ? Math.max(30, prefLen) : prefLen;
 
   const candidates: Candidate[] = [];
   for (const m of memorization) {
@@ -182,8 +188,9 @@ export async function selectPassages(
   settings: SelectionSettings,
   exclude: Passage[] = [],
   focus: FocusSpec | null = null,
+  lengthPref: LengthPref = "medium",
 ): Promise<SelectionResult> {
-  let candidates = await buildCandidates(userId, mode, settings);
+  let candidates = await buildCandidates(userId, mode, settings, lengthPref);
   if (candidates.length === 0) {
     return { passages: [], relaxed: false, exhausted: true };
   }
@@ -264,7 +271,14 @@ export async function selectPassages(
   {
     let pick: Candidate | undefined = focusPick(available());
     if (!pick) {
-      const fresh = available().filter(isFresh);
+      let fresh = available().filter(isFresh);
+      if (fresh.length > 3 && lengthPref !== "medium") {
+        // Prefer the shortest/longest third of candidates per the preference.
+        const sorted = [...fresh].sort((a, b) => a.words - b.words);
+        const third = Math.max(1, Math.floor(sorted.length / 3));
+        fresh =
+          lengthPref === "short" ? sorted.slice(0, third) : sorted.slice(-third);
+      }
       if (fresh.length) pick = pickRandom(fresh);
       else {
         relaxed = true;

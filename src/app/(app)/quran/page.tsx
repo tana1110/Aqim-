@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSwipeable } from "react-swipeable";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { WirdStrip } from "@/components/WirdCard";
 import { useLang } from "@/components/LanguageProvider";
@@ -38,8 +40,9 @@ export default function QuranPage() {
   const [data, setData] = useState<MushafPage | null>(null);
   const [surahs, setSurahs] = useState<SurahMeta[]>([]);
   const [page, setPage] = useState<number | null>(null);
+  const fetchSeq = useRef(0);
 
-  // Resume where the reader left off.
+  // Resume exactly where the reader left off.
   useEffect(() => {
     let p = 1;
     try {
@@ -52,20 +55,21 @@ export default function QuranPage() {
       .catch(() => {});
   }, []);
 
+  // Load the page's content; stale responses are discarded (fetchSeq) so fast
+  // turning can never render the wrong page.
   useEffect(() => {
     if (page == null) return;
-    let alive = true;
+    const seq = ++fetchSeq.current;
     fetch(`/api/mushaf?page=${page}`)
       .then((r) => r.json())
-      .then((d) => alive && setData(d))
+      .then((d) => {
+        if (seq === fetchSeq.current) setData(d);
+      })
       .catch(() => {});
     try {
       localStorage.setItem(POS_KEY, String(page));
     } catch {}
     window.scrollTo({ top: 0 });
-    return () => {
-      alive = false;
-    };
   }, [page]);
 
   async function jumpToSurah(n: number) {
@@ -74,35 +78,31 @@ export default function QuranPage() {
     setPage(d.page ?? 1);
   }
 
-  // Book-style page turning: swipe like flipping a Mushaf page. The next page
-  // physically sits on the LEFT in an Arabic book — dragging it to the right
-  // (positive delta) turns forward; the reverse turns back. Tapping a page
-  // edge does the same.
-  const touchX = useRef<number | null>(null);
+  // EXACTLY one page per gesture (single gesture source — no overlapping tap
+  // zones). The next page physically sits on the LEFT in an Arabic book:
+  // swiping it toward the right turns forward.
   function turn(delta: 1 | -1) {
     setPage((p) => Math.min(604, Math.max(1, (p ?? 1) + delta)));
   }
-  function onTouchStart(e: React.TouchEvent) {
-    touchX.current = e.touches[0]?.clientX ?? null;
-  }
-  function onTouchEnd(e: React.TouchEvent) {
-    if (touchX.current == null) return;
-    const dx = (e.changedTouches[0]?.clientX ?? touchX.current) - touchX.current;
-    touchX.current = null;
-    if (Math.abs(dx) < 55) return;
-    turn(dx > 0 ? 1 : -1);
-  }
+  const swipe = useSwipeable({
+    onSwipedRight: () => turn(1),
+    onSwipedLeft: () => turn(-1),
+    delta: 50,
+    preventScrollOnSwipe: false,
+    trackTouch: true,
+    trackMouse: false,
+  });
 
   if (page == null || !data) return <PageLoader />;
 
-  // Progress within the page's main surah (the one that continues furthest).
+  // Progress within the page's main surah.
   const main = data.surahs[data.surahs.length - 1];
   const span = main ? main.lastPage - main.firstPage + 1 : 1;
   const progress = main
     ? Math.min(1, Math.max(0, (data.page - main.firstPage + 1) / span))
     : 0;
 
-  // Group the page's ayahs per surah for headers/bismillah.
+  // Group the page's ayahs per surah (headers/bismillah at real surah starts).
   const groups: { surah: PageSurah; ayahs: PageAyah[] }[] = [];
   for (const a of data.ayahs) {
     const last = groups[groups.length - 1];
@@ -112,6 +112,8 @@ export default function QuranPage() {
       groups.push({ surah: s, ayahs: [a] });
     }
   }
+
+  const digits = (n: number) => (lang === "ar" ? toArabicDigits(n) : String(n));
 
   return (
     <div className="pt-1 max-w-2xl mx-auto">
@@ -152,99 +154,106 @@ export default function QuranPage() {
           ))}
         </select>
         <span className="text-xs text-muted whitespace-nowrap tabular-nums">
-          {t("quran.page")} {lang === "ar" ? toArabicDigits(data.page) : data.page} /{" "}
-          {lang === "ar" ? toArabicDigits(604) : 604}
+          {t("quran.page")} {digits(data.page)} / {digits(604)}
         </span>
       </div>
 
-      {/* The page — framed like a printed Mushaf; swipe or tap edges to turn */}
-      <div
-        key={data.page}
-        className="relative mt-3 animate-page select-none"
-        onTouchStart={onTouchStart}
-        onTouchEnd={onTouchEnd}
-      >
-        {/* edge tap zones (invisible): left = next (RTL book), right = back */}
+      {/* ONE page, framed like a printed Mushaf. Swipe to turn; side arrows
+          serve desktop. */}
+      <div className="relative mt-3">
         <button
-          aria-label="next page"
+          aria-label="next"
           onClick={() => turn(1)}
-          className="absolute inset-y-0 left-0 w-[14%] z-10 cursor-pointer opacity-0"
-        />
+          disabled={data.page >= 604}
+          className="hidden sm:grid place-items-center absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full card text-muted hover:text-foreground disabled:opacity-30"
+        >
+          <ChevronLeft size={18} />
+        </button>
         <button
-          aria-label="previous page"
+          aria-label="previous"
           onClick={() => turn(-1)}
-          className="absolute inset-y-0 right-0 w-[14%] z-10 cursor-pointer opacity-0"
-        />
+          disabled={data.page <= 1}
+          className="hidden sm:grid place-items-center absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-9 h-9 rounded-full card text-muted hover:text-foreground disabled:opacity-30"
+        >
+          <ChevronRight size={18} />
+        </button>
 
-        {/* ornamental double frame */}
-        <div className="rounded-lg border-2 border-accent/60 bg-surface p-1.5 shadow-sm">
-          <div className="rounded-md border border-accent/35 px-4 sm:px-7 pt-3 pb-5">
-            {/* Mushaf chrome: juz (start) · surah (end) */}
-            <div className="flex items-center justify-between text-[11px] text-muted font-heading border-b border-accent/25 pb-2 mb-4">
-              <span>
-                {t("setup.juz")} {lang === "ar" ? toArabicDigits(data.juz) : data.juz}
-              </span>
-              <span className="font-quran text-sm text-primary">
-                {main?.nameArabic ?? ""}
-              </span>
-            </div>
+        <div {...swipe} key={data.page} className="animate-page select-none">
+          <div className="rounded-lg border-2 border-accent/60 bg-surface p-1.5 shadow-sm">
+            <div className="rounded-md border border-accent/35 px-4 sm:px-7 pt-3 pb-5">
+              {/* Mushaf chrome: juz (start) · surah (end) */}
+              <div className="flex items-center justify-between text-[11px] text-muted border-b border-accent/25 pb-2 mb-4">
+                <span>
+                  {t("setup.juz")} {digits(data.juz)}
+                </span>
+                <span className="text-sm font-bold text-primary">
+                  {main
+                    ? surahName(lang, main.nameArabic, main.nameTranslit)
+                    : ""}
+                </span>
+              </div>
 
-            {groups.map((g) => {
-              const startsAtOne = g.ayahs[0].ayahNumber === 1;
-              const bism = getBismillahDisplay(
-                g.surah.number,
-                g.ayahs[0].ayahNumber,
-                g.ayahs[0].text,
-              );
-              const renderAyahs = (
-                bism.skipFirstAyah ? g.ayahs.slice(1) : g.ayahs
-              ).map((a, idx) => ({
-                n: a.ayahNumber,
-                text:
-                  !bism.skipFirstAyah && idx === 0 && bism.firstAyahText != null
-                    ? bism.firstAyahText
-                    : cleanAyah(a.text),
-              }));
-              return (
-                <div key={g.surah.number} className="mb-1">
-                  {startsAtOne && (
-                    <div className="my-4 rounded-lg border-y-2 border-x border-accent/50 bg-accent-soft/40 py-2.5 text-center">
-                      <span className="font-quran text-xl text-primary">
-                        {g.surah.nameArabic}
-                      </span>
-                    </div>
-                  )}
-                  {bism.line && (
-                    <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
-                      {bism.line}
-                      {bism.lineIsAyahOne && (
-                        <span className="ayah-mark">{"۝" + toArabicDigits(1)}</span>
-                      )}
+              {groups.map((g) => {
+                const startsAtOne = g.ayahs[0].ayahNumber === 1;
+                const bism = getBismillahDisplay(
+                  g.surah.number,
+                  g.ayahs[0].ayahNumber,
+                  g.ayahs[0].text,
+                );
+                const renderAyahs = (
+                  bism.skipFirstAyah ? g.ayahs.slice(1) : g.ayahs
+                ).map((a, idx) => ({
+                  n: a.ayahNumber,
+                  text:
+                    !bism.skipFirstAyah && idx === 0 && bism.firstAyahText != null
+                      ? bism.firstAyahText
+                      : cleanAyah(a.text),
+                }));
+                return (
+                  <div key={g.surah.number}>
+                    {startsAtOne && (
+                      <div className="my-3 rounded-lg border-y-2 border-x border-accent/50 bg-accent-soft/40 py-2.5 text-center">
+                        <span className="font-quran text-xl text-primary">
+                          {g.surah.nameArabic}
+                        </span>
+                      </div>
+                    )}
+                    {bism.line && (
+                      <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
+                        {bism.line}
+                        {bism.lineIsAyahOne && (
+                          <span className="ayah-mark">
+                            {"۝" + toArabicDigits(1)}
+                          </span>
+                        )}
+                      </p>
+                    )}
+                    <p
+                      className="quran-text !text-justify !leading-[2.3]"
+                      dir="rtl"
+                    >
+                      {renderAyahs.map((a) => (
+                        <span key={a.n}>
+                          {a.text}
+                          <span className="ayah-mark text-accent">
+                            {"۝" + toArabicDigits(a.n)}
+                          </span>{" "}
+                        </span>
+                      ))}
                     </p>
-                  )}
-                  <p className="quran-text !text-justify !leading-[2.3]" dir="rtl">
-                    {renderAyahs.map((a) => (
-                      <span key={a.n}>
-                        {a.text}
-                        <span className="ayah-mark text-accent">
-                          {"۝" + toArabicDigits(a.n)}
-                        </span>{" "}
-                      </span>
-                    ))}
-                  </p>
-                </div>
-              );
-            })}
+                  </div>
+                );
+              })}
 
-            {/* page number, centered like a printed Mushaf */}
-            <div className="text-center mt-4 pt-2 border-t border-accent/25 text-sm font-heading text-muted">
-              {lang === "ar" ? toArabicDigits(data.page) : data.page}
+              {/* page number, centered like a printed Mushaf */}
+              <div className="text-center mt-4 pt-2 border-t border-accent/25 text-sm text-muted tabular-nums">
+                {digits(data.page)}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* No buttons — the page turns like a book */}
       <p className="text-center text-[11px] text-muted mt-3 pb-6">
         {t("quran.swipeHint")}
       </p>

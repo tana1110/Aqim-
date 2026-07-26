@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Search } from "lucide-react";
-import { BrandOverlay, PageLoader } from "@/components/Brand";
+import { Check, Search, X } from "lucide-react";
+import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
@@ -56,7 +56,7 @@ export default function SetupPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [transitioning, setTransitioning] = useState(false);
+  const [savedToast, setSavedToast] = useState(false);
   const [seeded, setSeeded] = useState(true);
 
   useEffect(() => {
@@ -117,10 +117,10 @@ export default function SetupPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ranges: buildRanges() }),
       });
-      // Brief brand transition, then the home screen.
-      setTransitioning(true);
-      setTimeout(() => router.push("/home"), 2000);
-    } catch {
+      // Stay here — offer (don't force) the trip home via a small toast.
+      setSavedToast(true);
+      setTimeout(() => setSavedToast(false), 8000);
+    } finally {
       setSaving(false);
     }
   }
@@ -140,8 +140,32 @@ export default function SetupPage() {
 
   return (
     <div className="space-y-5 pt-2 pb-4">
-      {/* Post-save brand transition (~2s) before the dashboard */}
-      {transitioning && <BrandOverlay />}
+      {/* Saved — a dismissible offer to go home, never a forced redirect */}
+      {savedToast && (
+        <div className="fixed inset-x-0 bottom-6 z-30 px-4 animate-rise">
+          <div className="mx-auto max-w-sm card flex items-center justify-between gap-3 p-3 ps-4 shadow-lg">
+            <span className="flex items-center gap-2 text-sm font-bold">
+              <Check size={16} className="text-secondary" />
+              {t("setup.savedTitle")}
+            </span>
+            <span className="flex items-center gap-2">
+              <button
+                onClick={() => router.push("/home")}
+                className="btn-primary px-4 py-1.5 text-xs"
+              >
+                {t("setup.goHome")}
+              </button>
+              <button
+                onClick={() => setSavedToast(false)}
+                aria-label="dismiss"
+                className="text-muted hover:text-foreground px-1"
+              >
+                <X size={15} />
+              </button>
+            </span>
+          </div>
+        </div>
+      )}
 
       <div>
         <h1 className="text-xl font-bold mb-1">{t("setup.title")}</h1>
@@ -298,7 +322,7 @@ function SurahGrid({
             <div
               className={
                 lang === "ar"
-                  ? "font-quran text-lg leading-tight"
+                  ? "text-[15px] font-bold leading-tight"
                   : "text-sm font-semibold leading-tight"
               }
             >

@@ -249,7 +249,13 @@ export default function HomePage() {
       const res = await fetch("/api/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, prayer, rakahs, focus: focusPayload() }),
+        body: JSON.stringify({
+          mode,
+          prayer,
+          rakahs,
+          focus: focusPayload(),
+          lengthPref: localStorage.getItem("aqim-passage-len") || "medium",
+        }),
       });
       const data = await res.json();
       // Let the sujood animation complete its current cycle before revealing —
@@ -328,7 +334,7 @@ export default function HomePage() {
                     : t("home.selectedPrayer")}
                   {hijri ? ` · ${hijri}` : ""}
                 </div>
-                <div className="font-heading text-3xl font-bold leading-tight truncate">
+                <div className="text-3xl font-bold leading-tight truncate">
                   {prayer === "qiyam" ? t("mode.qiyam") : t(`prayer.${prayer}`)}
                 </div>
               </div>
@@ -391,7 +397,7 @@ export default function HomePage() {
               {loading ? (
                 <LogoLoader size={30} inherit className="text-white" />
               ) : (
-                <span className="font-heading font-bold text-2xl leading-none">
+                <span className="font-bold text-2xl leading-none">
                   أقِم
                 </span>
               )}
@@ -584,7 +590,7 @@ function PlanView({
   return (
     <section className="space-y-3 animate-rise">
       <div className="flex items-baseline justify-between pt-1">
-        <h2 className="font-quran text-2xl text-primary">
+        <h2 className="text-xl font-bold text-primary">
           {lang === "ar" ? plan.titleArabic : plan.title}
         </h2>
       </div>
@@ -683,7 +689,12 @@ function SlotView({
       const res = await fetch("/api/suggest-one", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode, exclude, focus: focusPayload() }),
+        body: JSON.stringify({
+          mode,
+          exclude,
+          focus: focusPayload(),
+          lengthPref: localStorage.getItem("aqim-passage-len") || "medium",
+        }),
       });
       const data = await res.json();
       if (data.content) {
