@@ -302,7 +302,23 @@ html[dir="rtl"] .animate-drawer {
   animation-name: drawerInRtl;
 }
 
-/* One page-level fade used for every route change (see (app)/template.tsx). */
+/* One page-level fade used for every route change (see (app)/template.tsx).
+   OPACITY ONLY — a retained transform on this wrapper would become the
+   containing block for every position:fixed descendant (overlays, sheets,
+   toasts), gluing them to the page instead of the screen. */
+@keyframes routeFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.animate-route {
+  animation: routeFade 0.22s ease both;
+}
+
+/* Content-level entrance (safe on elements without fixed descendants). */
 @keyframes pageFade {
   from {
     opacity: 0;
