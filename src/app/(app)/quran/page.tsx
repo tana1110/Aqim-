@@ -213,6 +213,24 @@ export default function QuranPage() {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
+  // CRITICAL: the Quran webfont loads asynchronously and is taller (stacked
+  // harakat) than the fallback the first measurements see — without a
+  // re-solve on fonts.ready, pages measured too early overflow and the last
+  // lines get clipped.
+  useEffect(() => {
+    let alive = true;
+    document.fonts?.ready
+      ?.then(() => {
+        if (!alive) return;
+        fitIter.current = 0;
+        setFitSize((s) => s + 0.001); // nudge a re-solve with real metrics
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   useLayoutEffect(() => {
     if (!data) return;
     const el = fitRef.current;
@@ -220,16 +238,16 @@ export default function QuranPage() {
     if (!el || !box) return;
     const avail = box.clientHeight;
     const content = el.scrollHeight;
-    if (avail <= 0 || content <= 0 || fitIter.current >= 6) return;
+    if (avail <= 0 || content <= 0 || fitIter.current >= 10) return;
     const ratio = avail / content;
-    if (ratio < 1) {
-      // overflowing — shrink (slightly past the exact ratio to converge)
+    if (content > avail * 0.995) {
+      // overflowing (or razor-thin) — shrink decisively so nothing clips
       fitIter.current++;
-      setFitSize((s) => Math.max(10, s * ratio * 0.97));
-    } else if (ratio > 1.18 && fitSize < 30) {
+      setFitSize((s) => Math.max(10, s * ratio * 0.96));
+    } else if (ratio > 1.2 && fitSize < 30) {
       // lots of empty space — grow gently
       fitIter.current++;
-      setFitSize((s) => Math.min(30, s * Math.min(ratio * 0.92, 1.25)));
+      setFitSize((s) => Math.min(30, s * Math.min(ratio * 0.9, 1.25)));
     }
   }, [data, fitSize]);
 

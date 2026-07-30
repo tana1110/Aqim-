@@ -282,10 +282,15 @@ body {
   font-size: 1em !important;
   line-height: 1.68 !important; /* dense like a printed mushaf */
   word-spacing: 0 !important;
+  text-align: justify !important;
+  text-align-last: center; /* mushaf pages center their closing line */
 }
 .fit-quran .bismillah-line {
   font-size: 0.85em !important;
   line-height: 1.55 !important;
+}
+.fit-quran .ayah-mark {
+  font-size: 0.72em; /* the ۝-number medallion stays legible when fitted */
 }
 /* Center when it fits; never clip the top when it (transiently) overflows. */
 .fit-center {
