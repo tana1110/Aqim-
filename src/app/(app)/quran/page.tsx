@@ -7,13 +7,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
-  Maximize2,
   Play,
   Search,
   Square,
   X,
 } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
+import { BottomTabs } from "@/components/BottomNav";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, getBismillahDisplay, cleanAyah } from "@/lib/quranDisplay";
 import { maybeCompleteSurahWird, recordPageRead } from "@/lib/wird";
@@ -127,24 +127,12 @@ export default function QuranPage() {
   const [wirdToast, setWirdToast] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
 
-  // Full-page reading mode: nothing but the Quran; tapping the middle of
-  // the page toggles the info bars. Mode is remembered between visits.
-  const [immersive, setImmersive] = useState(false);
-  const [bars, setBars] = useState(false);
-  useEffect(() => {
-    try {
-      if (localStorage.getItem("aqim-quran-full") === "1") setImmersive(true);
-    } catch {}
-  }, []);
-  useEffect(() => {
-    document.body.style.overflow = immersive ? "hidden" : "";
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [immersive]);
+  // On phones the Quran IS the page: one full-bleed fitted mushaf page.
+  // Tapping the middle toggles the app chrome (bars, controls, nav).
+  const [chrome, setChrome] = useState(false);
 
-  // Fit-to-screen: in full-page mode the WHOLE page must fit the viewport —
-  // no scrolling. Text size is solved per page: render, measure, refine.
+  // Fit-to-screen: the WHOLE page must fit the viewport — no scrolling.
+  // Text size is solved per page: render, measure, refine.
   const fitRef = useRef<HTMLDivElement>(null);
   const fitIter = useRef(0);
   const [fitSize, setFitSize] = useState(24);
@@ -152,7 +140,7 @@ export default function QuranPage() {
   useEffect(() => {
     fitIter.current = 0;
     setFitSize(24);
-  }, [immersive, data?.page]);
+  }, [data?.page]);
 
   useEffect(() => {
     const onResize = () => {
@@ -164,7 +152,7 @@ export default function QuranPage() {
   }, []);
 
   useLayoutEffect(() => {
-    if (!immersive || !data) return;
+    if (!data) return;
     const el = fitRef.current;
     const box = el?.parentElement;
     if (!el || !box) return;
@@ -181,27 +169,7 @@ export default function QuranPage() {
       fitIter.current++;
       setFitSize((s) => Math.min(30, s * Math.min(ratio * 0.92, 1.25)));
     }
-  }, [immersive, data, fitSize]);
-
-  function enterImmersive() {
-    setImmersive(true);
-    setBars(false);
-    try {
-      localStorage.setItem("aqim-quran-full", "1");
-    } catch {}
-    try {
-      document.documentElement.requestFullscreen?.();
-    } catch {}
-  }
-  function exitImmersive() {
-    setImmersive(false);
-    try {
-      localStorage.removeItem("aqim-quran-full");
-    } catch {}
-    try {
-      if (document.fullscreenElement) document.exitFullscreen?.();
-    } catch {}
-  }
+  }, [data, fitSize]);
 
   // ---- Recitation playback (real recorded audio; plays page by page) ----
   // ONE reusable <audio> element: creating a fresh element per ayah breaks
@@ -470,42 +438,9 @@ export default function QuranPage() {
     </div>
   );
 
-  return (
-    <div className="pt-1 max-w-2xl mx-auto">
-      {/* Reading progress for the current surah */}
-      <div className="sticky top-[64px] z-10 -mx-4 px-4 py-2 bg-background">
-        <div className="flex items-center justify-between text-[11px] text-muted mb-1">
-          <span>
-            {main &&
-              `${t("passage.surah")} ${surahName(lang, main.nameArabic, main.nameTranslit)}`}
-          </span>
-          <span>{t("quran.progress")}</span>
-        </div>
-        <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-          <div
-            className="h-full rounded-full bg-secondary transition-all duration-300"
-            style={{ width: `${progress * 100}%` }}
-          />
-        </div>
-      </div>
-
-      {/* One position button — opens the full navigator (surah/juz/page) */}
-      <button
-        onClick={() => setNavOpen(true)}
-        className="w-full mt-3 card rounded-xl px-4 py-3 flex items-center justify-between gap-3 text-sm active:scale-[0.99] transition"
-      >
-        <span className="font-bold text-primary truncate">
-          {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
-        </span>
-        <span className="flex items-center gap-2 text-xs text-muted whitespace-nowrap tabular-nums">
-          {t("quran.page")} {digits(data.page)} / {digits(604)}
-          <Search size={14} />
-        </span>
-      </button>
-
-      {/* Recitation: listen to this page (continues page after page),
-          download the surah for offline listening */}
-      <div className="flex items-center gap-2 mt-2">
+  // Listen + reciter + download — shared by desktop layout and mobile chrome.
+  const controlsRow = (
+    <div className="flex items-center gap-2">
         <button
           onClick={playing ? stopAudio : () => playFrom(0)}
           className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-bold transition ${
@@ -551,41 +486,129 @@ export default function QuranPage() {
             <Download size={15} />
           )}
         </button>
-        <button
-          onClick={enterImmersive}
-          aria-label={t("quran.full")}
-          title={t("quran.full")}
-          className="w-9 h-9 rounded-full grid place-items-center border border-border text-muted hover:text-foreground transition"
-        >
-          <Maximize2 size={15} />
-        </button>
       </div>
+  );
 
-      {navOpen && (
-        <MushafNavigator
-          surahs={surahs}
-          currentSurah={main?.number ?? null}
-          onClose={() => setNavOpen(false)}
-          onSurah={(n) => {
-            setNavOpen(false);
-            jumpToSurah(n);
+  return (
+    <>
+      {/* MOBILE: the Quran IS the page — one fitted mushaf page, edge to
+          edge. Tap the middle for the chrome; tap again to just read. */}
+      <div className="md:hidden fixed inset-0 z-30 bg-background overflow-hidden">
+        <div
+          {...swipeFull}
+          key={"m-" + data.page}
+          onClick={() => {
+            if (showCoach) dismissCoach();
+            setChrome((c) => !c);
           }}
-          onPage={(p) => {
-            setNavOpen(false);
-            setPage(Math.min(604, Math.max(1, p)));
+          className="h-full px-4 fit-center overflow-hidden select-none"
+          style={{
+            paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)",
+            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
           }}
-        />
-      )}
-
-      {/* Wird completed by reading — quiet confirmation */}
-      {wirdToast && (
-        <div className="fixed inset-x-0 top-[72px] z-30 px-4 animate-rise">
-          <div className="mx-auto w-fit flex items-center gap-2 rounded-full bg-secondary text-white px-5 py-2.5 text-sm font-bold shadow-lg">
-            <Check size={16} strokeWidth={3} />
-            {t("wird.autoDone")}
+        >
+          <div ref={fitRef} className="fit-quran" style={{ fontSize: fitSize + "px" }}>
+            {renderGroups(true)}
           </div>
         </div>
-      )}
+
+        {/* edge taps: left = next (Arabic book order), right = previous */}
+        <button
+          aria-hidden
+          tabIndex={-1}
+          onClick={(e) => {
+            e.stopPropagation();
+            turn(1);
+          }}
+          className="absolute inset-y-0 left-0 w-[15%] z-10"
+        />
+        <button
+          aria-hidden
+          tabIndex={-1}
+          onClick={(e) => {
+            e.stopPropagation();
+            turn(-1);
+          }}
+          className="absolute inset-y-0 right-0 w-[15%] z-10"
+        />
+
+        {showCoach && !chrome && (
+          <div
+            className="absolute inset-x-0 z-20 mx-auto w-fit rounded-full bg-primary text-white px-4 py-2 text-xs font-bold shadow-lg animate-rise pointer-events-none"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 14px)" }}
+          >
+            {t("quran.tapForBars")}
+          </div>
+        )}
+
+        {chrome && (
+          <>
+            <div
+              className="absolute top-0 inset-x-0 z-20 bg-background/95 backdrop-blur border-b border-border px-4 pb-3 space-y-2.5 animate-rise"
+              style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <button
+                  onClick={() => setNavOpen(true)}
+                  className="min-w-0 flex items-center gap-2 text-start"
+                >
+                  <span className="text-sm font-bold text-primary truncate">
+                    {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
+                  </span>
+                  <Search size={13} className="text-muted shrink-0" />
+                </button>
+                <span className="shrink-0 text-xs text-muted tabular-nums">
+                  {t("setup.juz")} {digits(data.juz)} · {t("quran.page")} {digits(data.page)} / {digits(604)}
+                </span>
+              </div>
+              <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-secondary transition-all duration-300"
+                  style={{ width: (progress * 100) + "%" }}
+                />
+              </div>
+              {controlsRow}
+            </div>
+            <BottomTabs force />
+          </>
+        )}
+      </div>
+
+      {/* DESKTOP: the framed reading layout */}
+      <div className="hidden md:block pt-1 max-w-2xl mx-auto">
+      {/* Reading progress for the current surah */}
+      <div className="sticky top-[64px] z-10 -mx-4 px-4 py-2 bg-background">
+        <div className="flex items-center justify-between text-[11px] text-muted mb-1">
+          <span>
+            {main &&
+              `${t("passage.surah")} ${surahName(lang, main.nameArabic, main.nameTranslit)}`}
+          </span>
+          <span>{t("quran.progress")}</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-secondary transition-all duration-300"
+            style={{ width: `${progress * 100}%` }}
+          />
+        </div>
+      </div>
+
+      {/* One position button — opens the full navigator (surah/juz/page) */}
+      <button
+        onClick={() => setNavOpen(true)}
+        className="w-full mt-3 card rounded-xl px-4 py-3 flex items-center justify-between gap-3 text-sm active:scale-[0.99] transition"
+      >
+        <span className="font-bold text-primary truncate">
+          {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
+        </span>
+        <span className="flex items-center gap-2 text-xs text-muted whitespace-nowrap tabular-nums">
+          {t("quran.page")} {digits(data.page)} / {digits(604)}
+          <Search size={14} />
+        </span>
+      </button>
+
+      <div className="mt-2">{controlsRow}</div>
+
 
       {/* ONE page, framed like a printed Mushaf. Swipe to turn; side arrows
           serve desktop. */}
@@ -641,100 +664,34 @@ export default function QuranPage() {
 
       <div className="pb-6" />
 
-      {/* FULL-PAGE reading: the WHOLE page fits the screen — no scrolling,
-          nothing above or below. Tap the middle for the info bars. */}
-      {immersive && (
-        <div className="fixed inset-0 z-50 bg-background overflow-hidden">
-          <div
-            {...swipeFull}
-            key={"full-" + data.page}
-            onClick={() => setBars((b) => !b)}
-            className="h-full max-w-2xl mx-auto px-4 fit-center overflow-hidden select-none"
-            style={{
-              paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)",
-              paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 8px)",
-            }}
-          >
-            <div
-              ref={fitRef}
-              className="animate-page fit-quran"
-              style={{ fontSize: `${fitSize}px` }}
-            >
-              {renderGroups(true)}
-            </div>
+    </div>
+
+      {navOpen && (
+        <MushafNavigator
+          surahs={surahs}
+          currentSurah={main?.number ?? null}
+          onClose={() => setNavOpen(false)}
+          onSurah={(n) => {
+            setNavOpen(false);
+            jumpToSurah(n);
+          }}
+          onPage={(p) => {
+            setNavOpen(false);
+            setPage(Math.min(604, Math.max(1, p)));
+          }}
+        />
+      )}
+
+      {/* Wird completed by reading — quiet confirmation */}
+      {wirdToast && (
+        <div className="fixed inset-x-0 top-[72px] z-30 px-4 animate-rise">
+          <div className="mx-auto w-fit flex items-center gap-2 rounded-full bg-secondary text-white px-5 py-2.5 text-sm font-bold shadow-lg">
+            <Check size={16} strokeWidth={3} />
+            {t("wird.autoDone")}
           </div>
-
-          {/* edge tap zones */}
-          <button
-            aria-hidden
-            tabIndex={-1}
-            onClick={(e) => {
-              e.stopPropagation();
-              turn(1);
-            }}
-            className="fixed inset-y-0 left-0 w-[16%] z-10"
-          />
-          <button
-            aria-hidden
-            tabIndex={-1}
-            onClick={(e) => {
-              e.stopPropagation();
-              turn(-1);
-            }}
-            className="fixed inset-y-0 right-0 w-[16%] z-10"
-          />
-
-          {bars && (
-            <div className="fixed top-0 inset-x-0 z-20 bg-background/95 backdrop-blur border-b border-border px-4 pt-3 pb-2.5 space-y-2 animate-rise">
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-bold text-primary truncate">
-                  {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
-                </span>
-                <span className="flex items-center gap-3 shrink-0 text-xs text-muted tabular-nums">
-                  <span>
-                    {t("setup.juz")} {digits(data.juz)}
-                  </span>
-                  <span>
-                    {t("quran.page")} {digits(data.page)} / {digits(604)}
-                  </span>
-                  <button
-                    onClick={exitImmersive}
-                    aria-label="close"
-                    className="w-8 h-8 grid place-items-center rounded-lg text-foreground hover:bg-surface-2"
-                  >
-                    <X size={17} />
-                  </button>
-                </span>
-              </div>
-              <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-secondary transition-all duration-300"
-                  style={{ width: `${progress * 100}%` }}
-                />
-              </div>
-              <div className="flex items-center justify-center gap-6 pt-0.5">
-                <button
-                  onClick={() => turn(-1)}
-                  disabled={data.page <= 1}
-                  aria-label="previous"
-                  className="w-9 h-9 grid place-items-center rounded-full border border-border text-muted disabled:opacity-30"
-                >
-                  <ChevronRight size={17} />
-                </button>
-                <button
-                  onClick={() => turn(1)}
-                  disabled={data.page >= 604}
-                  aria-label="next"
-                  className="w-9 h-9 grid place-items-center rounded-full border border-border text-muted disabled:opacity-30"
-                >
-                  <ChevronLeft size={17} />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

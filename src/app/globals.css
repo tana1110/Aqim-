@@ -225,11 +225,12 @@ body {
    px by the fit-to-screen solver), overriding the fixed clamp() sizes. */
 .fit-quran .quran-text {
   font-size: 1em !important;
-  line-height: 1.9 !important;
+  line-height: 1.68 !important; /* dense like a printed mushaf */
+  word-spacing: 0 !important;
 }
 .fit-quran .bismillah-line {
   font-size: 0.85em !important;
-  line-height: 1.7 !important;
+  line-height: 1.55 !important;
 }
 /* Center when it fits; never clip the top when it (transiently) overflows. */
 .fit-center {

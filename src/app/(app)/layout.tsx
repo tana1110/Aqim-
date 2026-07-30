@@ -19,9 +19,9 @@ export default function AppLayout({
 }) {
   const [navOpen, setNavOpen] = useState(false);
   const pathname = usePathname();
-  // Home carries its own greeting header on phones — showing the brand bar
-  // above it reads as two clashing headers.
-  const isHome = pathname === "/home";
+  // Home carries its own greeting header on phones; the Quran page is a
+  // full-bleed reading surface — neither wants the brand bar on mobile.
+  const isHome = pathname === "/home" || pathname === "/quran";
 
   // Pages without the app header (home on mobile) can still open the drawer.
   useEffect(() => {

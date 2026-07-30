@@ -29,7 +29,7 @@ export const TABS = [
 // Mobile: floating pill nav (bento redesign) — dark rounded bar, the active
 // section pops as a light circle. Slides away while scrolling down so it
 // never covers content; returns the moment the user scrolls up.
-export function BottomTabs() {
+export function BottomTabs({ force = false }: { force?: boolean }) {
   const pathname = usePathname();
   const { t } = useLang();
   const [hidden, setHidden] = useState(false);
@@ -46,6 +46,10 @@ export function BottomTabs() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // The Quran page IS the reading surface on phones — it mounts its own
+  // copy of this nav (force) inside its tap-to-show chrome.
+  if (!force && pathname === "/quran") return null;
 
   return (
     <nav
