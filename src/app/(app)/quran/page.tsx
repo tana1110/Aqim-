@@ -62,6 +62,68 @@ function toArabicDigits(n: number): string {
   return String(n).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)]);
 }
 
+// The printed-mushaf surah cartouche: double gold rules stretching the full
+// width, a floral medallion at each end, and the surah name in a central
+// plaque. Pure SVG + theme tokens; sizes in em so it scales with the page.
+function Rosette({ className }: { className: string }) {
+  return (
+    <svg viewBox="0 0 40 40" className={className} aria-hidden>
+      <g fill="currentColor">
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((a) => (
+          <path
+            key={a}
+            d="M20 6 C23.5 11,23.5 15,20 17.5 C16.5 15,16.5 11,20 6 Z"
+            transform={`rotate(${a} 20 20)`}
+            opacity="0.9"
+          />
+        ))}
+      </g>
+      <circle
+        cx="20"
+        cy="20"
+        r="4.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+      />
+      <circle cx="20" cy="20" r="1.6" fill="currentColor" />
+    </svg>
+  );
+}
+
+function SurahBanner({ name, bare = false }: { name: string; bare?: boolean }) {
+  return (
+    <div
+      className={`surah-banner ${bare ? "surah-banner--bare" : ""}`}
+      dir="rtl"
+      aria-label={name}
+    >
+      <svg
+        viewBox="0 0 400 56"
+        preserveAspectRatio="none"
+        className="surah-banner__band"
+        aria-hidden
+      >
+        <g fill="none" stroke="currentColor">
+          <rect x="2" y="4" width="396" height="48" rx="9" strokeWidth="2" />
+          <rect
+            x="7"
+            y="9"
+            width="386"
+            height="38"
+            rx="6"
+            strokeWidth="0.8"
+            opacity="0.75"
+          />
+        </g>
+      </svg>
+      <Rosette className="surah-banner__end surah-banner__end--start" />
+      <Rosette className="surah-banner__end surah-banner__end--end" />
+      <span className="surah-banner__name">{name}</span>
+    </div>
+  );
+}
+
 export default function QuranPage() {
   const { t, lang } = useLang();
   const [data, setData] = useState<MushafPage | null>(null);
@@ -373,18 +435,9 @@ export default function QuranPage() {
       );
       return (
         <div key={g.surah.number}>
-          {startsAtOne &&
-            (bare ? (
-              <p className="font-quran text-[1.05em] text-primary text-center my-[0.4em]">
-                {g.surah.nameArabic}
-              </p>
-            ) : (
-              <div className="my-3 rounded-lg border-y-2 border-x border-accent/50 bg-accent-soft/40 py-2.5 text-center">
-                <span className="font-quran text-xl text-primary">
-                  {g.surah.nameArabic}
-                </span>
-              </div>
-            ))}
+          {startsAtOne && (
+            <SurahBanner name={g.surah.nameArabic} bare={bare} />
+          )}
           {bism.line && (
             <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
               {bism.line}

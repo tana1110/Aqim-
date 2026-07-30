@@ -221,6 +221,61 @@ body {
   color: #fff;
 }
 
+/* Surah-start cartouche — the printed-mushaf ornamental band: double gold
+   rules, floral end medallions, the surah name in a central plaque. All
+   em-based so it scales with the fit-to-screen solver. */
+.surah-banner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 3em;
+  margin: 0.4em 0 0.5em;
+  color: var(--color-accent);
+}
+.surah-banner__band {
+  position: absolute;
+  inset-inline: 0;
+  top: 0.3em;
+  height: calc(100% - 0.6em);
+  width: 100%;
+}
+.surah-banner__end {
+  position: absolute;
+  top: 50%;
+  height: 2.1em;
+  width: 2.1em;
+}
+.surah-banner__end--start {
+  inset-inline-start: 0.4em;
+  transform: translateY(-50%);
+}
+.surah-banner__end--end {
+  inset-inline-end: 0.4em;
+  transform: translateY(-50%) scaleX(-1);
+}
+.surah-banner__name {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-quran);
+  font-size: 0.95em;
+  line-height: 1.7;
+  color: var(--color-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent);
+  border-radius: 9999px;
+  padding: 0.05em 1em 0.2em;
+  box-shadow:
+    0 0 0 3px var(--color-surface),
+    0 0 0 4px var(--color-accent);
+}
+.surah-banner--bare .surah-banner__name {
+  background: var(--color-background);
+  box-shadow:
+    0 0 0 3px var(--color-background),
+    0 0 0 4px var(--color-accent);
+}
+
 /* Full-page Quran fit: text scales with the container's font-size (set in
    px by the fit-to-screen solver), overriding the fixed clamp() sizes. */
 .fit-quran .quran-text {
