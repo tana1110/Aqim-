@@ -292,6 +292,13 @@ body {
 .fit-quran .ayah-mark {
   font-size: 0.72em; /* the ۝-number medallion stays legible when fitted */
 }
+
+/* Exact (QCF) lines: a uniform hair of inter-word space — some V2 word
+   glyphs sit flush against their neighbor; sacred text must never read as
+   joined words. The width solver measures margins, so lines still fill. */
+.exact-line > span {
+  margin-inline: 0.024em;
+}
 /* Center when it fits; never clip the top when it (transiently) overflows. */
 .fit-center {
   display: flex;

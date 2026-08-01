@@ -317,7 +317,7 @@ export default function QuranPage() {
             <div
               data-exact-line
               dir="rtl"
-              className="whitespace-nowrap leading-none"
+              className="exact-line whitespace-nowrap leading-none"
               style={{ fontFamily: `QCFP${exact.page}` }}
             >
               {words.map((w, i) => (
