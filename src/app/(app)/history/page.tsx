@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { ChevronDown, Crosshair } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { GrowthChart, type GrowthPoint } from "@/components/GrowthChart";
@@ -59,6 +59,26 @@ export default function HistoryPage() {
   const [growth, setGrowth] = useState<GrowthPoint[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<"recitations" | "memo">("recitations");
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  // Paint instantly from the last visit's snapshot; refresh silently.
+  useLayoutEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("aqim-c:history");
+      if (raw) {
+        const c = JSON.parse(raw);
+        if (!Array.isArray(c.rows) || !Array.isArray(c.surahs)) return;
+        setRows(c.rows ?? []);
+        setSurahMap(
+          new Map((c.surahs ?? []).map((x: SurahMeta) => [x.number, x])),
+        );
+        setMemo(c.memo ?? []);
+        setJuzList(c.juz ?? []);
+        setGrowth(c.growth ?? []);
+        setLoaded(true);
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     Promise.all([
@@ -76,7 +96,20 @@ export default function HistoryPage() {
         setMemo(m.memorization ?? []);
         setJuzList(j.juz ?? []);
         setGrowth(g.points ?? []);
+        try {
+          sessionStorage.setItem(
+            "aqim-c:history",
+            JSON.stringify({
+              rows: h.history ?? [],
+              surahs: sur.surahs ?? [],
+              memo: m.memorization ?? [],
+              juz: j.juz ?? [],
+              growth: g.points ?? [],
+            }),
+          );
+        } catch {}
       })
+      .catch(() => setLoadFailed(true))
       .finally(() => setLoaded(true));
   }, []);
 
@@ -146,8 +179,16 @@ export default function HistoryPage() {
 
       {tab === "recitations" ? (
         rows.length === 0 ? (
-          <div className="card p-8 text-center text-sm text-muted">
-            {t("history.empty")}
+          <div className="card p-8 text-center text-sm text-muted space-y-3">
+            <p>{loadFailed ? t("common.loadFailed") : t("history.empty")}</p>
+            {loadFailed && (
+              <button
+                onClick={() => window.location.reload()}
+                className="btn-primary px-6 py-2 text-sm"
+              >
+                {t("common.retry")}
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">

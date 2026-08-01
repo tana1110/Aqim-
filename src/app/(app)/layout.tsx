@@ -30,6 +30,18 @@ export default function AppLayout({
     return () => window.removeEventListener("aqim-open-nav", open);
   }, []);
 
+  // Chrome fires beforeinstallprompt ONCE, early — capture it at the shell
+  // level so the install card can use it whenever it mounts.
+  useEffect(() => {
+    const onBip = (e: Event) => {
+      e.preventDefault();
+      (window as unknown as { __aqimBip?: Event }).__aqimBip = e;
+      window.dispatchEvent(new Event("aqim-bip"));
+    };
+    window.addEventListener("beforeinstallprompt", onBip);
+    return () => window.removeEventListener("beforeinstallprompt", onBip);
+  }, []);
+
   return (
     <div className="min-h-dvh flex flex-col">
       <SplashScreen />

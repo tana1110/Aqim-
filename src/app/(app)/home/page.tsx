@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   BookOpen,
@@ -12,9 +12,12 @@ import {
   Flame,
   ChevronLeft,
   Menu,
+  Settings2,
+  X,
 } from "lucide-react";
 import { Logo, LogoLoader } from "@/components/Logo";
 import { HomeTour } from "@/components/HomeTour";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { PageLoader } from "@/components/Brand";
 import { ContentCard } from "@/components/ContentCard";
 import { PassageCard } from "@/components/PassageCard";
@@ -30,6 +33,12 @@ import {
   type WirdConfig,
 } from "@/lib/wird";
 import { loadTasbih, tapTasbih, type TasbihState } from "@/lib/tasbih";
+import {
+  WIDGET_KEYS,
+  loadWidgets,
+  saveWidgets,
+  type WidgetKey,
+} from "@/lib/widgets";
 import {
   computeTimes,
   loadReminderConfig,
@@ -109,24 +118,72 @@ export default function HomePage() {
     } catch {}
   }, []);
 
+  // Which widgets this person wants on their home page.
+  const [widgets, setWidgets] = useState<Record<WidgetKey, boolean>>({
+    tasks: true,
+    misbaha: true,
+    daily: true,
+    review: true,
+  });
+  const [customize, setCustomize] = useState(false);
+  useLayoutEffect(() => {
+    const read = () => setWidgets(loadWidgets());
+    read();
+    window.addEventListener("aqim-widgets-changed", read);
+    return () => window.removeEventListener("aqim-widgets-changed", read);
+  }, []);
+
   // Everything renders at once, in a fixed order, only after the core data
   // has settled — no sections popping in one by one.
   const [booted, setBooted] = useState(false);
+
+  // NO loader flash on revisits: hydrate from the last visit's snapshot
+  // BEFORE first paint, then refresh silently in the background.
+  useLayoutEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("aqim-c:home");
+      if (raw) {
+        const c = JSON.parse(raw);
+        if (c.status?.seeded) setStatus(c.status);
+        if (c.daily !== undefined) setDaily(c.daily);
+        setBooted(true);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
+    let st: { seeded: boolean; hasMemorization: boolean } | null = null;
+    let dy: DailyAyah | null = null;
     Promise.allSettled([
       fetch("/api/status")
         .then((r) => r.json())
-        .then((d) =>
-          setStatus({ seeded: d.seeded, hasMemorization: d.hasMemorization }),
-        )
-        // A network failure is NOT "not seeded" — degrade gracefully instead
-        // of dead-ending the user on the not-ready screen.
-        .catch(() => setStatus(null)),
+        .then((d) => {
+          st = { seeded: d.seeded, hasMemorization: d.hasMemorization };
+          setStatus(st);
+        })
+        // A network failure is NOT "not seeded" — keep whatever we have.
+        .catch(() => {}),
       fetch("/api/daily-ayah")
         .then((r) => r.json())
-        .then((d) => setDaily(d.ayah))
+        .then((d) => {
+          dy = d.ayah;
+          setDaily(d.ayah);
+        })
         .catch(() => {}),
-    ]).finally(() => setBooted(true));
+    ]).finally(() => {
+      setBooted(true);
+      // Merge into the snapshot — never overwrite good fields with nulls.
+      try {
+        const prev = JSON.parse(sessionStorage.getItem("aqim-c:home") ?? "{}");
+        sessionStorage.setItem(
+          "aqim-c:home",
+          JSON.stringify({
+            status: st ?? prev.status ?? null,
+            daily: dy ?? prev.daily ?? null,
+          }),
+        );
+      } catch {}
+    });
   }, []);
 
   // Signed-in name (optional) — warms up the greeting.
@@ -546,8 +603,11 @@ export default function HomePage() {
           </section>
         )}
 
+        {/* Install card — one tap to a real app on the home screen */}
+        <InstallPrompt />
+
         {/* آية اليوم */}
-        {daily && (
+        {widgets.daily && daily && (
           <ContentCard
             label={t("home.dailyAyah")}
             icon={<BookOpen size={13} />}
@@ -574,13 +634,32 @@ export default function HomePage() {
         )}
 
         {/* Today's tasks — bento tiles */}
-        <TodayCard />
+        {widgets.tasks && <TodayCard />}
 
         {/* Quick misbaha — count right here, full page one tap away */}
-        <MisbahaMini />
+        {widgets.misbaha && <MisbahaMini />}
 
         {/* Review — the user picks what to review (drives Focus mode) */}
-        {status?.hasMemorization && <ReviewPicker />}
+        {widgets.review && status?.hasMemorization && <ReviewPicker />}
+
+        {/* Each person shapes their own home page */}
+        <button
+          onClick={() => setCustomize(true)}
+          className="mx-auto flex items-center gap-1.5 text-xs text-muted hover:text-foreground py-1"
+        >
+          <Settings2 size={13} />
+          {t("widgets.title")}
+        </button>
+        {customize && (
+          <WidgetSheet
+            current={widgets}
+            onChange={(w) => {
+              setWidgets(w);
+              saveWidgets(w);
+            }}
+            onClose={() => setCustomize(false)}
+          />
+        )}
       </div>
 
       <HomeTour />
@@ -670,12 +749,18 @@ function TodayCard() {
           href={state.wirdOn ? "/quran" : "/adhkar"}
           onClick={() => {
             if (!state.wirdOn) return;
-            const target = nextWirdPage(spans);
-            if (target) {
-              try {
-                sessionStorage.setItem("aqim-jump-page", String(target));
-              } catch {}
-            }
+            try {
+              const target = nextWirdPage(spans);
+              if (target) {
+                sessionStorage.setItem(
+                  "aqim-jump-page",
+                  JSON.stringify({ page: target, ts: Date.now() }),
+                );
+              } else if (cfg.mode === "surah") {
+                // spans not loaded yet — let the Quran page compute the jump
+                sessionStorage.setItem("aqim-jump-wird", "1");
+              }
+            } catch {}
           }}
           className="tile tile-gold p-4 min-h-36 flex flex-col justify-between active:scale-[0.98] transition"
         >
@@ -959,6 +1044,56 @@ function ReviewPicker() {
         </div>
       )}
     </section>
+  );
+}
+
+// Bottom sheet: check the widgets you want on your home page.
+function WidgetSheet({
+  current,
+  onChange,
+  onClose,
+}: {
+  current: Record<WidgetKey, boolean>;
+  onChange: (w: Record<WidgetKey, boolean>) => void;
+  onClose: () => void;
+}) {
+  const { t } = useLang();
+  return (
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
+      <div className="absolute inset-x-0 bottom-0 bg-surface rounded-t-3xl shadow-lg p-5 pb-8 animate-rise">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-base font-extrabold">{t("widgets.title")}</span>
+          <button
+            onClick={onClose}
+            aria-label="close"
+            className="w-9 h-9 grid place-items-center rounded-lg text-muted hover:text-foreground"
+          >
+            <X size={18} />
+          </button>
+        </div>
+        <p className="text-xs text-muted mb-4">{t("widgets.hint")}</p>
+        <div className="space-y-1">
+          {WIDGET_KEYS.map((k) => (
+            <label
+              key={k}
+              className="flex items-center justify-between gap-3 rounded-2xl px-3 py-3 hover:bg-surface-2 cursor-pointer"
+            >
+              <span className="text-sm font-medium">{t(`widget.${k}`)}</span>
+              <input
+                type="checkbox"
+                checked={current[k]}
+                onChange={() => onChange({ ...current, [k]: !current[k] })}
+                className="accent-[var(--color-primary)] w-5 h-5"
+              />
+            </label>
+          ))}
+        </div>
+        <button onClick={onClose} className="btn-cta w-full py-3 text-sm mt-4">
+          {t("common.done")}
+        </button>
+      </div>
+    </div>
   );
 }
 

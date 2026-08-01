@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Check, RotateCcw } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
@@ -93,10 +93,33 @@ function AdhkarInner() {
     return () => window.removeEventListener("aqim-wird-changed", read);
   }, [chapterParam]);
 
+  // Paint instantly from the last visit's snapshot; refresh silently.
+  const [loadFailed, setLoadFailed] = useState(false);
+  useLayoutEffect(() => {
+    try {
+      const raw = sessionStorage.getItem("aqim-c:adhkar");
+      if (raw) {
+        const v = JSON.parse(raw);
+        if (Array.isArray(v) && v.length) {
+          setChapters(v);
+          setLoaded(true);
+        }
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
     fetch("/api/adhkar")
       .then((r) => r.json())
-      .then((d) => setChapters(d.chapters ?? []))
+      .then((d) => {
+        const list = d.chapters ?? [];
+        setChapters(list);
+        setLoadFailed(false);
+        try {
+          sessionStorage.setItem("aqim-c:adhkar", JSON.stringify(list));
+        } catch {}
+      })
+      .catch(() => setLoadFailed(true))
       .finally(() => setLoaded(true));
   }, []);
 
@@ -134,6 +157,21 @@ function AdhkarInner() {
   }, [chapters, searchParams]);
 
   if (!loaded) return <PageLoader />;
+
+  // A network failure is not "no adhkar" — offer a retry.
+  if (chapters.length === 0 && loadFailed) {
+    return (
+      <div className="card p-6 text-center mt-6 space-y-3">
+        <p className="text-sm text-muted">{t("common.loadFailed")}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="btn-primary px-6 py-2 text-sm"
+        >
+          {t("common.retry")}
+        </button>
+      </div>
+    );
+  }
 
   if (open) {
     const st = strip(open.title);

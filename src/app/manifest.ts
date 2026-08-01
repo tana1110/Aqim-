@@ -21,5 +21,28 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml" },
       { src: "/apple-icon", sizes: "180x180", type: "image/png" },
     ],
+    // Long-press the app icon → jump straight to a section (OS shortcuts).
+    shortcuts: [
+      {
+        name: "أقِم — اقتراح الصلاة",
+        url: "/home",
+        icons: [{ src: "/apple-icon", sizes: "180x180", type: "image/png" }],
+      },
+      {
+        name: "القرآن",
+        url: "/quran",
+        icons: [{ src: "/apple-icon", sizes: "180x180", type: "image/png" }],
+      },
+      {
+        name: "المسبحة",
+        url: "/tasbih",
+        icons: [{ src: "/apple-icon", sizes: "180x180", type: "image/png" }],
+      },
+      {
+        name: "الأذكار",
+        url: "/adhkar",
+        icons: [{ src: "/apple-icon", sizes: "180x180", type: "image/png" }],
+      },
+    ],
   };
 }

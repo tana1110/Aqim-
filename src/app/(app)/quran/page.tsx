@@ -16,7 +16,11 @@ import { PageLoader } from "@/components/Brand";
 import { BottomTabs } from "@/components/BottomNav";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, getBismillahDisplay, cleanAyah } from "@/lib/quranDisplay";
-import { maybeCompleteSurahWird, recordPageRead } from "@/lib/wird";
+import {
+  maybeCompleteSurahWird,
+  nextWirdPage,
+  recordPageRead,
+} from "@/lib/wird";
 import {
   RECITERS,
   ayahAudioUrl,
@@ -134,8 +138,14 @@ export default function QuranPage() {
   const fetchSeq = useRef(0);
 
   // Resume exactly where the reader left off — unless another page handed
-  // us a surah to open (e.g. the home review card).
+  // us a position (wird tile, review card). The handoff keys are consumed
+  // once behind a ref (StrictMode double-invokes effects) and expire fast
+  // (a stale key must never hijack a later visit).
+  const consumedJump = useRef(false);
+  const wantsWirdJump = useRef(false);
   useEffect(() => {
+    if (consumedJump.current) return;
+    consumedJump.current = true;
     let p = 1;
     let jumpSurah: number | null = null;
     let jumpPage: number | null = null;
@@ -144,13 +154,26 @@ export default function QuranPage() {
       setShowCoach(!localStorage.getItem(HINT_KEY));
       jumpSurah = Number(sessionStorage.getItem("aqim-jump-surah")) || null;
       sessionStorage.removeItem("aqim-jump-surah");
-      // The home wird tile hands over the wird's own position.
-      jumpPage = Number(sessionStorage.getItem("aqim-jump-page")) || null;
+      const rawJump = sessionStorage.getItem("aqim-jump-page");
       sessionStorage.removeItem("aqim-jump-page");
+      if (rawJump) {
+        const parsed = JSON.parse(rawJump) as { page?: number; ts?: number };
+        if (
+          parsed?.page &&
+          (!parsed.ts || Date.now() - parsed.ts < 20_000)
+        ) {
+          jumpPage = parsed.page;
+        }
+      }
+      wantsWirdJump.current =
+        sessionStorage.getItem("aqim-jump-wird") === "1";
+      sessionStorage.removeItem("aqim-jump-wird");
     } catch {}
     if (jumpPage) {
+      wantsWirdJump.current = false;
       setPage(Math.min(604, Math.max(1, jumpPage)));
     } else if (jumpSurah) {
+      wantsWirdJump.current = false;
       jumpToSurah(jumpSurah).catch(() => setPage(Math.min(604, Math.max(1, p))));
     } else setPage(Math.min(604, Math.max(1, p)));
     fetch("/api/surahs")
@@ -158,6 +181,13 @@ export default function QuranPage() {
       .then((d) => {
         const list = d.surahs ?? [];
         setSurahs(list);
+        // The wird tile may have been tapped before spans existed — finish
+        // the jump here with real page data.
+        if (wantsWirdJump.current) {
+          wantsWirdJump.current = false;
+          const target = nextWirdPage(list);
+          if (target) setPage(Math.min(604, Math.max(1, target)));
+        }
         // Re-check with real page spans (first page view may have preceded them).
         if (maybeCompleteSurahWird(list)) {
           setWirdToast(true);

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { UserRound, LogOut } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
+import { clearPageCaches } from "@/lib/cache";
 
 // Optional account — the app works fully without one; signing in only makes
 // the user's history/memorization follow them across devices.
@@ -63,6 +64,7 @@ export default function AccountPage() {
             });
             const d = await r.json();
             if (!r.ok) throw new Error(d.error);
+            clearPageCaches(); // the visible data belongs to the account now
             router.refresh();
             setAccount({ email: d.email ?? null });
           } catch {
@@ -108,6 +110,7 @@ export default function AccountPage() {
         setError(msg === key ? t("account.err.generic") : msg);
         return;
       }
+      clearPageCaches(); // the visible data belongs to the account now
       router.refresh();
       setAccount({ email: d.email ?? email });
     } catch {
@@ -121,6 +124,7 @@ export default function AccountPage() {
     setBusy(true);
     try {
       await fetch("/api/auth/logout", { method: "POST" });
+      clearPageCaches(); // never paint the signed-out user's data from cache
       setAccount(null);
       router.refresh();
     } finally {
