@@ -229,7 +229,7 @@ export default function QuranPage() {
     (async () => {
       try {
         const [res] = await Promise.all([
-          fetch(`/api/mushaf-exact?page=${page}`),
+          fetch(`/api/mushaf-exact?page=${page}&v=2`),
           ensurePageFont(page),
         ]);
         if (!res.ok) throw new Error(String(res.status));
@@ -239,7 +239,7 @@ export default function QuranPage() {
         setExact(d);
         // warm the next page for a seamless turn
         if (page < 604) {
-          fetch(`/api/mushaf-exact?page=${page + 1}`).catch(() => {});
+          fetch(`/api/mushaf-exact?page=${page + 1}&v=2`).catch(() => {});
           fetch(`/api/qcf-font/${page + 1}`).catch(() => {});
         }
       } catch {

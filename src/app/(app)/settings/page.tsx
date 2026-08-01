@@ -363,7 +363,7 @@ function OfflineRow() {
           // text + the exact 15-line layout (page fonts cache as you read)
           for (const url of [
             `${location.origin}/api/mushaf?page=${q}`,
-            `${location.origin}/api/mushaf-exact?page=${q}`,
+            `${location.origin}/api/mushaf-exact?page=${q}&v=2`,
           ]) {
             batch.push(
               cache.match(url).then(async (hit) => {
