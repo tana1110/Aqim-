@@ -138,13 +138,19 @@ export default function QuranPage() {
   useEffect(() => {
     let p = 1;
     let jumpSurah: number | null = null;
+    let jumpPage: number | null = null;
     try {
       p = Number(localStorage.getItem(POS_KEY)) || 1;
       setShowCoach(!localStorage.getItem(HINT_KEY));
       jumpSurah = Number(sessionStorage.getItem("aqim-jump-surah")) || null;
       sessionStorage.removeItem("aqim-jump-surah");
+      // The home wird tile hands over the wird's own position.
+      jumpPage = Number(sessionStorage.getItem("aqim-jump-page")) || null;
+      sessionStorage.removeItem("aqim-jump-page");
     } catch {}
-    if (jumpSurah) {
+    if (jumpPage) {
+      setPage(Math.min(604, Math.max(1, jumpPage)));
+    } else if (jumpSurah) {
       jumpToSurah(jumpSurah).catch(() => setPage(Math.min(604, Math.max(1, p))));
     } else setPage(Math.min(604, Math.max(1, p)));
     fetch("/api/surahs")

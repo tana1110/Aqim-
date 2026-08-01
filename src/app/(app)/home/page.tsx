@@ -24,6 +24,10 @@ import {
   loadWird,
   isAdhkarDoneToday,
   adhkarPartsToday,
+  nextWirdPage,
+  pagesReadToday,
+  surahWirdProgress,
+  type WirdConfig,
 } from "@/lib/wird";
 import { loadTasbih, tapTasbih, type TasbihState } from "@/lib/tasbih";
 import {
@@ -575,9 +579,6 @@ export default function HomePage() {
         {/* Quick misbaha — count right here, full page one tap away */}
         <MisbahaMini />
 
-        {/* Pick up the Mushaf where the reader left off */}
-        <ContinueReading />
-
         {/* Review — the user picks what to review (drives Focus mode) */}
         {status?.hasMemorization && <ReviewPicker />}
       </div>
@@ -599,10 +600,11 @@ export default function HomePage() {
 }
 
 
-// Today's tasks — bento tiles: the wird (gold) and the daily adhkar cycle
-// (blue), each with its live state. Full controls stay on their own tabs.
+// Today's tasks — bento tiles: the wird (gold, with its own progress line
+// and a jump straight to the wird's place in the Mushaf) and the daily
+// adhkar cycle (blue).
 function TodayCard() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [state, setState] = useState<{
     wirdOn: boolean;
     wirdDone: boolean;
@@ -610,12 +612,22 @@ function TodayCard() {
     adhkarDone: boolean;
     adhkarParts: boolean[];
   } | null>(null);
+  const [cfg, setCfg] = useState<WirdConfig | null>(null);
+  const [pagesToday, setPagesToday] = useState(0);
+  const [spans, setSpans] = useState<SurahMeta[]>([]);
+  const [curPage, setCurPage] = useState(0);
 
   useEffect(() => {
     const read = () => {
       const parts = adhkarPartsToday();
+      const c = loadWird();
+      setCfg(c);
+      setPagesToday(pagesReadToday());
+      try {
+        setCurPage(Number(localStorage.getItem("aqim-quran-page")) || 0);
+      } catch {}
       setState({
-        wirdOn: loadWird().enabled,
+        wirdOn: c.enabled,
         wirdDone: isDoneToday(),
         streak: currentStreak(),
         adhkarDone: isAdhkarDoneToday(),
@@ -627,16 +639,48 @@ function TodayCard() {
     return () => window.removeEventListener("aqim-wird-changed", read);
   }, []);
 
-  if (!state) return null;
+  // Page spans power the surah-wird progress + the jump target.
+  useEffect(() => {
+    if (!cfg?.enabled || cfg.mode !== "surah") return;
+    fetch("/api/surahs")
+      .then((r) => r.json())
+      .then((d) => setSpans(d.surahs ?? []))
+      .catch(() => {});
+  }, [cfg?.enabled, cfg?.mode]);
+
+  if (!state || !cfg) return null;
   const partsDone = state.adhkarParts.filter(Boolean).length;
+
+  const digits = (n: number) =>
+    lang === "ar"
+      ? String(n).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)])
+      : String(n);
+
+  // Today's wird progress (the line the tile carries).
+  const prog = !state.wirdOn
+    ? null
+    : cfg.mode === "pages"
+      ? { read: Math.min(pagesToday, cfg.pages), total: cfg.pages }
+      : cfg.mode === "surah"
+        ? surahWirdProgress(spans)
+        : null;
 
   return (
     <section data-tour="tasks" className="space-y-2.5">
       <div className="section-title px-1">{t("home.todos")}</div>
       <div className="grid grid-cols-2 gap-3">
-        {/* Wird tile */}
+        {/* Wird tile — tapping lands ON the wird's place in the Mushaf */}
         <Link
           href={state.wirdOn ? "/quran" : "/adhkar"}
+          onClick={() => {
+            if (!state.wirdOn) return;
+            const target = nextWirdPage(spans);
+            if (target) {
+              try {
+                sessionStorage.setItem("aqim-jump-page", String(target));
+              } catch {}
+            }
+          }}
           className="tile tile-gold p-4 min-h-36 flex flex-col justify-between active:scale-[0.98] transition"
         >
           <span className="flex items-center justify-between">
@@ -666,6 +710,23 @@ function TodayCard() {
                   ? t("wird.doneToday")
                   : t("home.todo.wird")}
             </span>
+            {state.wirdOn && prog && prog.total > 0 && (
+              <span className="block mt-2">
+                <span className="block h-1 rounded-full bg-surface overflow-hidden">
+                  <span
+                    className="block h-full rounded-full bg-accent"
+                    style={{
+                      width: `${Math.min(100, (prog.read / prog.total) * 100)}%`,
+                    }}
+                  />
+                </span>
+                <span className="block text-[10px] text-muted tabular-nums mt-1">
+                  {digits(prog.read)} / {digits(prog.total)}
+                  {curPage > 0 &&
+                    ` · ${t("quran.page")} ${digits(curPage)} / ${digits(604)}`}
+                </span>
+              </span>
+            )}
           </span>
         </Link>
 
@@ -906,79 +967,6 @@ function ReviewPicker() {
     </section>
   );
 }
-
-// Resume the Mushaf exactly where the reader stopped; before they've started,
-// the same card invites them to begin from page one.
-function ContinueReading() {
-  const { t, lang } = useLang();
-  const [page, setPage] = useState<number>(0);
-  const [ready, setReady] = useState(false);
-
-  useEffect(() => {
-    try {
-      const p = Number(localStorage.getItem("aqim-quran-page")) || 0;
-      if (p > 1) setPage(Math.min(604, p));
-    } catch {}
-    setReady(true);
-  }, []);
-
-  if (!ready) return null;
-
-  const digits = (n: number) =>
-    lang === "ar"
-      ? String(n).replace(/\d/g, (d) => "٠١٢٣٤٥٦٧٨٩"[Number(d)])
-      : String(n);
-
-  if (!page) {
-    return (
-      <Link
-        href="/quran"
-        data-tour="continue"
-        className="tile tile-ink p-5 flex items-center gap-3 active:scale-[0.98] transition"
-      >
-        <span className="w-11 h-11 rounded-2xl bg-white/15 grid place-items-center shrink-0">
-          <BookOpenText size={20} />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block text-[15px] font-extrabold truncate">
-            {t("home.startReading")}
-          </span>
-          <span className="block text-[11px] text-white/60 mt-0.5">
-            {t("home.startReadingSub")}
-          </span>
-        </span>
-        <ChevronLeft size={16} className="text-white/60 rtl:block hidden shrink-0" />
-      </Link>
-    );
-  }
-
-  return (
-    <Link
-      href="/quran"
-      className="tile tile-ink p-5 flex items-center gap-3 active:scale-[0.98] transition"
-    >
-      <span className="w-11 h-11 rounded-2xl bg-white/15 grid place-items-center shrink-0">
-        <BookOpenText size={20} />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-extrabold truncate">
-          {t("home.continueReading")}
-        </span>
-        <span className="block text-[11px] text-white/60 mt-0.5">
-          {t("quran.page")} {digits(page)} / {digits(604)}
-        </span>
-        <span className="block h-1 rounded-full bg-white/20 overflow-hidden mt-1.5">
-          <span
-            className="block h-full rounded-full bg-accent"
-            style={{ width: `${(page / 604) * 100}%` }}
-          />
-        </span>
-      </span>
-      <ChevronLeft size={16} className="text-white/60 rtl:block hidden shrink-0" />
-    </Link>
-  );
-}
-
 
 function Stepper({
   value,

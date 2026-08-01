@@ -230,6 +230,24 @@ export function surahWirdProgress(spans: SurahSpan[]): {
   return { read: done, total: required.size };
 }
 
+// Where should "continue my wird" land? For a surah-mode wird: the first
+// required page not yet read today (or the wird's first page when all are
+// read). Other modes return null — normal resume applies.
+export function nextWirdPage(spans: SurahSpan[]): number | null {
+  const cfg = loadWird();
+  if (!cfg.enabled || cfg.mode !== "surah") return null;
+  const read = readTodaySet();
+  const required: number[] = [];
+  for (const n of cfg.surahNumbers) {
+    const s = spans.find((x) => x.number === n);
+    if (!s || s.firstPage == null || s.lastPage == null) continue;
+    for (let p = s.firstPage; p <= s.lastPage; p++) required.push(p);
+  }
+  if (!required.length) return null;
+  required.sort((a, b) => a - b);
+  return required.find((p) => !read.has(p)) ?? required[0];
+}
+
 // Marks a surah-mode wird done when every required page has been read.
 export function maybeCompleteSurahWird(spans: SurahSpan[]): boolean {
   const cfg = loadWird();
