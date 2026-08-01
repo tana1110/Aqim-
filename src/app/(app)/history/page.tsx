@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Crosshair } from "lucide-react";
+import { ChevronDown, Crosshair } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { GrowthChart, type GrowthPoint } from "@/components/GrowthChart";
+import { PassageCard } from "@/components/PassageCard";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import { defaultFocus, loadFocus, saveFocus, type FocusConfig } from "@/lib/focus";
-import type { SurahMeta } from "@/lib/types";
+import type { PassageContent, SurahMeta } from "@/lib/types";
 
 interface MemoRange {
   surahNumber: number;
@@ -57,6 +58,7 @@ export default function HistoryPage() {
   const [juzList, setJuzList] = useState<{ juz: number; segments: MemoRange[] }[]>([]);
   const [growth, setGrowth] = useState<GrowthPoint[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState<"recitations" | "memo">("recitations");
 
   useEffect(() => {
     Promise.all([
@@ -121,64 +123,35 @@ export default function HistoryPage() {
   if (!loaded) return <PageLoader />;
 
   return (
-    <div className="space-y-5 pt-2 lg:grid lg:grid-cols-2 lg:gap-6 lg:items-start lg:space-y-0">
-      <div className="lg:col-span-2">
+    <div className="space-y-5 pt-2 max-w-3xl">
+      <div>
         <h1 className="text-xl font-bold mb-1">{t("history.title")}</h1>
         <p className="text-sm text-muted">{t("history.subtitle")}</p>
       </div>
 
-      {/* Memorization summary + growth over time */}
-      <div className="lg:col-span-2">
-        <section className="card p-4">
-          <div className="text-xs font-bold text-muted mb-3">
-            {t("setup.summary")}
-          </div>
-          <div className="grid grid-cols-3 divide-x divide-border rtl:divide-x-reverse text-center">
-            <div className="px-2">
-              <div className="text-2xl font-bold text-primary tabular-nums">
-                {summary.fullSurahs}
-              </div>
-              <div className="text-[10px] text-muted mt-0.5">
-                {t("setup.fullSurahs")}
-              </div>
-            </div>
-            <div className="px-2">
-              <div className="text-2xl font-bold text-primary tabular-nums">
-                {summary.fullJuz}
-                <span className="text-sm text-muted font-normal"> / 30</span>
-              </div>
-              <div className="text-[10px] text-muted mt-0.5">
-                {t("setup.fullJuz")}
-              </div>
-            </div>
-            <div className="px-2">
-              <div className="text-2xl font-bold text-primary tabular-nums">
-                {summary.totalAyat}
-              </div>
-              <div className="text-[10px] text-muted mt-0.5">
-                {t("setup.totalAyat")}
-              </div>
-            </div>
-          </div>
-          {growth.length > 1 && (
-            <div className="mt-4 pt-3 border-t border-border">
-              <div className="text-xs font-bold text-muted mb-2">
-                {t("setup.growth")}
-              </div>
-              <GrowthChart points={growth} ariaLabel={t("setup.growth")} />
-            </div>
-          )}
-        </section>
+      {/* Two clear worlds: what I recited, and my memorization journey */}
+      <div className="flex gap-2 p-1 bg-surface-2 rounded-2xl">
+        {(["recitations", "memo"] as const).map((tb) => (
+          <button
+            key={tb}
+            onClick={() => setTab(tb)}
+            className={`flex-1 rounded-xl py-2 text-sm font-bold transition ${
+              tab === tb ? "bg-surface text-primary shadow-sm" : "text-muted"
+            }`}
+          >
+            {t(`history.tab.${tb}`)}
+          </button>
+        ))}
       </div>
 
-      <div>
-        <div className="text-sm font-bold mb-2 px-1">{t("history.recent")}</div>
-        {rows.length === 0 ? (
+      {tab === "recitations" ? (
+        rows.length === 0 ? (
           <div className="card p-8 text-center text-sm text-muted">
             {t("history.empty")}
           </div>
         ) : (
           <div className="space-y-3">
+            <p className="text-[11px] text-muted px-1">{t("history.tapToSee")}</p>
             {groupByDay(rows).map((g) => (
               <div key={g.key}>
                 <div className="text-[11px] font-bold text-muted mb-1.5 px-1">
@@ -193,41 +166,123 @@ export default function HistoryPage() {
                 </div>
                 <div className="card divide-y divide-border overflow-hidden">
                   {g.rows.map((r) => {
-                    const s = surahMap.get(r.surahNumber);
-                    const name = s
-                      ? surahName(lang, s.nameArabic, s.nameTranslit)
+                    const su = surahMap.get(r.surahNumber);
+                    const name = su
+                      ? surahName(lang, su.nameArabic, su.nameTranslit)
                       : `${r.surahNumber}`;
-                    return (
-                      <div
-                        key={r.id}
-                        className="flex items-center justify-between p-3.5 gap-3"
-                      >
-                        <span className="text-sm font-medium min-w-0 truncate">
-                          {name}{" "}
-                          <span className="text-xs text-muted">
-                            ({r.fromAyah}–{r.toAyah})
-                          </span>
-                        </span>
-                        <span className="text-xs text-muted whitespace-nowrap shrink-0">
-                          {t(`prayer.${r.prayerType}`)}
-                          <span className="ms-1.5 rounded-full bg-surface-2 px-2 py-0.5 text-[10px]">
-                            {t(`mode.${r.mode}`)}
-                          </span>
-                        </span>
-                      </div>
-                    );
+                    return <RecitationRow key={r.id} r={r} name={name} />;
                   })}
                 </div>
               </div>
             ))}
           </div>
-        )}
-      </div>
+        )
+      ) : (
+        <>
+          {/* Memorization summary + growth over time */}
+          <section className="card p-4">
+            <div className="text-xs font-bold text-muted mb-3">
+              {t("setup.summary")}
+            </div>
+            <div className="grid grid-cols-3 divide-x divide-border rtl:divide-x-reverse text-center">
+              <div className="px-2">
+                <div className="text-2xl font-bold text-primary tabular-nums">
+                  {summary.fullSurahs}
+                </div>
+                <div className="text-[10px] text-muted mt-0.5">
+                  {t("setup.fullSurahs")}
+                </div>
+              </div>
+              <div className="px-2">
+                <div className="text-2xl font-bold text-primary tabular-nums">
+                  {summary.fullJuz}
+                  <span className="text-sm text-muted font-normal"> / 30</span>
+                </div>
+                <div className="text-[10px] text-muted mt-0.5">
+                  {t("setup.fullJuz")}
+                </div>
+              </div>
+              <div className="px-2">
+                <div className="text-2xl font-bold text-primary tabular-nums">
+                  {summary.totalAyat}
+                </div>
+                <div className="text-[10px] text-muted mt-0.5">
+                  {t("setup.totalAyat")}
+                </div>
+              </div>
+            </div>
+            {growth.length > 1 && (
+              <div className="mt-4 pt-3 border-t border-border">
+                <div className="text-xs font-bold text-muted mb-2">
+                  {t("setup.growth")}
+                </div>
+                <GrowthChart points={growth} ariaLabel={t("setup.growth")} />
+              </div>
+            )}
+          </section>
 
-      {/* Focus mode — a secondary tool, collapsed below the history itself */}
-      <div>
-        <FocusPanel memo={memo} surahMap={surahMap} />
-      </div>
+          {/* Review focus lives with the memorization story */}
+          <FocusPanel memo={memo} surahMap={surahMap} />
+        </>
+      )}
+    </div>
+  );
+}
+
+// One recitation — tap to reveal the exact ayat that were recited (verified
+// local text via /api/passage), tap again to fold them away.
+function RecitationRow({ r, name }: { r: HistoryRow; name: string }) {
+  const { t } = useLang();
+  const [open, setOpen] = useState(false);
+  const [content, setContent] = useState<PassageContent | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function toggle() {
+    if (!open && !content && !busy) {
+      setBusy(true);
+      try {
+        const res = await fetch(
+          `/api/passage?surah=${r.surahNumber}&from=${r.fromAyah}&to=${r.toAyah}`,
+        );
+        const d = await res.json();
+        setContent(d.content ?? null);
+      } catch {
+      } finally {
+        setBusy(false);
+      }
+    }
+    setOpen((o) => !o);
+  }
+
+  return (
+    <div>
+      <button
+        onClick={toggle}
+        aria-expanded={open}
+        className="w-full flex items-center justify-between p-3.5 gap-3 text-start hover:bg-surface-2 transition"
+      >
+        <span className="text-sm font-medium min-w-0 truncate">
+          {name}{" "}
+          <span className="text-xs text-muted">
+            ({r.fromAyah}–{r.toAyah})
+          </span>
+        </span>
+        <span className="flex items-center gap-2 text-xs text-muted whitespace-nowrap shrink-0">
+          {t(`prayer.${r.prayerType}`)}
+          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[10px]">
+            {t(`mode.${r.mode}`)}
+          </span>
+          <ChevronDown
+            size={14}
+            className={`transition-transform ${open ? "rotate-180" : ""} ${busy ? "animate-pulse" : ""}`}
+          />
+        </span>
+      </button>
+      {open && content && (
+        <div className="px-3 pb-4">
+          <PassageCard content={content} />
+        </div>
+      )}
     </div>
   );
 }
