@@ -296,6 +296,14 @@ export default function QuranPage() {
       number,
       { type: "banner" | "bsml"; surah: number }
     >();
+    // EVERY surah must open with its banner, and its basmalah (except
+    // At-Tawbah; Al-Fatiha's basmalah is its first ayah). Spare layout
+    // lines host them when available; otherwise rows are INSERTED before
+    // the surah's first line — the opening is never allowed to go missing.
+    const inserts = new Map<
+      number,
+      { surah: number; banner: boolean; bsml: boolean }
+    >(); // firstLine -> what to inject before it
     for (const st of exact.starts) {
       let n = st.firstLine - 1;
       const run: number[] = [];
@@ -303,13 +311,64 @@ export default function QuranPage() {
         run.unshift(n);
         n--;
       }
-      if (run.length >= 1)
+      const needsBsml = st.surah !== 1 && st.surah !== 9;
+      let hasBanner = false;
+      let hasBsml = !needsBsml;
+      if (run.length >= 1) {
         headerLines.set(run[0], { type: "banner", surah: st.surah });
-      if (run.length >= 2 && st.surah !== 1 && st.surah !== 9)
+        hasBanner = true;
+      }
+      if (run.length >= 2 && needsBsml) {
         headerLines.set(run[1], { type: "bsml", surah: st.surah });
+        hasBsml = true;
+      }
+      if (!hasBanner || !hasBsml) {
+        inserts.set(st.firstLine, {
+          surah: st.surah,
+          banner: !hasBanner,
+          bsml: !hasBsml,
+        });
+      }
     }
+    const bannerRow = (key: string, surah: number) => {
+      const meta = surahs.find((x) => x.number === surah);
+      return (
+        <div
+          key={key}
+          className="flex items-center min-h-0"
+          style={{ fontSize: "0.68em" }}
+        >
+          <div className="w-full">
+            <SurahBanner bare name={meta?.nameArabic ?? ""} />
+          </div>
+        </div>
+      );
+    };
+    const bsmlRow = (key: string, surah: number) => {
+      const a1 = data?.ayahs.find(
+        (x) => x.surahNumber === surah && x.ayahNumber === 1,
+      );
+      const bsmLine = a1 ? getBismillahDisplay(surah, 1, a1.text).line : null;
+      return (
+        <div
+          key={key}
+          dir="rtl"
+          className="flex items-center justify-center font-quran text-primary min-h-0 text-[0.95em] leading-none"
+        >
+          {bsmLine ?? "﷽"}
+        </div>
+      );
+    };
+
     const rows: React.ReactNode[] = [];
     for (let n = 1; n <= 15; n++) {
+      // A surah whose layout left no spare lines gets its opening INSERTED
+      // right before its first words — the basmalah can never go missing.
+      const inj = inserts.get(n);
+      if (inj) {
+        if (inj.banner) rows.push(bannerRow(`inj-banner-${n}`, inj.surah));
+        if (inj.bsml) rows.push(bsmlRow(`inj-bsml-${n}`, inj.surah));
+      }
       const words = exact.lines[n];
       if (words?.length) {
         rows.push(
@@ -342,36 +401,9 @@ export default function QuranPage() {
       } else {
         const h = headerLines.get(n);
         if (h?.type === "banner") {
-          const meta = surahs.find((x) => x.number === h.surah);
-          rows.push(
-            <div
-              key={n}
-              className="flex items-center min-h-0"
-              style={{ fontSize: "0.68em" }}
-            >
-              <div className="w-full">
-                <SurahBanner bare name={meta?.nameArabic ?? ""} />
-              </div>
-            </div>,
-          );
+          rows.push(bannerRow(String(n), h.surah));
         } else if (h?.type === "bsml") {
-          // The verified basmalah text (stored from Tanzil as the head of the
-          // surah's first ayah) — never the awkward single-ligature glyph.
-          const a1 = data?.ayahs.find(
-            (x) => x.surahNumber === h.surah && x.ayahNumber === 1,
-          );
-          const bsmLine = a1
-            ? getBismillahDisplay(h.surah, 1, a1.text).line
-            : null;
-          rows.push(
-            <div
-              key={n}
-              dir="rtl"
-              className="flex items-center justify-center font-quran text-primary min-h-0 text-[0.95em] leading-none"
-            >
-              {bsmLine ?? "﷽"}
-            </div>,
-          );
+          rows.push(bsmlRow(String(n), h.surah));
         } else {
           rows.push(<div key={n} />);
         }
@@ -382,7 +414,7 @@ export default function QuranPage() {
         ref={exactRef}
         className="h-full grid"
         style={{
-          gridTemplateRows: "repeat(15, 1fr)",
+          gridTemplateRows: `repeat(${rows.length}, 1fr)`,
           fontSize: `${exactSize}px`,
         }}
       >
