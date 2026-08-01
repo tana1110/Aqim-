@@ -193,6 +193,180 @@ export default function QuranPage() {
   // Tapping the middle toggles the app chrome (bars, controls, nav).
   const [chrome, setChrome] = useState(false);
 
+  // ---- EXACT Madani layout (QCF V2: the King Fahd Complex per-page fonts
+  // and real 15-line word placement). Falls back to the Amiri renderer when
+  // layout data or the page font can't load. ----
+  interface ExactWord {
+    c: string;
+    s: number;
+    a: number;
+  }
+  interface ExactPageData {
+    page: number;
+    lines: Record<number, ExactWord[]>;
+    starts: { surah: number; firstLine: number }[];
+  }
+  const [exact, setExact] = useState<ExactPageData | null>(null);
+  const [exactFontReady, setExactFontReady] = useState(false);
+  const loadedFonts = useRef<Set<number>>(new Set());
+
+  async function ensurePageFont(p: number): Promise<void> {
+    if (loadedFonts.current.has(p)) return;
+    const family = `QCFP${p}`;
+    const face = new FontFace(family, `url(/api/qcf-font/${p})`, {
+      display: "block",
+    });
+    await face.load();
+    document.fonts.add(face);
+    loadedFonts.current.add(p);
+  }
+
+  useEffect(() => {
+    if (page == null) return;
+    let alive = true;
+    setExact(null);
+    setExactFontReady(false);
+    (async () => {
+      try {
+        const [res] = await Promise.all([
+          fetch(`/api/mushaf-exact?page=${page}`),
+          ensurePageFont(page),
+        ]);
+        if (!res.ok) throw new Error(String(res.status));
+        const d = (await res.json()) as ExactPageData;
+        if (!alive || d.page !== page) return;
+        setExact(d);
+        setExactFontReady(true);
+        // warm the next page for a seamless turn
+        if (page < 604) {
+          fetch(`/api/mushaf-exact?page=${page + 1}`).catch(() => {});
+          fetch(`/api/qcf-font/${page + 1}`).catch(() => {});
+        }
+      } catch {
+        // fall back to the Amiri renderer silently
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  // Solve the exact page's font size: the widest line must fill the width,
+  // fifteen line-slots must fill the height.
+  const exactRef = useRef<HTMLDivElement>(null);
+  const [exactSize, setExactSize] = useState(22);
+  const exactIter = useRef(0);
+  useEffect(() => {
+    exactIter.current = 0;
+    setExactSize(22);
+  }, [page]);
+  useLayoutEffect(() => {
+    if (!exact || !exactFontReady) return;
+    const el = exactRef.current;
+    const box = el?.parentElement;
+    if (!el || !box || exactIter.current >= 8) return;
+    const cs = getComputedStyle(box);
+    const availW =
+      box.clientWidth -
+      parseFloat(cs.paddingLeft || "0") -
+      parseFloat(cs.paddingRight || "0");
+    const availH =
+      box.clientHeight -
+      parseFloat(cs.paddingTop || "0") -
+      parseFloat(cs.paddingBottom || "0");
+    let maxW = 0;
+    el.querySelectorAll("[data-exact-line]").forEach((n) => {
+      maxW = Math.max(maxW, (n as HTMLElement).scrollWidth);
+    });
+    const contentH = el.scrollHeight;
+    if (availW <= 0 || availH <= 0 || maxW <= 0 || contentH <= 0) return;
+    const scale = Math.min(availW / maxW, availH / contentH) * 0.985;
+    if (scale < 0.99 || scale > 1.04) {
+      exactIter.current++;
+      setExactSize((s) => Math.min(42, Math.max(8, s * scale)));
+    }
+  }, [exact, exactFontReady, exactSize]);
+
+  // Render the true 15-line Madani page: word glyphs on their real lines,
+  // surah cartouches and the basmalah on the layout's header lines, empty
+  // slots preserved (that's what centers Al-Fatiha like the printed page).
+  const renderExact = () => {
+    if (!exact) return null;
+    const hasWords = (n: number) => (exact.lines[n]?.length ?? 0) > 0;
+    const headerLines = new Map<
+      number,
+      { type: "banner" | "bsml"; surah: number }
+    >();
+    for (const st of exact.starts) {
+      let n = st.firstLine - 1;
+      const run: number[] = [];
+      while (n >= 1 && !hasWords(n) && !headerLines.has(n)) {
+        run.unshift(n);
+        n--;
+      }
+      if (run.length >= 1)
+        headerLines.set(run[0], { type: "banner", surah: st.surah });
+      if (run.length >= 2 && st.surah !== 1 && st.surah !== 9)
+        headerLines.set(run[1], { type: "bsml", surah: st.surah });
+    }
+    const rows: React.ReactNode[] = [];
+    for (let n = 1; n <= 15; n++) {
+      const words = exact.lines[n];
+      if (words?.length) {
+        rows.push(
+          <div
+            key={n}
+            data-exact-line
+            dir="rtl"
+            className="whitespace-nowrap text-center leading-[1.9]"
+            style={{ fontFamily: `QCFP${exact.page}` }}
+          >
+            {words.map((w, i) => (
+              <span
+                key={i}
+                className={
+                  playing?.s === w.s && playing?.a === w.a
+                    ? "bg-accent-soft rounded-sm"
+                    : undefined
+                }
+              >
+                {w.c}
+              </span>
+            ))}
+          </div>,
+        );
+      } else {
+        const h = headerLines.get(n);
+        if (h?.type === "banner") {
+          const meta = surahs.find((x) => x.number === h.surah);
+          rows.push(
+            <div key={n} style={{ fontSize: "0.72em" }}>
+              <SurahBanner bare name={meta?.nameArabic ?? ""} />
+            </div>,
+          );
+        } else if (h?.type === "bsml") {
+          rows.push(
+            <div
+              key={n}
+              dir="rtl"
+              className="text-center font-quran text-primary leading-[1.9] text-[1.1em]"
+            >
+              {"﷽"}
+            </div>,
+          );
+        } else {
+          rows.push(<div key={n} style={{ height: "1.9em" }} />);
+        }
+      }
+    }
+    return (
+      <div ref={exactRef} style={{ fontSize: `${exactSize}px` }}>
+        {rows}
+      </div>
+    );
+  };
+
   // Fit-to-screen: the WHOLE page must fit the viewport — no scrolling.
   // Text size is solved per page: render, measure, refine.
   const fitRef = useRef<HTMLDivElement>(null);
@@ -578,9 +752,17 @@ export default function QuranPage() {
             paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
           }}
         >
-          <div ref={fitRef} className="fit-quran" style={{ fontSize: fitSize + "px" }}>
-            {renderGroups(true)}
-          </div>
+          {exact && exactFontReady ? (
+            renderExact()
+          ) : (
+            <div
+              ref={fitRef}
+              className="fit-quran"
+              style={{ fontSize: fitSize + "px" }}
+            >
+              {renderGroups(true)}
+            </div>
+          )}
         </div>
 
         {/* edge taps: left = next (Arabic book order), right = previous */}

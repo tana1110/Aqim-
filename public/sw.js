@@ -11,10 +11,14 @@ self.addEventListener("activate", (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
 
-  // Quran text APIs: cache-first (immutable), fill the cache as you read.
+  // Quran text/layout/font APIs: cache-first (immutable), fill the cache
+  // as you read.
   const isMushaf =
     url.origin === self.location.origin &&
-    (url.pathname === "/api/mushaf" || url.pathname === "/api/surahs");
+    (url.pathname === "/api/mushaf" ||
+      url.pathname === "/api/surahs" ||
+      url.pathname === "/api/mushaf-exact" ||
+      url.pathname.startsWith("/api/qcf-font/"));
   // Recitation audio (verified reciter files from Islamic Network CDN).
   const isAudio =
     url.hostname === "cdn.islamic.network" && url.pathname.includes("/audio/");

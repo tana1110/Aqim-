@@ -360,13 +360,22 @@ function OfflineRow() {
       for (let p = 1; p <= 604; p += 8) {
         const batch: Promise<void>[] = [];
         for (let q = p; q < Math.min(p + 8, 605); q++) {
-          const url = `${location.origin}/api/mushaf?page=${q}`;
+          // text + the exact 15-line layout (page fonts cache as you read)
+          for (const url of [
+            `${location.origin}/api/mushaf?page=${q}`,
+            `${location.origin}/api/mushaf-exact?page=${q}`,
+          ]) {
+            batch.push(
+              cache.match(url).then(async (hit) => {
+                if (!hit) {
+                  const res = await fetch(url);
+                  if (res.ok) await cache.put(url, res);
+                }
+              }),
+            );
+          }
           batch.push(
-            cache.match(url).then(async (hit) => {
-              if (!hit) {
-                const res = await fetch(url);
-                if (res.ok) await cache.put(url, res);
-              }
+            Promise.resolve().then(() => {
               n++;
               setDone(n);
             }),
