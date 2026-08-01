@@ -615,7 +615,6 @@ function TodayCard() {
   const [cfg, setCfg] = useState<WirdConfig | null>(null);
   const [pagesToday, setPagesToday] = useState(0);
   const [spans, setSpans] = useState<SurahMeta[]>([]);
-  const [curPage, setCurPage] = useState(0);
 
   useEffect(() => {
     const read = () => {
@@ -623,9 +622,6 @@ function TodayCard() {
       const c = loadWird();
       setCfg(c);
       setPagesToday(pagesReadToday());
-      try {
-        setCurPage(Number(localStorage.getItem("aqim-quran-page")) || 0);
-      } catch {}
       setState({
         wirdOn: c.enabled,
         wirdDone: isDoneToday(),
@@ -722,8 +718,6 @@ function TodayCard() {
                 </span>
                 <span className="block text-[10px] text-muted tabular-nums mt-1">
                   {digits(prog.read)} / {digits(prog.total)}
-                  {curPage > 0 &&
-                    ` · ${t("quran.page")} ${digits(curPage)} / ${digits(604)}`}
                 </span>
               </span>
             )}
