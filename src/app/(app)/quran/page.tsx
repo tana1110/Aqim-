@@ -324,7 +324,8 @@ export default function QuranPage() {
                 <span
                   key={i}
                   className={[
-                    w.e ? "mx-[0.09em]" : "",
+                    // the ۝-number medallion wears the theme's gold
+                    w.e ? "mx-[0.09em] text-accent" : "",
                     playing?.s === w.s && playing?.a === w.a
                       ? "bg-accent-soft rounded-sm"
                       : "",
