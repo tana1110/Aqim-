@@ -27,15 +27,24 @@ export async function GET(request: Request) {
   }
   const data = (await res.json()) as { verses: ApiVerse[] };
 
-  // lines[n] = ordered glyph words for that mushaf line.
-  const lines: Record<number, { c: string; s: number; a: number }[]> = {};
+  // lines[n] = ordered glyph words for that mushaf line (e=1 marks the
+  // ayah-end medallion so the client can give it print-like spacing).
+  const lines: Record<
+    number,
+    { c: string; s: number; a: number; e?: number }[]
+  > = {};
   const starts: { surah: number; firstLine: number }[] = [];
   for (const v of data.verses ?? []) {
     const [s, a] = v.verse_key.split(":").map(Number);
     let firstLine: number | null = null;
     for (const w of v.words) {
       if (!w.code_v2 || !w.line_number) continue;
-      (lines[w.line_number] ??= []).push({ c: w.code_v2, s, a });
+      (lines[w.line_number] ??= []).push({
+        c: w.code_v2,
+        s,
+        a,
+        ...(w.char_type_name === "end" ? { e: 1 } : {}),
+      });
       if (firstLine == null || w.line_number < firstLine)
         firstLine = w.line_number;
     }

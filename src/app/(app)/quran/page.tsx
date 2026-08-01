@@ -200,6 +200,7 @@ export default function QuranPage() {
     c: string;
     s: number;
     a: number;
+    e?: number; // 1 = ayah-end medallion
   }
   interface ExactPageData {
     page: number;
@@ -207,7 +208,6 @@ export default function QuranPage() {
     starts: { surah: number; firstLine: number }[];
   }
   const [exact, setExact] = useState<ExactPageData | null>(null);
-  const [exactFontReady, setExactFontReady] = useState(false);
   const loadedFonts = useRef<Set<number>>(new Set());
 
   async function ensurePageFont(p: number): Promise<void> {
@@ -221,11 +221,11 @@ export default function QuranPage() {
     loadedFonts.current.add(p);
   }
 
+  // No flash on page turns: the CURRENT exact page keeps showing until the
+  // next page's layout AND font are both ready, then they swap atomically.
   useEffect(() => {
     if (page == null) return;
     let alive = true;
-    setExact(null);
-    setExactFontReady(false);
     (async () => {
       try {
         const [res] = await Promise.all([
@@ -235,15 +235,16 @@ export default function QuranPage() {
         if (!res.ok) throw new Error(String(res.status));
         const d = (await res.json()) as ExactPageData;
         if (!alive || d.page !== page) return;
+        exactIter.current = 0; // re-solve, starting from the previous size
         setExact(d);
-        setExactFontReady(true);
         // warm the next page for a seamless turn
         if (page < 604) {
           fetch(`/api/mushaf-exact?page=${page + 1}`).catch(() => {});
           fetch(`/api/qcf-font/${page + 1}`).catch(() => {});
         }
       } catch {
-        // fall back to the Amiri renderer silently
+        // exact layout unavailable — fall back to the Amiri renderer
+        if (alive) setExact(null);
       }
     })();
     return () => {
@@ -257,12 +258,8 @@ export default function QuranPage() {
   const exactRef = useRef<HTMLDivElement>(null);
   const [exactSize, setExactSize] = useState(22);
   const exactIter = useRef(0);
-  useEffect(() => {
-    exactIter.current = 0;
-    setExactSize(22);
-  }, [page]);
   useLayoutEffect(() => {
-    if (!exact || !exactFontReady) return;
+    if (!exact) return;
     const el = exactRef.current;
     const box = el?.parentElement;
     if (!el || !box || exactIter.current >= 8) return;
@@ -287,7 +284,7 @@ export default function QuranPage() {
       exactIter.current++;
       setExactSize((s) => Math.min(42, Math.max(8, s * scale)));
     }
-  }, [exact, exactFontReady, exactSize]);
+  }, [exact, exactSize]);
 
   // Render the true 15-line Madani page: word glyphs on their real lines,
   // surah cartouches and the basmalah on the layout's header lines, empty
@@ -326,11 +323,14 @@ export default function QuranPage() {
               {words.map((w, i) => (
                 <span
                   key={i}
-                  className={
+                  className={[
+                    w.e ? "mx-[0.09em]" : "",
                     playing?.s === w.s && playing?.a === w.a
                       ? "bg-accent-soft rounded-sm"
-                      : undefined
-                  }
+                      : "",
+                  ]
+                    .join(" ")
+                    .trim() || undefined}
                 >
                   {w.c}
                 </span>
@@ -354,13 +354,21 @@ export default function QuranPage() {
             </div>,
           );
         } else if (h?.type === "bsml") {
+          // The verified basmalah text (stored from Tanzil as the head of the
+          // surah's first ayah) — never the awkward single-ligature glyph.
+          const a1 = data?.ayahs.find(
+            (x) => x.surahNumber === h.surah && x.ayahNumber === 1,
+          );
+          const bsmLine = a1
+            ? getBismillahDisplay(h.surah, 1, a1.text).line
+            : null;
           rows.push(
             <div
               key={n}
               dir="rtl"
-              className="flex items-center justify-center font-quran text-primary min-h-0 text-[1.05em]"
+              className="flex items-center justify-center font-quran text-primary min-h-0 text-[0.95em] leading-none"
             >
-              {"﷽"}
+              {bsmLine ?? "﷽"}
             </div>,
           );
         } else {
@@ -756,7 +764,7 @@ export default function QuranPage() {
       <div className="md:hidden fixed inset-0 z-30 bg-background overflow-hidden">
         <div
           {...swipeFull}
-          key={"m-" + data.page}
+          key={"m-" + (exact?.page ?? data.page)}
           onClick={() => {
             if (showCoach) dismissCoach();
             setChrome((c) => !c);
@@ -767,7 +775,7 @@ export default function QuranPage() {
             paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
           }}
         >
-          {exact && exactFontReady ? (
+          {exact ? (
             renderExact()
           ) : (
             <div
