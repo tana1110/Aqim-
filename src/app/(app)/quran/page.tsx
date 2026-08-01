@@ -279,10 +279,11 @@ export default function QuranPage() {
     el.querySelectorAll("[data-exact-line]").forEach((n) => {
       maxW = Math.max(maxW, (n as HTMLElement).scrollWidth);
     });
-    const contentH = el.scrollHeight;
-    if (availW <= 0 || availH <= 0 || maxW <= 0 || contentH <= 0) return;
-    const scale = Math.min(availW / maxW, availH / contentH) * 0.985;
-    if (scale < 0.99 || scale > 1.04) {
+    if (availW <= 0 || availH <= 0 || maxW <= 0) return;
+    // Width decides the glyph size (like print); the 15 grid rows already
+    // stretch to fill the full height, so no height constraint here.
+    const scale = (availW / maxW) * 0.995;
+    if (scale < 0.99 || scale > 1.02) {
       exactIter.current++;
       setExactSize((s) => Math.min(42, Math.max(8, s * scale)));
     }
@@ -315,25 +316,26 @@ export default function QuranPage() {
       const words = exact.lines[n];
       if (words?.length) {
         rows.push(
-          <div
-            key={n}
-            data-exact-line
-            dir="rtl"
-            className="whitespace-nowrap text-center leading-[1.9]"
-            style={{ fontFamily: `QCFP${exact.page}` }}
-          >
-            {words.map((w, i) => (
-              <span
-                key={i}
-                className={
-                  playing?.s === w.s && playing?.a === w.a
-                    ? "bg-accent-soft rounded-sm"
-                    : undefined
-                }
-              >
-                {w.c}
-              </span>
-            ))}
+          <div key={n} className="flex items-center justify-center min-h-0">
+            <div
+              data-exact-line
+              dir="rtl"
+              className="whitespace-nowrap leading-none"
+              style={{ fontFamily: `QCFP${exact.page}` }}
+            >
+              {words.map((w, i) => (
+                <span
+                  key={i}
+                  className={
+                    playing?.s === w.s && playing?.a === w.a
+                      ? "bg-accent-soft rounded-sm"
+                      : undefined
+                  }
+                >
+                  {w.c}
+                </span>
+              ))}
+            </div>
           </div>,
         );
       } else {
@@ -341,8 +343,14 @@ export default function QuranPage() {
         if (h?.type === "banner") {
           const meta = surahs.find((x) => x.number === h.surah);
           rows.push(
-            <div key={n} style={{ fontSize: "0.72em" }}>
-              <SurahBanner bare name={meta?.nameArabic ?? ""} />
+            <div
+              key={n}
+              className="flex items-center min-h-0"
+              style={{ fontSize: "0.68em" }}
+            >
+              <div className="w-full">
+                <SurahBanner bare name={meta?.nameArabic ?? ""} />
+              </div>
             </div>,
           );
         } else if (h?.type === "bsml") {
@@ -350,18 +358,25 @@ export default function QuranPage() {
             <div
               key={n}
               dir="rtl"
-              className="text-center font-quran text-primary leading-[1.9] text-[1.1em]"
+              className="flex items-center justify-center font-quran text-primary min-h-0 text-[1.05em]"
             >
               {"﷽"}
             </div>,
           );
         } else {
-          rows.push(<div key={n} style={{ height: "1.9em" }} />);
+          rows.push(<div key={n} />);
         }
       }
     }
     return (
-      <div ref={exactRef} style={{ fontSize: `${exactSize}px` }}>
+      <div
+        ref={exactRef}
+        className="h-full grid"
+        style={{
+          gridTemplateRows: "repeat(15, 1fr)",
+          fontSize: `${exactSize}px`,
+        }}
+      >
         {rows}
       </div>
     );
