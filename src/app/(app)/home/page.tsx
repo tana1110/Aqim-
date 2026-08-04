@@ -91,6 +91,22 @@ function defaultPrayer(): string {
   return "qiyam";
 }
 
+interface DailyExtras {
+  dua: {
+    text: string;
+    reference: string | null;
+    source: string;
+    chapter: string;
+  } | null;
+  hadith: {
+    text: string;
+    collection: string;
+    number: number;
+    book: number | null;
+    source: string;
+  } | null;
+}
+
 interface DailyAyah {
   surahNumber: number;
   ayahNumber: number;
@@ -114,6 +130,13 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [daily, setDaily] = useState<DailyAyah | null>(null);
+  const [extras, setExtras] = useState<DailyExtras | null>(null);
+  useEffect(() => {
+    fetch("/api/daily-content")
+      .then((r) => r.json())
+      .then(setExtras)
+      .catch(() => {});
+  }, []);
   // Passage length is asked once; afterwards it's a Settings-only control.
   const [lenChosen, setLenChosen] = useState(true);
   useEffect(() => {
@@ -610,32 +633,8 @@ export default function HomePage() {
         {/* Install card — one tap to a real app on the home screen */}
         <InstallPrompt />
 
-        {/* آية اليوم */}
-        {widgets.daily && daily && (
-          <ContentCard
-            label={t("home.dailyAyah")}
-            icon={<BookOpen size={13} />}
-            reference={
-              <>
-                {t("passage.surah")}{" "}
-                {surahName(lang, daily.surahNameArabic, daily.surahNameTranslit)}{" "}
-                · {t("passage.ayah")} {daily.ayahNumber}
-              </>
-            }
-          >
-            <p
-              className="font-quran text-xl leading-[2.1] text-foreground"
-              dir="rtl"
-            >
-              {cleanAyah(daily.arabicText)}
-            </p>
-            {lang === "en" && daily.translation && (
-              <p className="text-xs text-muted italic mt-2" dir="ltr">
-                “{daily.translation}”
-              </p>
-            )}
-          </ContentCard>
-        )}
+        {/* آية اليوم · دعاء اليوم · حديث اليوم — one card, three tabs */}
+        {widgets.daily && <DailyCard daily={daily} extras={extras} />}
 
         {/* Today's tasks — bento tiles */}
         {widgets.tasks && <TodayCard />}
@@ -1061,6 +1060,108 @@ function ReviewPicker() {
             {t("review.start")}
           </button>
         </div>
+      )}
+    </section>
+  );
+}
+
+// One card, three daily companions: آية اليوم، دعاء اليوم، حديث اليوم —
+// all from verified local datasets, rotating deterministically each day.
+function DailyCard({
+  daily,
+  extras,
+}: {
+  daily: DailyAyah | null;
+  extras: DailyExtras | null;
+}) {
+  const { t, lang } = useLang();
+  const [tab, setTab] = useState<"ayah" | "dua" | "hadith">("ayah");
+  const labels = {
+    ayah: t("home.dailyAyah"),
+    dua: t("daily.dua"),
+    hadith: t("daily.hadith"),
+  } as const;
+
+  const body =
+    tab === "ayah" ? (
+      daily ? (
+        <>
+          <p
+            className="font-quran text-xl leading-[2.1] text-foreground"
+            dir="rtl"
+          >
+            {cleanAyah(daily.arabicText)}
+          </p>
+          {lang === "en" && daily.translation && (
+            <p className="text-xs text-muted italic mt-2" dir="ltr">
+              {'\u201c' + daily.translation + '\u201d'}
+            </p>
+          )}
+        </>
+      ) : null
+    ) : tab === "dua" ? (
+      extras?.dua ? (
+        <p className="font-quran text-lg leading-[2] text-foreground" dir="rtl">
+          {extras.dua.text}
+        </p>
+      ) : null
+    ) : extras?.hadith ? (
+      <p className="font-quran text-[17px] leading-[1.95] text-foreground" dir="rtl">
+        {extras.hadith.text}
+      </p>
+    ) : null;
+
+  const reference =
+    tab === "ayah" && daily ? (
+      <>
+        {t("passage.surah")}{" "}
+        {surahName(lang, daily.surahNameArabic, daily.surahNameTranslit)} ·{" "}
+        {t("passage.ayah")} {daily.ayahNumber}
+      </>
+    ) : tab === "dua" && extras?.dua ? (
+      <>
+        {extras.dua.reference ? extras.dua.reference + " · " : ""}
+        {extras.dua.source}
+      </>
+    ) : tab === "hadith" && extras?.hadith ? (
+      <>
+        {extras.hadith.source} · {t("hadith.no")} {extras.hadith.number}
+      </>
+    ) : null;
+
+  if (!daily && !extras) return null;
+
+  return (
+    <section className="space-y-2">
+      <div className="flex items-center gap-2">
+        <div className="flex-1 flex gap-1.5 p-1 bg-surface-2 rounded-2xl">
+          {(["ayah", "dua", "hadith"] as const).map((k) => (
+            <button
+              key={k}
+              onClick={() => setTab(k)}
+              className={`flex-1 rounded-xl py-1.5 text-xs font-bold transition ${
+                tab === k ? "bg-surface text-primary shadow-sm" : "text-muted"
+              }`}
+            >
+              {labels[k]}
+            </button>
+          ))}
+        </div>
+        <Link
+          href="/archive"
+          className="shrink-0 text-[11px] font-bold text-muted hover:text-foreground px-1"
+        >
+          {t("daily.archive")}
+        </Link>
+      </div>
+      {body && (
+        <ContentCard
+          label={labels[tab]}
+          icon={<BookOpen size={13} />}
+          reference={reference}
+        >
+          {body}
+        </ContentCard>
       )}
     </section>
   );

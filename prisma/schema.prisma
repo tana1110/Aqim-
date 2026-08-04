@@ -85,6 +85,21 @@ model AdhkarText {
   @@map("adhkar_text")
 }
 
+// Sahih al-Bukhari & Sahih Muslim — verified once against an independent
+// second dataset and stored locally (same accuracy principle as the Quran
+// text; never AI-generated or paraphrased).
+model HadithText {
+  id         Int    @id @default(autoincrement())
+  collection String // "bukhari" | "muslim"
+  number     Int // hadith number within the collection
+  book       Int? // book (kitab) number
+  text       String // Arabic text, verbatim from the verified dataset
+  source     String // citation label
+
+  @@unique([collection, number])
+  @@map("hadith_text")
+}
+
 // Timestamped totals of memorized ayat — one row whenever the total changes —
 // for the growth-over-time chart.
 model MemoSnapshot {

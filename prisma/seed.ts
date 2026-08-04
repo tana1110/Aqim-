@@ -14,6 +14,7 @@
  *   - Verify: https://api.alquran.cloud/v1/quran/quran-uthmani-quran-academy  (Uthmani)
  *   - Tafsir: https://api.alquran.cloud/v1/quran/ar.muyassar                  (Tafsir al-Muyassar, King Fahd Complex)
  */
+import { readFileSync } from "node:fs";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { SURAH_AYAH_COUNTS, TOTAL_AYAHS } from "../src/lib/surahMeta";
@@ -99,7 +100,46 @@ function normalizeArabic(s: string): string {
     .replace(/[^ء-ي]/gu, ""); // keep base Arabic letters only
 }
 
+// Hadith seeding is version-independent of the main seed (its own meta key)
+// so adding it never forces a full Quran re-fetch on deploy.
+const HADITH_VERSION = "1";
+async function seedHadith() {
+  const row = await prisma.meta
+    .findUnique({ where: { key: "hadithVersion" } })
+    .catch(() => null);
+  const count = await prisma.hadithText.count().catch(() => 0);
+  if (row?.value === HADITH_VERSION && count > 10000) {
+    console.log(`Hadith already seeded (v${HADITH_VERSION}: ${count}).`);
+    return;
+  }
+  const data = JSON.parse(readFileSync("data/hadith.json", "utf8")) as {
+    hadiths: { c: string; n: number; b: number | null; t: string }[];
+  };
+  await prisma.hadithText.deleteMany();
+  const label = (c: string) =>
+    c === "bukhari" ? "صحيح البخاري" : "صحيح مسلم";
+  for (let i = 0; i < data.hadiths.length; i += 500) {
+    await prisma.hadithText.createMany({
+      data: data.hadiths.slice(i, i + 500).map((h) => ({
+        collection: h.c,
+        number: h.n,
+        book: h.b,
+        text: h.t,
+        source: label(h.c),
+      })),
+      skipDuplicates: true,
+    });
+  }
+  await prisma.meta.upsert({
+    where: { key: "hadithVersion" },
+    create: { key: "hadithVersion", value: HADITH_VERSION },
+    update: { value: HADITH_VERSION },
+  });
+  console.log(`Seeded ${await prisma.hadithText.count()} hadiths.`);
+}
+
 async function main() {
+  await seedHadith();
   // Idempotency guard: skip only if ALL reference data — including the English
   // translation — is already loaded, so this is safe to run on every deploy
   // build and will backfill translations on the first run after they're added.
