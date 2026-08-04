@@ -38,14 +38,20 @@ export default function AccountPage() {
   // "forgot" collects the email; a ?reset= link switches to "reset".
   const [flow, setFlow] = useState<"auth" | "forgot" | "reset">("auth");
   const [resetToken, setResetToken] = useState("");
+  // Onboarding hands off here with ?next= — after signing in (or choosing to
+  // continue without an account) the journey resumes there.
+  const [next, setNext] = useState<string | null>(null);
 
   useEffect(() => {
     try {
-      const tok = new URLSearchParams(window.location.search).get("reset");
+      const params = new URLSearchParams(window.location.search);
+      const tok = params.get("reset");
       if (tok) {
         setResetToken(tok);
         setFlow("reset");
       }
+      const nx = params.get("next");
+      if (nx && nx.startsWith("/")) setNext(nx);
     } catch {}
   }, []);
 
@@ -133,6 +139,7 @@ export default function AccountPage() {
             clearPageCaches(); // the visible data belongs to the account now
             router.refresh();
             setAccount({ email: d.email ?? null });
+            if (next) router.push(next);
           } catch {
             setError(t("account.err.generic"));
           } finally {
@@ -157,7 +164,7 @@ export default function AccountPage() {
     script.onload = render;
     document.head.appendChild(script);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleClientId, account, loaded, lang]);
+  }, [googleClientId, account, loaded, lang, next]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -179,6 +186,7 @@ export default function AccountPage() {
       clearPageCaches(); // the visible data belongs to the account now
       router.refresh();
       setAccount({ email: d.email ?? email });
+      if (next) router.push(next);
     } catch {
       setError(t("account.err.generic"));
     } finally {
@@ -222,6 +230,14 @@ export default function AccountPage() {
               </div>
             </div>
           </div>
+          {next && (
+            <button
+              onClick={() => router.push(next)}
+              className="btn-cta w-full py-3 text-sm"
+            >
+              {t("welcome.next")}
+            </button>
+          )}
           <button
             onClick={signOut}
             disabled={busy}
@@ -387,6 +403,15 @@ export default function AccountPage() {
           )}
           </>)}
         </div>
+      )}
+
+      {!account && next && (
+        <button
+          onClick={() => router.push(next)}
+          className="w-full text-sm text-muted hover:text-foreground py-2 underline decoration-dotted"
+        >
+          {t("account.continueWithout")}
+        </button>
       )}
     </div>
   );

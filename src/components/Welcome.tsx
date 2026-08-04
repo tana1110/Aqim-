@@ -63,9 +63,10 @@ export function Welcome() {
     } catch {}
     // Lets the home tour start right after the welcome closes.
     window.dispatchEvent(new Event("aqim-onboarded"));
-    // Brief brand transition. Finishing the tour lands on the first real
-    // task — marking memorization; skipping goes to the home screen.
-    if (toSetup) router.push("/setup");
+    // Brief brand transition. Finishing the tour goes through the optional
+    // sign-in step and then lands on the first real task — marking
+    // memorization; skipping goes to the home screen.
+    if (toSetup) router.push("/account?next=/setup");
     setLeaving(true);
     setTimeout(() => {
       document.documentElement.removeAttribute("data-welcome");
