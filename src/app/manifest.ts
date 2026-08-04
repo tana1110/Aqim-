@@ -4,8 +4,8 @@ import type { MetadataRoute } from "next";
 // full-screen (standalone) with brand theming.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "أقم — Aqim",
-    short_name: "أقم",
+    name: "أقِم الصلاة — Aqim Al-Salah",
+    short_name: "أقِم",
     description:
       "اقرأ بخشوع، لا بعادة — آية مختلفة من محفوظاتك لكل صلاة، لتراجع حفظك وتتدبر أكثر.",
     // Installed app opens straight into the app (WhatsApp-style): first launch
