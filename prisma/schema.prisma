@@ -126,13 +126,45 @@ model User {
   email        String? @unique
   passwordHash String? @map("password_hash")
   googleSub    String? @unique @map("google_sub")
+  // Hourglass streak: reading extends the clock; expiry resets the count.
+  streakCount     Int       @default(0) @map("streak_count")
+  streakExpiresAt DateTime? @map("streak_expires_at")
+  streakLastDay   String?   @map("streak_last_day")
 
   memorization      Memorization[]
   recitationHistory RecitationHistory[]
   settings          Settings?
   sessions          AuthSession[]
+  state             UserState?
+  resetTokens       PasswordResetToken[]
 
   @@map("users")
+}
+
+// One JSON blob of the client's on-device state (wird, tasbih, focus,
+// completions) — the durable copy that survives reinstalls and follows
+// the account across devices. Last-writer-wins by the client timestamp.
+model UserState {
+  userId    Int      @id @map("user_id")
+  data      String   @default("{}")
+  ts        BigInt   @default(0)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_state")
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int      @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
 }
 
 model AuthSession {
@@ -163,6 +195,7 @@ model PushSubscription {
   wirdTime  String?  @map("wird_time") // "HH:MM" local, null = off
   adhkar    Boolean  @default(false) // morning/evening adhkar nudges
   tzOffset  Int      @default(0) @map("tz_offset") // minutes east of UTC
+  userId    Int?     @map("user_id") // links reminders to the user's streak
   lastSent  String   @default("{}") @map("last_sent") // JSON dedupe map
   updatedAt DateTime @updatedAt @map("updated_at")
 

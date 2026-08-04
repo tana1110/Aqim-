@@ -9,7 +9,6 @@ import {
   saveWird,
   isDoneToday,
   markDoneToday,
-  currentStreak,
   pagesReadToday,
   surahWirdProgress,
   wirdWeek,
@@ -17,6 +16,11 @@ import {
   type WirdConfig,
   type WirdMode,
 } from "@/lib/wird";
+import {
+  effectiveStreak,
+  formatRemaining,
+  loadStreakCache,
+} from "@/lib/streak";
 import type { SurahMeta } from "@/lib/types";
 
 // Daily wird — configured and lived on the QURAN page. Portion can be defined
@@ -27,6 +31,7 @@ export function WirdStrip() {
   const [cfg, setCfg] = useState<WirdConfig | null>(null);
   const [done, setDone] = useState(false);
   const [streak, setStreak] = useState(0);
+  const [streakExp, setStreakExp] = useState<number | null>(null);
   const [weeks, setWeeks] = useState<{ wird: boolean[]; adhkar: boolean[] }>();
   const [openSetup, setOpenSetup] = useState(false);
   const [surahs, setSurahs] = useState<SurahMeta[]>([]);
@@ -37,14 +42,21 @@ export function WirdStrip() {
   function refresh() {
     setCfg(loadWird());
     setDone(isDoneToday());
-    setStreak(currentStreak());
+    setStreak(effectiveStreak(loadStreakCache()).count);
+    setStreakExp(effectiveStreak(loadStreakCache()).expiresAt);
     setPagesToday(pagesReadToday());
     setWeeks({ wird: wirdWeek(), adhkar: adhkarWeek() });
   }
   useEffect(() => {
     refresh();
     window.addEventListener("aqim-wird-changed", refresh);
-    return () => window.removeEventListener("aqim-wird-changed", refresh);
+    window.addEventListener("aqim-streak-changed", refresh);
+    const tick = setInterval(refresh, 60_000); // keep the countdown honest
+    return () => {
+      window.removeEventListener("aqim-wird-changed", refresh);
+      window.removeEventListener("aqim-streak-changed", refresh);
+      clearInterval(tick);
+    };
   }, []);
 
   useEffect(() => {
@@ -304,6 +316,11 @@ export function WirdStrip() {
             <span className="flex items-center gap-1 text-accent font-bold shrink-0">
               <Flame size={15} />
               {streak}
+              {streakExp != null && (
+                <span className="text-[10px] text-muted font-medium">
+                  · {formatRemaining(streakExp, lang)}
+                </span>
+              )}
             </span>
           )}
           <span className="truncate">

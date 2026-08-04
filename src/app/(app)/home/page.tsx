@@ -23,7 +23,6 @@ import { ContentCard } from "@/components/ContentCard";
 import { PassageCard } from "@/components/PassageCard";
 import {
   isDoneToday,
-  currentStreak,
   loadWird,
   isAdhkarDoneToday,
   adhkarPartsToday,
@@ -33,6 +32,11 @@ import {
   type WirdConfig,
 } from "@/lib/wird";
 import { loadTasbih, tapTasbih, type TasbihState } from "@/lib/tasbih";
+import {
+  effectiveStreak,
+  formatRemaining,
+  loadStreakCache,
+} from "@/lib/streak";
 import {
   WIDGET_KEYS,
   loadWidgets,
@@ -688,6 +692,7 @@ function TodayCard() {
     wirdOn: boolean;
     wirdDone: boolean;
     streak: number;
+    streakExp: number | null;
     adhkarDone: boolean;
     adhkarParts: boolean[];
   } | null>(null);
@@ -704,14 +709,21 @@ function TodayCard() {
       setState({
         wirdOn: c.enabled,
         wirdDone: isDoneToday(),
-        streak: currentStreak(),
+        streak: effectiveStreak(loadStreakCache()).count,
+        streakExp: effectiveStreak(loadStreakCache()).expiresAt,
         adhkarDone: isAdhkarDoneToday(),
         adhkarParts: [parts.morning, parts.evening, parts.sleep],
       });
     };
     read();
     window.addEventListener("aqim-wird-changed", read);
-    return () => window.removeEventListener("aqim-wird-changed", read);
+    window.addEventListener("aqim-streak-changed", read);
+    const tick = setInterval(read, 60_000);
+    return () => {
+      window.removeEventListener("aqim-wird-changed", read);
+      window.removeEventListener("aqim-streak-changed", read);
+      clearInterval(tick);
+    };
   }, []);
 
   // Page spans power the surah-wird progress + the jump target.
@@ -776,10 +788,17 @@ function TodayCard() {
                 <Check size={14} strokeWidth={3} />
               )}
             </span>
-            {state.wirdOn && state.streak > 0 && (
-              <span className="flex items-center gap-1 text-accent font-bold text-sm">
-                <Flame size={15} />
-                {state.streak}
+            {state.streak > 0 && (
+              <span className="flex flex-col items-end shrink-0">
+                <span className="flex items-center gap-1 text-accent font-bold text-sm">
+                  <Flame size={15} />
+                  {state.streak}
+                </span>
+                {state.streakExp != null && (
+                  <span className="text-[9px] text-muted tabular-nums">
+                    {formatRemaining(state.streakExp, lang)} {t("streak.left")}
+                  </span>
+                )}
               </span>
             )}
           </span>

@@ -9,6 +9,8 @@ import { Logo } from "@/components/Logo";
 import { SplashScreen } from "@/components/SplashScreen";
 import { Welcome } from "@/components/Welcome";
 import { ReminderScheduler } from "@/components/ReminderScheduler";
+import { SyncClient } from "@/components/SyncClient";
+import { BackExitGuard } from "@/components/BackExitGuard";
 
 // App shell: bottom tab bar + hamburger drawer on mobile, inline header
 // tabs on desktop.
@@ -47,6 +49,8 @@ export default function AppLayout({
       <SplashScreen />
       <Welcome />
       <ReminderScheduler />
+      <SyncClient />
+      <BackExitGuard />
       <NavDrawer open={navOpen} onClose={() => setNavOpen(false)} />
 
       <header

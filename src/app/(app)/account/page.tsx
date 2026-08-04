@@ -34,6 +34,72 @@ export default function AccountPage() {
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  // "forgot" collects the email; a ?reset= link switches to "reset".
+  const [flow, setFlow] = useState<"auth" | "forgot" | "reset">("auth");
+  const [resetToken, setResetToken] = useState("");
+
+  useEffect(() => {
+    try {
+      const tok = new URLSearchParams(window.location.search).get("reset");
+      if (tok) {
+        setResetToken(tok);
+        setFlow("reset");
+      }
+    } catch {}
+  }, []);
+
+  async function requestReset(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const r = await fetch("/api/auth/reset-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (r.status === 501) {
+        setNotice(t("account.resetUnavailable"));
+        return;
+      }
+      setNotice(t("account.resetSent"));
+    } catch {
+      setError(t("account.err.generic"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmReset(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/auth/reset-confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: resetToken, password }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        const key = `account.err.${d.error}`;
+        const msg = t(key);
+        setError(msg === key ? t("account.err.generic") : msg);
+        return;
+      }
+      clearPageCaches();
+      router.refresh();
+      setAccount({ email: d.email ?? null });
+      setFlow("auth");
+      setNotice(t("account.resetDone"));
+    } catch {
+      setError(t("account.err.generic"));
+    } finally {
+      setBusy(false);
+    }
+  }
   const googleRef = useRef<HTMLDivElement>(null);
 
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
@@ -167,6 +233,63 @@ export default function AccountPage() {
         </div>
       ) : (
         <div className="card p-5 space-y-4">
+          {flow === "forgot" && (
+            <form onSubmit={requestReset} className="space-y-3">
+              <label className="block text-xs font-medium text-muted space-y-1.5">
+                <span>{t("account.email")}</span>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
+                  dir="ltr"
+                />
+              </label>
+              {error && (
+                <p className="text-xs text-accent bg-accent-soft rounded-lg p-2.5">{error}</p>
+              )}
+              {notice && (
+                <p className="text-xs text-secondary bg-secondary-soft rounded-lg p-2.5">{notice}</p>
+              )}
+              <button type="submit" disabled={busy} className="btn-cta w-full py-3 text-sm disabled:opacity-60">
+                {t("account.forgot")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setFlow("auth")}
+                className="w-full text-xs text-muted py-1"
+              >
+                {t("adhkar.back")}
+              </button>
+            </form>
+          )}
+
+          {flow === "reset" && (
+            <form onSubmit={confirmReset} className="space-y-3">
+              <label className="block text-xs font-medium text-muted space-y-1.5">
+                <span>{t("account.newPassword")}</span>
+                <input
+                  type="password"
+                  required
+                  minLength={6}
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
+                  dir="ltr"
+                />
+              </label>
+              {error && (
+                <p className="text-xs text-accent bg-accent-soft rounded-lg p-2.5">{error}</p>
+              )}
+              <button type="submit" disabled={busy} className="btn-cta w-full py-3 text-sm disabled:opacity-60">
+                {t("account.resetBtn")}
+              </button>
+            </form>
+          )}
+
+          {flow === "auth" && (<>
           <div className="flex gap-2 p-1 bg-surface-2 rounded-2xl">
             {(["login", "signup"] as const).map((tb) => (
               <button
@@ -223,9 +346,28 @@ export default function AccountPage() {
               />
             </label>
 
+            {tab === "login" && (
+              <button
+                type="button"
+                onClick={() => {
+                  setFlow("forgot");
+                  setError(null);
+                  setNotice(null);
+                }}
+                className="text-xs text-muted underline decoration-dotted"
+              >
+                {t("account.forgot")}
+              </button>
+            )}
+
             {error && (
               <p className="text-xs text-accent bg-accent-soft rounded-lg p-2.5">
                 {error}
+              </p>
+            )}
+            {notice && (
+              <p className="text-xs text-secondary bg-secondary-soft rounded-lg p-2.5">
+                {notice}
               </p>
             )}
 
@@ -243,6 +385,7 @@ export default function AccountPage() {
           {googleClientId && (
             <div className="pt-1 flex justify-center" ref={googleRef} />
           )}
+          </>)}
         </div>
       )}
     </div>

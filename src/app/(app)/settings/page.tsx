@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Bell, MapPin } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
@@ -141,9 +142,9 @@ export default function SettingsPage() {
       <div className="card divide-y divide-border overflow-hidden">
         {/* Account (optional — saves history across devices) */}
         <Row label={t("settings.account")}>
-          <a href="/account" className="btn-primary px-4 py-1.5 text-xs">
+          <Link href="/account" className="btn-primary px-4 py-1.5 text-xs">
             {t("account.title")}
-          </a>
+          </Link>
         </Row>
 
         {/* Language */}

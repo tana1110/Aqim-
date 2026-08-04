@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useState } from "react";
+import Link from "next/link";
 import { ChevronDown, Crosshair } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { GrowthChart, type GrowthPoint } from "@/components/GrowthChart";
@@ -416,9 +417,9 @@ function FocusPanel({
         <p className="text-xs text-muted leading-relaxed">
           {t("focus.needMemo")}
         </p>
-        <a href="/setup" className="btn-primary inline-block px-5 py-2 text-xs">
+        <Link href="/setup" className="btn-primary inline-block px-5 py-2 text-xs">
           {t("home.getStarted.btn")}
-        </a>
+        </Link>
       </section>
     );
   }

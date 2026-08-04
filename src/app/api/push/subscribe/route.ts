@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/user";
 
 interface SubscribeBody {
   subscription?: {
@@ -18,6 +19,7 @@ interface SubscribeBody {
 // Store/update this device's push subscription + the prefs needed to compute
 // its reminder times server-side.
 export async function POST(request: Request) {
+  const user = await getCurrentUser().catch(() => null);
   const body = (await request.json()) as SubscribeBody;
   const sub = body.subscription;
   if (!sub?.endpoint || !sub.keys?.p256dh || !sub.keys?.auth) {
@@ -34,6 +36,7 @@ export async function POST(request: Request) {
     wirdTime: body.wirdTime ?? null,
     adhkar: body.adhkar ?? false,
     tzOffset: Math.max(-840, Math.min(840, Math.round(body.tzOffset ?? 0))),
+    userId: user?.id ?? null,
   };
   await prisma.pushSubscription.upsert({
     where: { endpoint: sub.endpoint },

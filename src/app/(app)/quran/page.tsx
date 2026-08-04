@@ -21,6 +21,7 @@ import {
   nextWirdPage,
   recordPageRead,
 } from "@/lib/wird";
+import { saveStreakCache } from "@/lib/streak";
 import {
   RECITERS,
   ayahAudioUrl,
@@ -620,6 +621,19 @@ export default function QuranPage() {
     // Reading here counts toward the wird automatically — pages mode by
     // count, surah mode by finishing every page of the chosen surahs.
     const donePages = recordPageRead(page);
+    // hourglass streak: a read page extends the clock (server-side truth)
+    fetch("/api/streak", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tzOffset: -new Date().getTimezoneOffset() }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d.count === "number") {
+          saveStreakCache({ count: d.count, expiresAt: d.expiresAt ?? null });
+        }
+      })
+      .catch(() => {});
     const doneSurahs = maybeCompleteSurahWird(surahs);
     if (donePages || doneSurahs) {
       setWirdToast(true);
@@ -1055,9 +1069,40 @@ function MushafNavigator({
   onPage: (p: number) => void;
 }) {
   const { t, lang } = useLang();
-  const [tab, setTab] = useState<"surah" | "juz" | "page">("surah");
+  const [tab, setTab] = useState<"surah" | "juz" | "page" | "find">("surah");
   const [q, setQ] = useState("");
   const [pageInput, setPageInput] = useState("");
+  const [findQ, setFindQ] = useState("");
+  const [findBusy, setFindBusy] = useState(false);
+  const [findRes, setFindRes] = useState<
+    {
+      surah: number;
+      nameArabic: string;
+      nameTranslit: string;
+      ayah: number;
+      page: number;
+      text: string;
+    }[] | null
+  >(null);
+
+  // Debounced verified-text search (pure text match, server-side).
+  useEffect(() => {
+    if (tab !== "find") return;
+    const q = findQ.trim();
+    if (q.length < 2) {
+      setFindRes(null);
+      return;
+    }
+    setFindBusy(true);
+    const id = setTimeout(() => {
+      fetch(`/api/quran-search?q=${encodeURIComponent(q)}`)
+        .then((r) => r.json())
+        .then((d) => setFindRes(d.results ?? []))
+        .catch(() => setFindRes([]))
+        .finally(() => setFindBusy(false));
+    }, 350);
+    return () => clearTimeout(id);
+  }, [findQ, tab]);
 
   const strip = (s: string) => s.normalize("NFC").replace(/\p{M}/gu, "");
   const list = surahs.filter((s) => {
@@ -1087,7 +1132,7 @@ function MushafNavigator({
         </div>
 
         <div className="flex gap-2 px-4 pb-3">
-          {(["surah", "juz", "page"] as const).map((tb) => (
+          {(["surah", "juz", "page", "find"] as const).map((tb) => (
             <button
               key={tb}
               onClick={() => setTab(tb)}
@@ -1149,6 +1194,41 @@ function MushafNavigator({
                 </button>
               ))}
             </div>
+          )}
+
+          {tab === "find" && (
+            <>
+              <input
+                type="search"
+                value={findQ}
+                onChange={(e) => setFindQ(e.target.value)}
+                placeholder={t("quran.findPh")}
+                dir="rtl"
+                autoFocus
+                className={`w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm mb-2 ${findBusy ? "animate-pulse" : ""}`}
+              />
+              {findRes && findRes.length === 0 && !findBusy && (
+                <p className="text-sm text-muted text-center py-6">
+                  {t("quran.findEmpty")}
+                </p>
+              )}
+              <div className="divide-y divide-border">
+                {(findRes ?? []).map((r) => (
+                  <button
+                    key={`${r.surah}:${r.ayah}`}
+                    onClick={() => onPage(r.page)}
+                    className="w-full py-3 text-start min-h-12"
+                  >
+                    <span className="block font-quran text-[15px] leading-relaxed line-clamp-2" dir="rtl">
+                      {r.text}
+                    </span>
+                    <span className="block text-[11px] text-muted mt-1">
+                      {surahName(lang, r.nameArabic, r.nameTranslit)} · {r.ayah}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
 
           {tab === "page" && (

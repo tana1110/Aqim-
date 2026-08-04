@@ -2,6 +2,7 @@ import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
 import { computeTimes, type MethodKey } from "@/lib/reminder";
 import { translate, type Lang } from "@/lib/i18n";
+import { STREAK_WARN_MINUTES } from "@/lib/streak";
 
 // Called every few minutes by an external scheduler. Sends web-push
 // notifications whose local time has arrived: prayer reminders (5 min
@@ -113,6 +114,29 @@ export async function POST(request: Request) {
         body: translate(l, "wird.notifBody"),
         url: "/quran",
       });
+    }
+
+    // Hourglass streak: warn when the clock is nearly out.
+    if (sub.userId != null) {
+      const u = await prisma.user.findUnique({
+        where: { id: sub.userId },
+        select: { streakExpiresAt: true, streakCount: true },
+      });
+      const exp = u?.streakExpiresAt?.getTime();
+      if (
+        u &&
+        u.streakCount > 0 &&
+        exp != null &&
+        exp > now &&
+        exp - now <= STREAK_WARN_MINUTES * 60_000
+      ) {
+        queue.push({
+          key: `${day}:streakwarn`,
+          title: translate(l, "streak.notifTitle"),
+          body: translate(l, "streak.notifBody"),
+          url: "/quran",
+        });
+      }
     }
 
     if (sub.adhkar) {
