@@ -165,7 +165,7 @@ export default function TasbihPage() {
                 strokeLinecap="round"
                 strokeDasharray={C}
                 strokeDashoffset={C * (1 - frac)}
-                className="transition-all duration-200"
+                className="transition-all duration-300"
               />
             )}
           </svg>

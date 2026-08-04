@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flame, Check, Bell, ChevronDown } from "lucide-react";
+import { Flame, Check, Bell, ChevronDown, X } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import {
@@ -105,7 +105,7 @@ export function WirdStrip() {
                   pages: Math.min(30, Math.max(1, Number(e.target.value) || 1)),
                 })
               }
-              className="w-14 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
+              className="w-14 rounded-xl border border-border bg-surface px-2 py-1.5 text-sm"
             />
           </label>
           {/* Khatmah shortcuts: pick a finish-line, we compute the pace */}
@@ -151,7 +151,7 @@ export function WirdStrip() {
                 minutes: Math.min(180, Math.max(5, Number(e.target.value) || 15)),
               })
             }
-            className="w-16 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
+            className="w-16 rounded-xl border border-border bg-surface px-2 py-1.5 text-sm"
           />
         </label>
       );
@@ -185,7 +185,7 @@ export function WirdStrip() {
           value={surahQuery}
           onChange={(e) => setSurahQuery(e.target.value)}
           placeholder={t("setup.search")}
-          className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm"
+          className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm"
         />
         <div className="max-h-52 overflow-y-auto rounded-xl border border-border divide-y divide-border">
           {list.map((s) => {
@@ -246,7 +246,7 @@ export function WirdStrip() {
             type="time"
             value={cfg.time}
             onChange={(e) => apply({ ...cfg, time: e.target.value || "20:00" })}
-            className="rounded-lg border border-border bg-surface px-2 py-1.5 text-sm"
+            className="rounded-xl border border-border bg-surface px-2 py-1.5 text-sm"
           />
         </label>
       </div>
@@ -281,7 +281,7 @@ export function WirdStrip() {
 
   if (!cfg.enabled) {
     return (
-      <div className="card rounded-xl px-4 py-3">
+      <div className="card px-4 py-3">
         <button
           onClick={() => setOpenSetup(!openSetup)}
           aria-expanded={openSetup}
@@ -309,7 +309,7 @@ export function WirdStrip() {
   }
 
   return (
-    <div className="card rounded-xl px-4 py-3 space-y-3">
+    <div className="card px-4 py-3 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-2 text-sm font-medium min-w-0">
           {streak > 0 && (
@@ -348,7 +348,7 @@ export function WirdStrip() {
             onClick={() => setOpenSetup(!openSetup)}
             className="text-[10px] text-muted hover:text-foreground"
           >
-            {openSetup ? "×" : t("nav.settings")}
+            {openSetup ? <X size={13} /> : t("nav.settings")}
           </button>
         </span>
       </div>

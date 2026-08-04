@@ -477,7 +477,7 @@ function FocusPanel({
                 toAyah: b ? b.hi : null,
               });
             }}
-            className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
+            className="w-full rounded-xl border border-border bg-surface px-2 py-2 text-sm text-foreground"
           >
             <option value="">{t("focus.pickSurah")}</option>
             {choices.map((n) => (
@@ -501,7 +501,7 @@ function FocusPanel({
               onChange={(e) =>
                 apply({ ...cfg, fromAyah: Number(e.target.value) || null })
               }
-              className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
+              className="w-full rounded-xl border border-border bg-surface px-2 py-2 text-sm text-foreground"
             />
             <span>–</span>
             <input
@@ -513,7 +513,7 @@ function FocusPanel({
               onChange={(e) =>
                 apply({ ...cfg, toAyah: Number(e.target.value) || null })
               }
-              className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm text-foreground"
+              className="w-full rounded-xl border border-border bg-surface px-2 py-2 text-sm text-foreground"
             />
           </div>
           {rangeErr && (
@@ -570,7 +570,7 @@ function FocusPanel({
                 chunk: Math.min(30, Math.max(1, Number(e.target.value) || 5)),
               })
             }
-            className="w-16 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-foreground"
+            className="w-16 rounded-xl border border-border bg-surface px-2 py-1.5 text-sm text-foreground"
           />
         </label>
       </div>

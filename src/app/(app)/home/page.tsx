@@ -443,7 +443,7 @@ export default function HomePage() {
         </div>
         {/* ONE hero: either get-started (new user) or the prayer card */}
         {status && !status.hasMemorization ? (
-          <section data-tour="aqim" className="rounded-[1.75rem] bg-accent-soft p-6 space-y-4">
+          <section data-tour="aqim" className="tile tile-gold p-6 space-y-4">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-3 py-1 text-[11px] font-bold text-accent">
               <Sparkles size={12} />
               {t("home.getStarted.title")}
@@ -1449,7 +1449,7 @@ function SlotView({
           <button
             onClick={suggestAnother}
             disabled={busy}
-            className="flex-1 rounded-lg border border-border bg-surface py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 hover:border-primary/40 transition disabled:opacity-60"
+            className="flex-1 rounded-xl border border-border bg-surface py-2.5 text-sm font-medium flex items-center justify-center gap-1.5 hover:border-primary/40 transition disabled:opacity-60"
           >
             {busy ? (
               <LogoLoader size={18} className="text-primary" />

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, cleanAyah } from "@/lib/quranDisplay";
 
@@ -56,7 +55,32 @@ export default function ArchivePage() {
       </div>
     );
   }
-  if (!days) return <PageLoader />;
+  // Skeleton shaped like the real day-cards (the archive recompute takes a
+  // moment; a contentless spinner would feel slower than it is).
+  if (!days)
+    return (
+      <div className="space-y-6 pt-2 max-w-3xl" aria-busy>
+        <div>
+          <h1 className="text-xl font-bold mb-1">{t("archive.title")}</h1>
+          <p className="text-sm text-muted">{t("archive.subtitle")}</p>
+        </div>
+        {[0, 1, 2].map((i) => (
+          <section key={i} className="space-y-2.5 animate-pulse">
+            <div className="h-3 w-32 rounded-full bg-surface-2 mx-1" />
+            <div className="card divide-y divide-border overflow-hidden">
+              {[0, 1, 2].map((j) => (
+                <div key={j} className="p-4 space-y-2.5">
+                  <div className="h-2.5 w-16 rounded-full bg-surface-2" />
+                  <div className="h-4 w-full rounded-full bg-surface-2" />
+                  <div className="h-4 w-3/4 rounded-full bg-surface-2" />
+                  <div className="h-2.5 w-40 rounded-full bg-surface-2" />
+                </div>
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    );
 
   const fmtDate = (iso: string) =>
     new Date(iso + "T12:00:00Z").toLocaleDateString(

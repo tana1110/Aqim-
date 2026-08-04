@@ -811,7 +811,7 @@ export default function QuranPage() {
             setReciter(r);
             saveReciter(r.key);
           }}
-          className="flex-1 min-w-0 rounded-lg border border-border bg-surface px-2 py-1.5 text-[11px] text-muted"
+          className="flex-1 min-w-0 rounded-xl border border-border bg-surface px-2 py-1.5 text-[11px] text-muted"
         >
           {RECITERS.map((r) => (
             <option key={r.key} value={r.key}>
@@ -955,7 +955,7 @@ export default function QuranPage() {
       {/* One position button — opens the full navigator (surah/juz/page) */}
       <button
         onClick={() => setNavOpen(true)}
-        className="w-full mt-3 card rounded-xl px-4 py-3 flex items-center justify-between gap-3 text-sm active:scale-[0.99] transition"
+        className="w-full mt-3 card px-4 py-3 flex items-center justify-between gap-3 text-sm active:scale-[0.99] transition"
       >
         <span className="font-bold text-primary truncate">
           {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
@@ -997,7 +997,7 @@ export default function QuranPage() {
           >
             <ChevronRight size={13} className="animate-pulse" />
             {t("quran.coach")}
-            <span className="text-white/60 ms-1">×</span>
+            <X size={12} className="text-white/60 ms-1" />
           </button>
         )}
 

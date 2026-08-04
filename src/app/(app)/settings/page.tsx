@@ -278,7 +278,7 @@ export default function SettingsPage() {
                   <select
                     value={cfg.locationLabel ?? ""}
                     onChange={(e) => e.target.value && pickCity(e.target.value)}
-                    className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs"
+                    className="rounded-xl border border-border bg-surface px-2 py-1.5 text-xs"
                   >
                     <option value="">{t("reminder.orCity")}</option>
                     {CITIES.map((c) => (
@@ -297,7 +297,7 @@ export default function SettingsPage() {
                 <select
                   value={cfg.method}
                   onChange={(e) => update({ method: e.target.value as MethodKey })}
-                  className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs max-w-[55%]"
+                  className="rounded-xl border border-border bg-surface px-2 py-1.5 text-xs max-w-[55%]"
                 >
                   {METHOD_KEYS.map((k) => (
                     <option key={k} value={k}>

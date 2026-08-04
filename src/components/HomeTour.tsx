@@ -80,7 +80,7 @@ export function HomeTour() {
     <div className="fixed inset-0 z-[60]" aria-modal>
       {/* spotlight hole — everything else dims */}
       <div
-        className="absolute rounded-[2rem] transition-all duration-300 pointer-events-none"
+        className="absolute rounded-3xl transition-all duration-300 pointer-events-none"
         style={{
           top: rect.top - pad,
           left: rect.left - pad,

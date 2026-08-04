@@ -34,7 +34,14 @@
     system-ui, sans-serif;
   --font-sans: var(--font-ui);
 
-  /* --- Shape / depth (bento redesign: big soft radii, chunky blocks) --- */
+  /* --- Shape / depth — THE scale (audited app-wide):
+     radius: cards/sheets = --radius-card (24px, .card/.tile/rounded-3xl);
+             inputs/selects/buttons = rounded-xl; segmented controls =
+             lg container + md inner; pills/circles = rounded-full;
+             text highlights = rounded-sm.
+     shadow: sm = resting cards/chips; md = active/selected emphasis;
+             lg = floating layers (toasts, sheets, nav pill).
+     motion: 300ms ease everywhere; 450ms reserved for the brand fade. --- */
   --radius-card: 1.5rem; /* 24px */
   --radius-btn: 1rem; /* 16px */
 }

@@ -297,6 +297,11 @@ function AdhkarInner() {
                 </button>
               </div>
             )}
+            {q && list.length === 0 && (
+              <p className="card p-6 text-sm text-muted text-center">
+                {t("setup.noResults")}
+              </p>
+            )}
             <div className="card divide-y divide-border overflow-hidden">
               {list.map((c) => (
                 <button
