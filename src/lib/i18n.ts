@@ -110,7 +110,10 @@ const ar: Dict = {
 
   // setup
   "setup.title": "ماذا تحفظ؟",
-  "setup.subtitle": "اختر بالسور أو بالأجزاء — سنقترح من محفوظاتك فقط.",
+  "setup.subtitle": "أخبر «أقِم» بما تحفظ ليقترح عليك ما تقرأ في صلاتك — من حفظك فقط، ويمكنك تعديله متى شئت.",
+  "setup.step1": "اختر ما تحفظه",
+  "setup.step2": "اضغط «حفظ»",
+  "setup.step3": "صلِّ بما تحفظ",
   "setup.search": "ابحث عن سورة…",
   "setup.noResults": "لا نتائج",
   "setup.bySurah": "بالسور",
@@ -120,7 +123,7 @@ const ar: Dict = {
   "setup.selected": "{n} محدّد",
   "setup.noneSelected": "لم تختر بعد",
   "setup.savedTitle": "تم حفظ محفوظاتك",
-  "setup.goHome": "الانتقال إلى الرئيسية",
+  "setup.ceremonyBody": "«أقِم» جاهز الآن — سيقترح عليك ما تقرأ من حفظك.",
   "setup.notSeeded": "تعذّر تحميل قائمة السور — أعد المحاولة لاحقًا.",
 
   // settings
@@ -570,7 +573,10 @@ const en: Dict = {
   "passage.less": "Less",
 
   "setup.title": "What have you memorized?",
-  "setup.subtitle": "Pick by surah or by juz — we only suggest from your memorization.",
+  "setup.subtitle": "Tell Aqim what you've memorized so it can suggest what to recite in your prayer — only from what you know, and you can change it anytime.",
+  "setup.step1": "Pick what you know",
+  "setup.step2": "Tap Save",
+  "setup.step3": "Pray with it",
   "setup.search": "Search surahs…",
   "setup.noResults": "No results",
   "setup.bySurah": "By Surah",
@@ -580,7 +586,7 @@ const en: Dict = {
   "setup.selected": "{n} selected",
   "setup.noneSelected": "None selected yet",
   "setup.savedTitle": "Your memorization is saved",
-  "setup.goHome": "Go to home",
+  "setup.ceremonyBody": "Aqim is ready — your suggestions will come from what you know.",
   "setup.notSeeded": "Couldn't load the surah list — try again later.",
 
   "settings.title": "Settings",

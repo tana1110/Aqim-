@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Search, X } from "lucide-react";
+import { Check, Search } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
+import { Logo } from "@/components/Logo";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
@@ -85,7 +86,9 @@ export default function SetupPage() {
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savedToast, setSavedToast] = useState(false);
+  // Saving is a small ceremony: full-screen "saving…" → "saved" with the
+  // logo, then the app takes the user home itself.
+  const [ceremony, setCeremony] = useState<"idle" | "saving" | "saved">("idle");
   const [saveError, setSaveError] = useState(false);
   const [seeded, setSeeded] = useState(true);
   // Snapshot of the last-saved selection — the save bar appears on any change.
@@ -149,6 +152,28 @@ export default function SetupPage() {
     [surahs],
   );
 
+  // A juz counts as selected the moment the chosen surahs cover all of it —
+  // picking Surahs 78–114 lights up Juz 30 by itself, and vice versa.
+  const coveredJuz = useMemo(() => {
+    const ranges: JuzSegment[] = [...selectedSurahs].map((n) => ({
+      surahNumber: n,
+      fromAyah: 1,
+      toAyah: ayahCountBySurah.get(n) ?? 1,
+    }));
+    const set = new Set<number>();
+    for (const j of juzList) {
+      if (
+        j.segments.length > 0 &&
+        j.segments.every((seg) =>
+          coveredBy(ranges, seg.surahNumber, seg.fromAyah, seg.toAyah),
+        )
+      )
+        set.add(j.juz);
+    }
+    return set;
+  }, [selectedSurahs, juzList, ayahCountBySurah]);
+  const effectiveJuzCount = new Set([...selectedJuz, ...coveredJuz]).size;
+
   function toggleSurah(n: number) {
     setSelectedSurahs((prev) => {
       const next = new Set(prev);
@@ -157,7 +182,8 @@ export default function SetupPage() {
     });
   }
   function toggleJuz(j: number) {
-    const adding = !selectedJuz.has(j);
+    // A juz lit up by surah coverage un-checks by removing those surahs.
+    const adding = !selectedJuz.has(j) && !coveredJuz.has(j);
     setSelectedJuz((prev) => {
       const next = new Set(prev);
       adding ? next.add(j) : next.delete(j);
@@ -195,6 +221,8 @@ export default function SetupPage() {
       return;
     setSaving(true);
     setSaveError(false);
+    setCeremony("saving");
+    const started = Date.now();
     try {
       // The pickers' ranges plus every preserved partial range that the new
       // selection doesn't already cover.
@@ -212,10 +240,15 @@ export default function SetupPage() {
       });
       if (!res.ok) throw new Error(String(res.status));
       setSavedKey(selectionKey(selectedSurahs, selectedJuz));
-      // Stay here — offer (don't force) the trip home. Card stays until
-      // dismissed.
-      setSavedToast(true);
+      // Let "saving…" breathe for a beat, show "saved", then go home —
+      // no button to find, the app simply continues.
+      const settle = Math.max(0, 900 - (Date.now() - started));
+      setTimeout(() => {
+        setCeremony("saved");
+        setTimeout(() => router.push("/home"), 2400);
+      }, settle);
     } catch {
+      setCeremony("idle");
       setSaveError(true);
     } finally {
       setSaving(false);
@@ -246,40 +279,98 @@ export default function SetupPage() {
 
   return (
     <div className="space-y-5 pt-2 pb-4">
-      {/* Saved — a big, obvious prompt AT THE TOP (dismissible, never a
-          forced redirect) */}
-      {savedToast && (
-        <div className="fixed inset-x-0 top-[72px] z-30 px-4 animate-rise">
-          <div className="mx-auto max-w-md rounded-2xl bg-primary text-white p-5 shadow-lg">
-            <div className="flex items-start justify-between gap-3">
-              <span className="flex items-center gap-2.5 text-base font-bold">
-                <span className="w-8 h-8 rounded-full bg-white/15 grid place-items-center shrink-0">
-                  <Check size={18} strokeWidth={3} />
-                </span>
-                {t("setup.savedTitle")}
+      {/* Save ceremony — the whole screen becomes the brand for a moment:
+          "saving…" → "saved", then the app continues home on its own. */}
+      {ceremony !== "idle" && (
+        <div className="fixed inset-0 z-50 bg-background flex flex-col items-center justify-center gap-5 px-8 text-center">
+          {ceremony === "saving" ? (
+            <>
+              <span className="animate-pulse">
+                <Logo variant="icon" size={76} />
               </span>
-              <button
-                onClick={() => setSavedToast(false)}
-                aria-label="dismiss"
-                className="text-white/60 hover:text-white shrink-0"
-              >
-                <X size={18} />
-              </button>
+              <p className="text-base font-bold text-primary">
+                {t("setup.saving")}
+              </p>
+            </>
+          ) : (
+            <div className="animate-rise flex flex-col items-center gap-5">
+              <Logo variant="icon" size={76} />
+              <span className="w-12 h-12 rounded-full bg-secondary text-white grid place-items-center">
+                <Check size={26} strokeWidth={3} />
+              </span>
+              <div className="space-y-2">
+                <p className="text-xl font-extrabold text-primary">
+                  {t("setup.savedTitle")}
+                </p>
+                <p className="text-sm text-muted leading-relaxed max-w-sm">
+                  {t("setup.ceremonyBody")}
+                </p>
+              </div>
             </div>
-            <button
-              onClick={() => router.push("/home")}
-              className="btn-cta w-full !rounded-full py-3 text-base mt-4"
-            >
-              {t("setup.goHome")}
-            </button>
-          </div>
+          )}
         </div>
       )}
 
-      <div>
-        <h1 className="text-xl font-bold mb-1">{t("setup.title")}</h1>
-        <p className="text-sm text-muted">{t("setup.subtitle")}</p>
-      </div>
+      {/* One organized header: what this page is, and the three steps */}
+      <header className="card p-5 space-y-4">
+        <div>
+          <h1 className="text-xl font-bold mb-1.5">{t("setup.title")}</h1>
+          <p className="text-sm text-muted leading-relaxed">
+            {t("setup.subtitle")}
+          </p>
+        </div>
+        <ol className="flex items-center gap-2 text-[11px] font-bold">
+          {[t("setup.step1"), t("setup.step2"), t("setup.step3")].map(
+            (step, i) => (
+              <li key={i} className="flex items-center gap-1.5 min-w-0">
+                <span className="w-[18px] h-[18px] rounded-full bg-primary-soft text-primary grid place-items-center text-[10px] shrink-0">
+                  {i + 1}
+                </span>
+                <span className="text-muted truncate">{step}</span>
+                {i < 2 && <span className="text-border mx-0.5">—</span>}
+              </li>
+            ),
+          )}
+        </ol>
+        {/* Quick select — the most common bundles in one tap */}
+        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border">
+          <span className="text-[11px] font-bold text-muted">
+            {t("setup.quick")}:
+          </span>
+          <button
+            onClick={() => {
+              // Same path as tapping the juz tile — also checks its surahs.
+              if (!selectedJuz.has(30)) toggleJuz(30);
+            }}
+            className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-bold hover:border-primary/40 active:scale-[0.97] transition"
+          >
+            {t("setup.quick.juzAmma")}
+          </button>
+          <button
+            onClick={() =>
+              setSelectedSurahs((prev) => {
+                const next = new Set(prev);
+                for (let n = 105; n <= 114; n++) next.add(n);
+                return next;
+              })
+            }
+            className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-bold hover:border-primary/40 active:scale-[0.97] transition"
+          >
+            {t("setup.quick.last10")}
+          </button>
+          {selectedCount > 0 && (
+            <button
+              onClick={() => {
+                setSelectedSurahs(new Set());
+                setSelectedJuz(new Set());
+              }}
+              className="rounded-full px-3.5 py-1.5 text-xs font-bold text-muted hover:text-foreground active:scale-[0.97] transition"
+            >
+              {t("setup.clearAll")}
+            </button>
+          )}
+        </div>
+      </header>
 
       {extras.length > 0 && (
         <p className="text-xs text-muted bg-surface-2 rounded-xl p-3">
@@ -287,16 +378,15 @@ export default function SetupPage() {
         </p>
       )}
 
-      {/* Save bar — appears AT THE TOP the moment anything is selected and
-          stays stuck under the header while scrolling. In normal flow, so it
-          never covers the last rows of the list. */}
-      {!savedToast && (isDirty || selectedCount > 0) && (
+      {/* Save bar — the page's one call to action. Appears the moment
+          anything is selected and stays stuck under the header. */}
+      {(isDirty || selectedCount > 0) && (
         <div className="sticky top-[64px] z-10 animate-rise">
           <div className="card flex items-center justify-between gap-3 p-2.5 ps-4 shadow-lg">
             <span className="text-sm font-medium">
               {t("setup.selMix", {
                 s: selectedSurahs.size,
-                j: selectedJuz.size,
+                j: effectiveJuzCount,
               })}
             </span>
             <button
@@ -326,49 +416,10 @@ export default function SetupPage() {
         </div>
       )}
 
-
-      {/* Quick select — the most common bundles in one tap */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[11px] font-bold text-muted">
-          {t("setup.quick")}:
-        </span>
-        <button
-          onClick={() => {
-            // Same path as tapping the juz tile — also checks its surahs.
-            if (!selectedJuz.has(30)) toggleJuz(30);
-          }}
-          className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-bold hover:border-primary/40 active:scale-[0.97] transition"
-        >
-          {t("setup.quick.juzAmma")}
-        </button>
-        <button
-          onClick={() =>
-            setSelectedSurahs((prev) => {
-              const next = new Set(prev);
-              for (let n = 105; n <= 114; n++) next.add(n);
-              return next;
-            })
-          }
-          className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-bold hover:border-primary/40 active:scale-[0.97] transition"
-        >
-          {t("setup.quick.last10")}
-        </button>
-        {selectedCount > 0 && (
-          <button
-            onClick={() => {
-              setSelectedSurahs(new Set());
-              setSelectedJuz(new Set());
-            }}
-            className="rounded-full px-3.5 py-1.5 text-xs font-bold text-muted hover:text-foreground active:scale-[0.97] transition"
-          >
-            {t("setup.clearAll")}
-          </button>
-        )}
-      </div>
-
       <div className="flex gap-2 p-1 bg-surface-2 rounded-2xl">
         {(["surah", "juz"] as const).map((tb) => {
-          const count = tb === "surah" ? selectedSurahs.size : selectedJuz.size;
+          const count =
+            tb === "surah" ? selectedSurahs.size : effectiveJuzCount;
           return (
             <button
               key={tb}
@@ -428,7 +479,7 @@ export default function SetupPage() {
       {tab === "juz" && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5">
           {juzList.map((j) => {
-            const on = selectedJuz.has(j.juz);
+            const on = selectedJuz.has(j.juz) || coveredJuz.has(j.juz);
             const first = j.segments[0];
             const last = j.segments[j.segments.length - 1];
             const nameOf = (n?: number) => {
