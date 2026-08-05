@@ -8,12 +8,14 @@ import type { ReactNode } from "react";
 export function ContentCard({
   label,
   icon,
+  header,
   reference,
   footer,
   children,
 }: {
   label: string;
   icon?: ReactNode;
+  header?: ReactNode; // replaces the label row (e.g. the daily tabs)
   reference?: ReactNode; // small muted line under the content
   footer?: ReactNode;
   children: ReactNode; // the featured content itself
@@ -27,10 +29,12 @@ export function ContentCard({
       <CornerMark className="bottom-2 end-2 -scale-100" />
 
       <div className="relative">
-        <div className="inline-flex items-center gap-1.5 text-xs font-bold text-accent mb-4">
-          {icon}
-          {label}
-        </div>
+        {header ?? (
+          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-accent mb-4">
+            {icon}
+            {label}
+          </div>
+        )}
 
         <div className="mx-auto max-w-xl">{children}</div>
 

@@ -1131,40 +1131,31 @@ function DailyCard({
 
   if (!daily && !extras) return null;
 
-  return (
-    <section className="space-y-2">
-      <div className="flex items-center gap-2">
-        <div className="flex-1 flex gap-1.5 p-1 bg-surface-2 rounded-2xl">
-          {(["ayah", "dua", "hadith"] as const).map((k) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={`flex-1 rounded-xl py-1.5 text-xs font-bold transition ${
-                tab === k ? "bg-surface text-primary shadow-sm" : "text-muted"
-              }`}
-            >
-              {labels[k]}
-            </button>
-          ))}
-        </div>
-        <Link
-          href="/archive"
-          className="shrink-0 text-[11px] font-bold text-muted hover:text-foreground px-1"
+  // The switcher lives inside the card itself: a small pill group in the
+  // gold header, matching the card's accent palette.
+  const tabs = (
+    <div className="inline-flex gap-1 p-1 mb-4 rounded-full bg-accent-soft/80 border border-accent/30">
+      {(["ayah", "dua", "hadith"] as const).map((k) => (
+        <button
+          key={k}
+          onClick={() => setTab(k)}
+          className={`rounded-full px-3.5 py-1.5 text-xs font-bold transition ${
+            tab === k
+              ? "bg-surface text-accent shadow-sm"
+              : "text-muted hover:text-foreground"
+          }`}
         >
-          {t("daily.archive")}
-        </Link>
-      </div>
-      {body && (
-        <ContentCard
-          label={labels[tab]}
-          icon={<BookOpen size={13} />}
-          reference={reference}
-        >
-          {body}
-        </ContentCard>
-      )}
-    </section>
+          {labels[k]}
+        </button>
+      ))}
+    </div>
   );
+
+  return body ? (
+    <ContentCard label={labels[tab]} header={tabs} reference={reference}>
+      {body}
+    </ContentCard>
+  ) : null;
 }
 
 // Bottom sheet: check the widgets you want on your home page.
