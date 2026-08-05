@@ -11,12 +11,12 @@ export function SyncClient() {
 
   useEffect(() => {
     void bootSync();
-    // the server owns the hourglass streak — refresh the local mirror
+    // the server owns the daily streak — refresh the local mirror
     fetch("/api/streak")
       .then((r) => r.json())
       .then((d) => {
         if (typeof d.count === "number") {
-          saveStreakCache({ count: d.count, expiresAt: d.expiresAt ?? null });
+          saveStreakCache({ count: d.count, lastDay: d.lastDay ?? null });
         }
       })
       .catch(() => {});

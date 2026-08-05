@@ -141,9 +141,10 @@ model User {
   email        String? @unique
   passwordHash String? @map("password_hash")
   googleSub    String? @unique @map("google_sub")
-  // Hourglass streak: reading extends the clock; expiry resets the count.
+  // Daily streak: one page a day before local midnight; a one-hour spark
+  // window after midnight can still rescue it. (streak_expires_at is a
+  // legacy column from the old hourglass model — unused, left in the DB.)
   streakCount     Int       @default(0) @map("streak_count")
-  streakExpiresAt DateTime? @map("streak_expires_at")
   streakLastDay   String?   @map("streak_last_day")
 
   memorization      Memorization[]

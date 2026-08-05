@@ -621,7 +621,7 @@ export default function QuranPage() {
     // Reading here counts toward the wird automatically — pages mode by
     // count, surah mode by finishing every page of the chosen surahs.
     const donePages = recordPageRead(page);
-    // hourglass streak: a read page extends the clock (server-side truth)
+    // daily streak: a read page marks today done (server-side truth)
     fetch("/api/streak", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -630,7 +630,7 @@ export default function QuranPage() {
       .then((r) => r.json())
       .then((d) => {
         if (typeof d.count === "number") {
-          saveStreakCache({ count: d.count, expiresAt: d.expiresAt ?? null });
+          saveStreakCache({ count: d.count, lastDay: d.lastDay ?? null });
         }
       })
       .catch(() => {});

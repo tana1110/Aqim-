@@ -9,7 +9,8 @@ const STATIC_KEYS = [
   "aqim-adhkar-days",
   "aqim-tasbih",
   "aqim-focus",
-  "aqim-streak",
+  // "aqim-streak" is NOT mirrored here — the streak has its own API and
+  // the server copy is the truth; syncing the cache would fight it.
   "aqim-passage-len",
   "aqim-widgets",
   "aqim-reciter",

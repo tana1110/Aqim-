@@ -17,7 +17,8 @@ import {
   type WirdMode,
 } from "@/lib/wird";
 import {
-  effectiveStreak,
+  clientStreakStatus,
+  type StreakStatus,
   formatRemaining,
   loadStreakCache,
 } from "@/lib/streak";
@@ -30,8 +31,11 @@ export function WirdStrip() {
   const { t, lang } = useLang();
   const [cfg, setCfg] = useState<WirdConfig | null>(null);
   const [done, setDone] = useState(false);
-  const [streak, setStreak] = useState(0);
-  const [streakExp, setStreakExp] = useState<number | null>(null);
+  const [streak, setStreak] = useState<StreakStatus>({
+    count: 0,
+    phase: "none",
+    deadline: null,
+  });
   const [weeks, setWeeks] = useState<{ wird: boolean[]; adhkar: boolean[] }>();
   const [openSetup, setOpenSetup] = useState(false);
   const [surahs, setSurahs] = useState<SurahMeta[]>([]);
@@ -42,8 +46,7 @@ export function WirdStrip() {
   function refresh() {
     setCfg(loadWird());
     setDone(isDoneToday());
-    setStreak(effectiveStreak(loadStreakCache()).count);
-    setStreakExp(effectiveStreak(loadStreakCache()).expiresAt);
+    setStreak(clientStreakStatus(loadStreakCache()));
     setPagesToday(pagesReadToday());
     setWeeks({ wird: wirdWeek(), adhkar: adhkarWeek() });
   }
@@ -312,15 +315,24 @@ export function WirdStrip() {
     <div className="card px-4 py-3 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <span className="flex items-center gap-2 text-sm font-medium min-w-0">
-          {streak > 0 && (
+          {streak.count > 0 && (
             <span className="flex items-center gap-1 text-accent font-bold shrink-0">
               <Flame size={15} />
-              {streak}
-              {streakExp != null && (
-                <span className="text-[10px] text-muted font-medium">
-                  · {formatRemaining(streakExp, lang)}
-                </span>
-              )}
+              {streak.count}
+              <span
+                className={`text-[10px] font-medium ${
+                  streak.phase === "grace" ? "text-accent" : "text-muted"
+                }`}
+              >
+                ·{" "}
+                {streak.phase === "done"
+                  ? t("streak.doneToday")
+                  : streak.phase === "grace"
+                    ? t("streak.graceShort", {
+                        t: formatRemaining(streak.deadline ?? 0, lang),
+                      })
+                    : t("streak.beforeMidnight")}
+              </span>
             </span>
           )}
           <span className="truncate">

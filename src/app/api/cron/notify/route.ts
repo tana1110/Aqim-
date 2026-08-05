@@ -2,7 +2,7 @@ import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
 import { computeTimes, type MethodKey } from "@/lib/reminder";
 import { translate, type Lang } from "@/lib/i18n";
-import { STREAK_WARN_MINUTES } from "@/lib/streak";
+import { streakStatus } from "@/lib/streak";
 
 // Called every few minutes by an external scheduler. Sends web-push
 // notifications whose local time has arrived: prayer reminders (5 min
@@ -116,26 +116,46 @@ export async function POST(request: Request) {
       });
     }
 
-    // Hourglass streak: warn when the clock is nearly out.
+    // Daily streak: the day's page is owed before local midnight.
+    // 21:00 — gentle nudge; 23:00 — one hour left; after midnight with
+    // no page — the one-hour spark rescue.
     if (sub.userId != null) {
       const u = await prisma.user.findUnique({
         where: { id: sub.userId },
-        select: { streakExpiresAt: true, streakCount: true },
+        select: { streakCount: true, streakLastDay: true },
       });
-      const exp = u?.streakExpiresAt?.getTime();
-      if (
-        u &&
-        u.streakCount > 0 &&
-        exp != null &&
-        exp > now &&
-        exp - now <= STREAK_WARN_MINUTES * 60_000
-      ) {
-        queue.push({
-          key: `${day}:streakwarn`,
-          title: translate(l, "streak.notifTitle"),
-          body: translate(l, "streak.notifBody"),
-          url: "/quran",
-        });
+      if (u && u.streakCount > 0) {
+        const st = streakStatus(
+          { count: u.streakCount, lastDay: u.streakLastDay },
+          now,
+          sub.tzOffset,
+        );
+        if (st.phase === "open") {
+          if (due(now, localTimeToday(now, sub.tzOffset, "21:00"))) {
+            queue.push({
+              key: `${day}:streaksoon`,
+              title: translate(l, "streak.soonTitle"),
+              body: translate(l, "streak.soonBody"),
+              url: "/quran",
+            });
+          }
+          if (due(now, localTimeToday(now, sub.tzOffset, "23:00"))) {
+            queue.push({
+              key: `${day}:streakwarn`,
+              title: translate(l, "streak.notifTitle"),
+              body: translate(l, "streak.notifBody"),
+              url: "/quran",
+            });
+          }
+        }
+        if (st.phase === "grace") {
+          queue.push({
+            key: `${day}:spark`,
+            title: translate(l, "streak.sparkTitle"),
+            body: translate(l, "streak.sparkBody"),
+            url: "/quran",
+          });
+        }
       }
     }
 

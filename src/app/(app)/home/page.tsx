@@ -33,9 +33,10 @@ import {
 } from "@/lib/wird";
 import { loadTasbih, tapTasbih, type TasbihState } from "@/lib/tasbih";
 import {
-  effectiveStreak,
+  clientStreakStatus,
   formatRemaining,
   loadStreakCache,
+  type StreakStatus,
 } from "@/lib/streak";
 import {
   WIDGET_KEYS,
@@ -690,8 +691,7 @@ function TodayCard() {
   const [state, setState] = useState<{
     wirdOn: boolean;
     wirdDone: boolean;
-    streak: number;
-    streakExp: number | null;
+    streak: StreakStatus;
     adhkarDone: boolean;
     adhkarParts: boolean[];
   } | null>(null);
@@ -708,8 +708,7 @@ function TodayCard() {
       setState({
         wirdOn: c.enabled,
         wirdDone: isDoneToday(),
-        streak: effectiveStreak(loadStreakCache()).count,
-        streakExp: effectiveStreak(loadStreakCache()).expiresAt,
+        streak: clientStreakStatus(loadStreakCache()),
         adhkarDone: isAdhkarDoneToday(),
         adhkarParts: [parts.morning, parts.evening, parts.sleep],
       });
@@ -787,17 +786,27 @@ function TodayCard() {
                 <Check size={14} strokeWidth={3} />
               )}
             </span>
-            {state.streak > 0 && (
+            {state.streak.count > 0 && (
               <span className="flex flex-col items-end shrink-0">
                 <span className="flex items-center gap-1 text-accent font-bold text-sm">
                   <Flame size={15} />
-                  {state.streak}
+                  {state.streak.count}
                 </span>
-                {state.streakExp != null && (
-                  <span className="text-[9px] text-muted tabular-nums">
-                    {formatRemaining(state.streakExp, lang)} {t("streak.left")}
-                  </span>
-                )}
+                <span
+                  className={`text-[9px] tabular-nums ${
+                    state.streak.phase === "grace"
+                      ? "text-accent font-bold"
+                      : "text-muted"
+                  }`}
+                >
+                  {state.streak.phase === "done"
+                    ? t("streak.doneToday")
+                    : state.streak.phase === "grace"
+                      ? t("streak.graceShort", {
+                          t: formatRemaining(state.streak.deadline ?? 0, lang),
+                        })
+                      : t("streak.beforeMidnight")}
+                </span>
               </span>
             )}
           </span>
