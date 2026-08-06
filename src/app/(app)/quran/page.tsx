@@ -17,11 +17,13 @@ import { BottomTabs } from "@/components/BottomNav";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, getBismillahDisplay, cleanAyah } from "@/lib/quranDisplay";
 import {
+  isDoneToday,
+  loadWird,
   maybeCompleteSurahWird,
   nextWirdPage,
   recordPageRead,
 } from "@/lib/wird";
-import { saveStreakCache } from "@/lib/streak";
+import { pageCountsToday, postStreak } from "@/lib/streak";
 import {
   RECITERS,
   ayahAudioUrl,
@@ -191,6 +193,7 @@ export default function QuranPage() {
         }
         // Re-check with real page spans (first page view may have preceded them).
         if (maybeCompleteSurahWird(list)) {
+          postStreak(); // the wird just completed — the day is saved
           setWirdToast(true);
           setTimeout(() => setWirdToast(false), 5000);
         }
@@ -621,20 +624,10 @@ export default function QuranPage() {
     // Reading here counts toward the wird automatically — pages mode by
     // count, surah mode by finishing every page of the chosen surahs.
     const donePages = recordPageRead(page);
-    // daily streak: a read page marks today done (server-side truth)
-    fetch("/api/streak", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tzOffset: -new Date().getTimezoneOffset() }),
-    })
-      .then((r) => r.json())
-      .then((d) => {
-        if (typeof d.count === "number") {
-          saveStreakCache({ count: d.count, lastDay: d.lastDay ?? null });
-        }
-      })
-      .catch(() => {});
     const doneSurahs = maybeCompleteSurahWird(surahs);
+    // Daily streak (server-side truth): the wird saves the day; without a
+    // wird any page does; a wird still owed gets the 23:00–01:00 mercy.
+    if (pageCountsToday(loadWird().enabled, isDoneToday())) postStreak();
     if (donePages || doneSurahs) {
       setWirdToast(true);
       setTimeout(() => setWirdToast(false), 5000);

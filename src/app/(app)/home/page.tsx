@@ -10,6 +10,7 @@ import {
   Check,
   Sparkles,
   Flame,
+  Shield,
   ChevronLeft,
   Menu,
   Settings2,
@@ -791,6 +792,15 @@ function TodayCard() {
                 <span className="flex items-center gap-1 text-accent font-bold text-sm">
                   <Flame size={15} />
                   {state.streak.count}
+                  {state.streak.shields > 0 && (
+                    <span
+                      className="flex items-center gap-0.5 text-[10px] text-muted font-medium"
+                      title={t("streak.shieldHint")}
+                    >
+                      <Shield size={11} />
+                      {state.streak.shields}
+                    </span>
+                  )}
                 </span>
                 <span
                   className={`text-[9px] tabular-nums ${
@@ -805,7 +815,9 @@ function TodayCard() {
                       ? t("streak.graceShort", {
                           t: formatRemaining(state.streak.deadline ?? 0, lang),
                         })
-                      : t("streak.beforeMidnight")}
+                      : state.wirdOn && !state.wirdDone
+                        ? t("streak.wirdBeforeMidnight")
+                        : t("streak.beforeMidnight")}
                 </span>
               </span>
             )}

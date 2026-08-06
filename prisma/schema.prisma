@@ -146,6 +146,7 @@ model User {
   // legacy column from the old hourglass model — unused, left in the DB.)
   streakCount     Int       @default(0) @map("streak_count")
   streakLastDay   String?   @map("streak_last_day")
+  streakShields   Int       @default(0) @map("streak_shields")
 
   memorization      Memorization[]
   recitationHistory RecitationHistory[]

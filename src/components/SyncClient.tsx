@@ -11,12 +11,17 @@ export function SyncClient() {
 
   useEffect(() => {
     void bootSync();
-    // the server owns the daily streak — refresh the local mirror
-    fetch("/api/streak")
+    // the server owns the daily streak — refresh the local mirror (the tz
+    // lets the server settle rukhsa-shield spending durably)
+    fetch(`/api/streak?tz=${-new Date().getTimezoneOffset()}`)
       .then((r) => r.json())
       .then((d) => {
         if (typeof d.count === "number") {
-          saveStreakCache({ count: d.count, lastDay: d.lastDay ?? null });
+          saveStreakCache({
+            count: d.count,
+            lastDay: d.lastDay ?? null,
+            shields: Number(d.shields) || 0,
+          });
         }
       })
       .catch(() => {});

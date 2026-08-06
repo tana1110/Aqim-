@@ -122,11 +122,19 @@ export async function POST(request: Request) {
     if (sub.userId != null) {
       const u = await prisma.user.findUnique({
         where: { id: sub.userId },
-        select: { streakCount: true, streakLastDay: true },
+        select: {
+          streakCount: true,
+          streakLastDay: true,
+          streakShields: true,
+        },
       });
       if (u && u.streakCount > 0) {
         const st = streakStatus(
-          { count: u.streakCount, lastDay: u.streakLastDay },
+          {
+            count: u.streakCount,
+            lastDay: u.streakLastDay,
+            shields: u.streakShields,
+          },
           now,
           sub.tzOffset,
         );

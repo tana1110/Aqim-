@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Flame, Check, Bell, ChevronDown, X } from "lucide-react";
+import { Flame, Check, Bell, ChevronDown, Shield, X } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import {
@@ -21,6 +21,7 @@ import {
   type StreakStatus,
   formatRemaining,
   loadStreakCache,
+  postStreak,
 } from "@/lib/streak";
 import type { SurahMeta } from "@/lib/types";
 
@@ -35,6 +36,7 @@ export function WirdStrip() {
     count: 0,
     phase: "none",
     deadline: null,
+    shields: 0,
   });
   const [weeks, setWeeks] = useState<{ wird: boolean[]; adhkar: boolean[] }>();
   const [openSetup, setOpenSetup] = useState(false);
@@ -319,6 +321,15 @@ export function WirdStrip() {
             <span className="flex items-center gap-1 text-accent font-bold shrink-0">
               <Flame size={15} />
               {streak.count}
+              {streak.shields > 0 && (
+                <span
+                  className="flex items-center gap-0.5 text-[10px] text-muted font-medium"
+                  title={t("streak.shieldHint")}
+                >
+                  <Shield size={11} />
+                  {streak.shields}
+                </span>
+              )}
               <span
                 className={`text-[10px] font-medium ${
                   streak.phase === "grace" ? "text-accent" : "text-muted"
@@ -331,7 +342,9 @@ export function WirdStrip() {
                     ? t("streak.graceShort", {
                         t: formatRemaining(streak.deadline ?? 0, lang),
                       })
-                    : t("streak.beforeMidnight")}
+                    : cfg?.enabled && !done
+                      ? t("streak.wirdBeforeMidnight")
+                      : t("streak.beforeMidnight")}
               </span>
             </span>
           )}
@@ -346,6 +359,7 @@ export function WirdStrip() {
             <button
               onClick={() => {
                 markDoneToday();
+                postStreak(); // the wird is done — the day is saved
                 refresh();
               }}
               disabled={done || cfg.mode === "surah"}
