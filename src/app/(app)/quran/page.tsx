@@ -939,6 +939,17 @@ export default function QuranPage() {
           </div>
         )}
 
+        {/* Always-on page number — just the number, like a printed mushaf.
+            The open chrome covers this spot, so it hides then. */}
+        {!chrome && (
+          <div
+            className="absolute inset-x-0 z-10 text-center text-[11px] text-muted tabular-nums pointer-events-none"
+            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4px)" }}
+          >
+            {digits(data.page)}
+          </div>
+        )}
+
         {chrome && (
           <>
             <div
