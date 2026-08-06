@@ -12,7 +12,11 @@ export default function manifest(): MetadataRoute.Manifest {
     // shows the one-time Welcome onboarding, later launches go to the dashboard.
     // The marketing landing page at "/" is for browser visitors.
     start_url: "/home",
-    display: "standalone",
+    // True fullscreen: the system status bar is hidden everywhere with NO
+    // "exit full screen" toast (that toast only comes from the JS
+    // Fullscreen API). The reader's tap-chrome carries its own clock.
+    display: "fullscreen",
+    display_override: ["fullscreen", "standalone"],
     background_color: "#f3eee3",
     // Status bar matches the app background so it blends in (the reading
     // page especially) instead of sitting as a dark brand-colored band.
