@@ -17,9 +17,9 @@ export default function manifest(): MetadataRoute.Manifest {
     // The status bar instead blends in via theme_color = background.
     display: "standalone",
     background_color: "#f3eee3",
-    // Status bar matches the app background so it blends in (the reading
-    // page especially) instead of sitting as a dark brand-colored band.
-    theme_color: "#f3eee3",
+    // Brand status bar everywhere — EXCEPT the Quran page, which swaps
+    // the theme-color meta at runtime so the bar blends into the mushaf.
+    theme_color: "#33546a",
     dir: "rtl",
     lang: "ar",
     icons: [
