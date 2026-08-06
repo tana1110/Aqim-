@@ -238,21 +238,6 @@ export default function QuranPage() {
   // don't use it. Instead the status bar CAMOUFLAGES — its color follows
   // the page background while the mushaf is open, so it blends into the
   // reading surface instead of sitting on it as a dark band.
-  // The fullscreen app hides the system clock — the tap-chrome shows one.
-  const [clock, setClock] = useState("");
-  useEffect(() => {
-    const tick = () =>
-      setClock(
-        new Date().toLocaleTimeString(lang === "ar" ? "ar" : "en", {
-          hour: "numeric",
-          minute: "2-digit",
-        }),
-      );
-    tick();
-    const id = setInterval(tick, 30_000);
-    return () => clearInterval(id);
-  }, [lang]);
-
   useEffect(() => {
     const bg =
       getComputedStyle(document.documentElement)
@@ -967,7 +952,7 @@ export default function QuranPage() {
                   <Search size={13} className="text-muted shrink-0" />
                 </button>
                 <span className="shrink-0 text-xs text-muted tabular-nums">
-                  {clock} · {t("setup.juz")} {digits(data.juz)} · {t("quran.page")} {digits(data.page)} / {digits(604)}
+                  {t("setup.juz")} {digits(data.juz)} · {t("quran.page")} {digits(data.page)} / {digits(604)}
                 </span>
               </div>
               <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
