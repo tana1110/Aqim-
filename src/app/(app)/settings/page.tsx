@@ -9,14 +9,14 @@ import { PageLoader } from "@/components/Brand";
 import {
   CITIES,
   METHOD_KEYS,
-  computeTimes,
   loadReminderConfig,
   saveReminderConfig,
   type MethodKey,
   type ReminderConfig,
 } from "@/lib/reminder";
 
-// Font-size steps (root scale). Constrained so every screen stays intact.
+// Font-size steps (root scale). Constrained so every screen stays intact;
+// the slider snaps to exactly these — never an arbitrary in-between value.
 const FONT_STEPS = [
   { key: "font.small", value: "0.875" },
   { key: "font.normal", value: "1" },
@@ -30,6 +30,8 @@ export default function SettingsPage() {
   const [passLen, setPassLen] = useState("medium");
   const [cfg, setCfg] = useState<ReminderConfig | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Once a location is confirmed, the pickers hide behind a "change" link.
+  const [editLocation, setEditLocation] = useState(false);
 
   useEffect(() => {
     try {
@@ -109,6 +111,7 @@ export default function SettingsPage() {
           lng: Math.round(pos.coords.longitude * 100) / 100,
           locationLabel: null,
         });
+        setEditLocation(false);
       },
       () => setNotice(t("reminder.locDenied")),
       { timeout: 12000, maximumAge: 600000 },
@@ -119,6 +122,7 @@ export default function SettingsPage() {
     const c = CITIES.find((x) => x.key === key);
     if (!c) return;
     update({ lat: c.lat, lng: c.lng, locationLabel: key });
+    setEditLocation(false);
   }
 
   if (!cfg) return <PageLoader />;
@@ -134,48 +138,76 @@ export default function SettingsPage() {
     : cfg.lat != null
       ? t("reminder.autoLocated")
       : null;
+  const locationSet = cfg.lat != null;
+
+  const fontIdx = Math.max(
+    0,
+    FONT_STEPS.findIndex((s) => s.value === fontScale),
+  );
 
   return (
-    <div className="space-y-5 pt-2 max-w-2xl">
+    <div className="space-y-6 pt-2 max-w-2xl">
       <h1 className="text-xl font-bold">{t("settings.title")}</h1>
 
-      <div className="card divide-y divide-border overflow-hidden">
-        {/* Account (optional — saves history across devices) */}
+      {/* ---- Account & language ---- */}
+      <Section title={t("settings.sec.account")}>
         <Row label={t("settings.account")}>
           <Link href="/account" className="btn-primary px-4 py-1.5 text-xs">
             {t("account.title")}
           </Link>
         </Row>
-
-        {/* Language */}
         <Row label={t("settings.language")}>
           <LanguageToggle />
         </Row>
+      </Section>
 
-        {/* Font size */}
-        <Row label={t("settings.fontSize")}>
-          <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
-            {FONT_STEPS.map((s) => (
+      {/* ---- Reading & display ---- */}
+      <Section title={t("settings.sec.reading")}>
+        {/* Font size — a stepped slider like the phone's own display
+            settings; snaps to the four safe sizes. */}
+        <div className="p-4 space-y-3">
+          <span className="text-sm font-medium">{t("settings.fontSize")}</span>
+          <input
+            type="range"
+            min={0}
+            max={FONT_STEPS.length - 1}
+            step={1}
+            value={fontIdx}
+            onChange={(e) => applyFont(FONT_STEPS[+e.target.value].value)}
+            aria-label={t("settings.fontSize")}
+            className="font-slider w-full"
+            style={
+              {
+                "--p": `${(fontIdx / (FONT_STEPS.length - 1)) * 100}%`,
+              } as React.CSSProperties
+            }
+          />
+          <div className="flex justify-between text-[10px] font-bold">
+            {FONT_STEPS.map((s, i) => (
               <button
                 key={s.value}
                 onClick={() => applyFont(s.value)}
-                aria-pressed={fontScale === s.value}
-                className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap ${
-                  fontScale === s.value
-                    ? "bg-primary text-white"
-                    : "text-muted hover:text-foreground"
-                }`}
+                className={i === fontIdx ? "text-primary" : "text-muted"}
               >
                 {t(s.key)}
               </button>
             ))}
           </div>
-        </Row>
+          {/* Live preview — updates while dragging */}
+          <p
+            className="rounded-xl bg-surface-2 p-3 text-muted leading-relaxed"
+            style={{ fontSize: `calc(0.875rem * ${fontScale})` }}
+          >
+            {t("settings.fontPreview")}
+          </p>
+        </div>
 
         {/* Suggested passage length */}
         <div className="p-4">
           <div className="flex items-center justify-between gap-4">
-            <span className="text-sm font-medium">{t("settings.passageLen")}</span>
+            <span className="text-sm font-medium">
+              {t("settings.passageLen")}
+            </span>
             <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
               {(["short", "medium", "long"] as const).map((v) => (
                 <button
@@ -193,29 +225,17 @@ export default function SettingsPage() {
               ))}
             </div>
           </div>
-          <p className="text-[11px] text-muted mt-1.5">{t("settings.lenHint")}</p>
+          <p className="text-[11px] text-muted mt-1.5">
+            {t("settings.lenHint")}
+          </p>
         </div>
 
         {/* Offline Quran — download all 604 pages into the local cache */}
         <OfflineRow />
+      </Section>
 
-        {/* Replay the intro tour */}
-        <Row label={t("settings.replayTour")}>
-          <button
-            onClick={() => {
-              try {
-                localStorage.removeItem("aqim-onboarded");
-                localStorage.removeItem("aqim-tour-done");
-              } catch {}
-              window.location.href = "/home";
-            }}
-            className="btn-primary px-4 py-1.5 text-xs"
-          >
-            {t("settings.replayTourHint")}
-          </button>
-        </Row>
-
-        {/* Prayer reminder */}
+      {/* ---- Notifications & location ---- */}
+      <Section title={t("settings.sec.notifs")}>
         <div className="p-4 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0">
@@ -223,7 +243,9 @@ export default function SettingsPage() {
                 <Bell size={15} className="text-primary" />
                 {t("reminder.title")}
               </div>
-              <div className="text-xs text-muted mt-0.5">{t("reminder.hint")}</div>
+              <div className="text-xs text-muted mt-0.5">
+                {t("reminder.hint")}
+              </div>
             </div>
             <button
               onClick={toggleReminder}
@@ -243,7 +265,9 @@ export default function SettingsPage() {
 
           {prePrompt && (
             <div className="rounded-xl bg-primary-soft p-3.5 space-y-2.5">
-              <p className="text-xs leading-relaxed">{t("reminder.prePrompt")}</p>
+              <p className="text-xs leading-relaxed">
+                {t("reminder.prePrompt")}
+              </p>
               <button
                 onClick={requestAndEnable}
                 className="btn-primary px-5 py-2 text-xs"
@@ -255,48 +279,67 @@ export default function SettingsPage() {
 
           {cfg.enabled && (
             <>
-              {/* Location */}
+              {/* Location — once set, the pickers fold away behind
+                  a small "change" link */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-sm font-medium flex items-center gap-1.5">
                     <MapPin size={14} className="text-primary" />
                     {t("reminder.location")}
                   </span>
-                  <span className="text-xs text-muted truncate">
-                    {locationText ?? t("reminder.noLocation")}
+                  <span className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs text-muted truncate">
+                      {locationText ?? t("reminder.noLocation")}
+                    </span>
+                    {locationSet && !editLocation && (
+                      <button
+                        onClick={() => setEditLocation(true)}
+                        className="text-xs font-bold text-primary shrink-0"
+                      >
+                        {t("settings.change")}
+                      </button>
+                    )}
                   </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    onClick={useMyLocation}
-                    className="btn-primary px-3.5 py-1.5 text-xs"
-                  >
-                    {cfg.lat != null && !cfg.locationLabel
-                      ? t("reminder.refresh")
-                      : t("reminder.useMyLocation")}
-                  </button>
-                  <select
-                    value={cfg.locationLabel ?? ""}
-                    onChange={(e) => e.target.value && pickCity(e.target.value)}
-                    className="rounded-xl border border-border bg-surface px-2 py-1.5 text-xs"
-                  >
-                    <option value="">{t("reminder.orCity")}</option>
-                    {CITIES.map((c) => (
-                      <option key={c.key} value={c.key}>
-                        {lang === "ar" ? c.ar : c.en}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {(!locationSet || editLocation) && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={useMyLocation}
+                      className="btn-primary px-3.5 py-1.5 text-xs"
+                    >
+                      {cfg.lat != null && !cfg.locationLabel
+                        ? t("reminder.refresh")
+                        : t("reminder.useMyLocation")}
+                    </button>
+                    <select
+                      value={cfg.locationLabel ?? ""}
+                      onChange={(e) =>
+                        e.target.value && pickCity(e.target.value)
+                      }
+                      className="rounded-xl border border-border bg-surface px-2 py-1.5 text-xs"
+                    >
+                      <option value="">{t("reminder.orCity")}</option>
+                      {CITIES.map((c) => (
+                        <option key={c.key} value={c.key}>
+                          {lang === "ar" ? c.ar : c.en}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               {/* Calculation method — the default (Umm al-Qura) is only
                   right in some regions */}
               <div className="flex items-center justify-between gap-4">
-                <span className="text-sm font-medium">{t("reminder.method")}</span>
+                <span className="text-sm font-medium">
+                  {t("reminder.method")}
+                </span>
                 <select
                   value={cfg.method}
-                  onChange={(e) => update({ method: e.target.value as MethodKey })}
+                  onChange={(e) =>
+                    update({ method: e.target.value as MethodKey })
+                  }
                   className="rounded-xl border border-border bg-surface px-2 py-1.5 text-xs max-w-[55%]"
                 >
                   {METHOD_KEYS.map((k) => (
@@ -306,16 +349,6 @@ export default function SettingsPage() {
                   ))}
                 </select>
               </div>
-
-              {/* Today's five times — immediate proof it's set up right */}
-              {cfg.lat != null && cfg.lng != null && (
-                <TodayTimes
-                  lat={cfg.lat}
-                  lng={cfg.lng}
-                  method={cfg.method}
-                />
-              )}
-
             </>
           )}
 
@@ -325,8 +358,44 @@ export default function SettingsPage() {
             </p>
           )}
         </div>
-      </div>
+      </Section>
+
+      {/* ---- General ---- */}
+      <Section title={t("settings.sec.general")}>
+        <Row label={t("settings.replayTour")}>
+          <button
+            onClick={() => {
+              try {
+                localStorage.removeItem("aqim-onboarded");
+                localStorage.removeItem("aqim-tour-done");
+              } catch {}
+              window.location.href = "/home";
+            }}
+            className="btn-primary px-4 py-1.5 text-xs"
+          >
+            {t("settings.replayTourHint")}
+          </button>
+        </Row>
+      </Section>
     </div>
+  );
+}
+
+// A labeled settings group: small muted heading + one consistent card.
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-2">
+      <h2 className="text-[11px] font-bold text-muted px-1">{title}</h2>
+      <div className="card divide-y divide-border overflow-hidden">
+        {children}
+      </div>
+    </section>
   );
 }
 
@@ -408,56 +477,6 @@ function OfflineRow() {
             : t("settings.offlineBtn")}
         </button>
       )}
-    </div>
-  );
-}
-
-// Today's five prayer times, next one highlighted.
-function TodayTimes({
-  lat,
-  lng,
-  method,
-}: {
-  lat: number;
-  lng: number;
-  method: MethodKey;
-}) {
-  const { t, lang } = useLang();
-  const times = computeTimes(lat, lng, method);
-  const order = ["fajr", "dhuhr", "asr", "maghrib", "isha"] as const;
-  const now = Date.now();
-  const nextKey = order.find((k) => times[k].getTime() > now);
-  const fmt = (d: Date) =>
-    d.toLocaleTimeString(lang === "ar" ? "ar" : "en", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  return (
-    <div>
-      <div className="text-[11px] font-bold text-muted mb-1.5">
-        {t("reminder.todayTimes")}
-      </div>
-      <div className="grid grid-cols-5 gap-1.5 text-center">
-        {order.map((k) => (
-          <div
-            key={k}
-            className={`rounded-xl py-2 px-1 ${
-              k === nextKey
-                ? "bg-primary text-white"
-                : "bg-surface-2 text-foreground"
-            }`}
-          >
-            <div
-              className={`text-[10px] ${k === nextKey ? "text-white/70" : "text-muted"}`}
-            >
-              {t(`prayer.${k}`)}
-            </div>
-            <div className="text-[11px] font-bold tabular-nums whitespace-nowrap">
-              {fmt(times[k])}
-            </div>
-          </div>
-        ))}
-      </div>
     </div>
   );
 }

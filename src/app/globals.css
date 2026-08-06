@@ -455,3 +455,45 @@ html[dir="rtl"] .animate-drawer {
 .animate-splash-rise {
   animation: splashRise 0.9s ease both;
 }
+
+/* Stepped font-size slider (settings) — snaps to the fixed steps; the
+   filled side + thumb use the primary tone, the rest a muted track. */
+.font-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 9999px;
+  background: linear-gradient(
+    to right,
+    var(--color-primary) var(--p, 33%),
+    var(--color-surface-2) var(--p, 33%)
+  );
+  outline: none;
+}
+[dir="rtl"] .font-slider {
+  background: linear-gradient(
+    to left,
+    var(--color-primary) var(--p, 33%),
+    var(--color-surface-2) var(--p, 33%)
+  );
+}
+.font-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  border: 3px solid var(--color-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+.font-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: var(--color-primary);
+  border: 3px solid var(--color-surface);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
