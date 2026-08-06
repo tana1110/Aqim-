@@ -235,13 +235,17 @@ export default function QuranPage() {
 
   // Immersive reading: hide the phone's status bar while in the mushaf.
   // Browsers only grant fullscreen on a user gesture, so the first touch
-  // (turning a page, tapping the middle) enters it; leaving the page
-  // restores the system bars. No-op where unsupported (iPhone Safari).
+  // enters it — ONCE per visit. The OS shows its own "swipe to exit"
+  // toast on every entry and we can't shorten it, so never re-enter:
+  // if the user swipes out of fullscreen, we respect that until they
+  // come back to the page. No-op where unsupported (iPhone Safari).
   useEffect(() => {
+    let entered = false;
     const enter = () => {
-      if (window.innerWidth >= 768) return; // phones only
+      if (entered || window.innerWidth >= 768) return; // phones, once only
       const el = document.documentElement;
       if (!document.fullscreenElement && el.requestFullscreen) {
+        entered = true;
         el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
       }
     };
