@@ -233,6 +233,27 @@ export default function QuranPage() {
   // Tapping the middle toggles the app chrome (bars, controls, nav).
   const [chrome, setChrome] = useState(false);
 
+  // Immersive reading: hide the phone's status bar while in the mushaf.
+  // Browsers only grant fullscreen on a user gesture, so the first touch
+  // (turning a page, tapping the middle) enters it; leaving the page
+  // restores the system bars. No-op where unsupported (iPhone Safari).
+  useEffect(() => {
+    const enter = () => {
+      if (window.innerWidth >= 768) return; // phones only
+      const el = document.documentElement;
+      if (!document.fullscreenElement && el.requestFullscreen) {
+        el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+      }
+    };
+    window.addEventListener("pointerup", enter);
+    return () => {
+      window.removeEventListener("pointerup", enter);
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    };
+  }, []);
+
   // ---- EXACT Madani layout (QCF V2: the King Fahd Complex per-page fonts
   // and real 15-line word placement). Falls back to the Amiri renderer when
   // layout data or the page font can't load. ----
