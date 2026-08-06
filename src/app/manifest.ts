@@ -14,7 +14,9 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/home",
     display: "standalone",
     background_color: "#f3eee3",
-    theme_color: "#33546a",
+    // Status bar matches the app background so it blends in (the reading
+    // page especially) instead of sitting as a dark brand-colored band.
+    theme_color: "#f3eee3",
     dir: "rtl",
     lang: "ar",
     icons: [

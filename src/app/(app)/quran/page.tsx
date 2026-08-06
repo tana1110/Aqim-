@@ -239,23 +239,28 @@ export default function QuranPage() {
   // the page background while the mushaf is open, so it blends into the
   // reading surface instead of sitting on it as a dark band.
   useEffect(() => {
-    const head = document.head;
-    let meta = head.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    const prev = meta?.getAttribute("content") ?? null;
     const bg =
       getComputedStyle(document.documentElement)
         .getPropertyValue("--color-background")
         .trim() || "#f3eee3";
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.name = "theme-color";
-      head.appendChild(meta);
+    const metas = Array.from(
+      document.head.querySelectorAll<HTMLMetaElement>(
+        'meta[name="theme-color"]',
+      ),
+    );
+    if (metas.length === 0) {
+      const m = document.createElement("meta");
+      m.name = "theme-color";
+      document.head.appendChild(m);
+      metas.push(m);
     }
-    meta.setAttribute("content", bg);
-    const el = meta;
+    const prev = metas.map((m) => m.getAttribute("content"));
+    for (const m of metas) m.setAttribute("content", bg);
     return () => {
-      if (prev != null) el.setAttribute("content", prev);
-      else el.remove();
+      metas.forEach((m, i) => {
+        const p = prev[i];
+        if (p != null) m.setAttribute("content", p);
+      });
     };
   }, []);
 
