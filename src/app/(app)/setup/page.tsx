@@ -347,48 +347,56 @@ export default function SetupPage() {
             )}
           </ol>
         )}
-        {/* Quick select — the most common bundles in one tap */}
-        <div
-          className={`flex flex-wrap items-center gap-2 ${
-            firstTime ? "pt-3 border-t border-border" : ""
-          }`}
-        >
-          <span className="text-[11px] font-bold text-muted">
-            {t("setup.quick")}:
-          </span>
-          <button
-            onClick={() => {
-              // Same path as tapping the juz tile — also checks its surahs.
-              if (!selectedJuz.has(30)) toggleJuz(30);
-            }}
-            className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-bold hover:border-primary/40 active:scale-[0.97] transition"
+        {/* Quick select — starter bundles for someone with nothing saved
+            yet. Returning users know their selection; only "clear all"
+            remains for them. */}
+        {(firstTime || selectedCount > 0) && (
+          <div
+            className={`flex flex-wrap items-center gap-2 ${
+              firstTime ? "pt-3 border-t border-border" : ""
+            }`}
           >
-            {t("setup.quick.juzAmma")}
-          </button>
-          <button
-            onClick={() =>
-              setSelectedSurahs((prev) => {
-                const next = new Set(prev);
-                for (let n = 105; n <= 114; n++) next.add(n);
-                return next;
-              })
-            }
-            className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-bold hover:border-primary/40 active:scale-[0.97] transition"
-          >
-            {t("setup.quick.last10")}
-          </button>
-          {selectedCount > 0 && (
-            <button
-              onClick={() => {
-                setSelectedSurahs(new Set());
-                setSelectedJuz(new Set());
-              }}
-              className="rounded-full px-3.5 py-1.5 text-xs font-bold text-muted hover:text-foreground active:scale-[0.97] transition"
-            >
-              {t("setup.clearAll")}
-            </button>
-          )}
-        </div>
+            {firstTime && (
+              <>
+                <span className="text-[11px] font-bold text-muted">
+                  {t("setup.quick")}:
+                </span>
+                <button
+                  onClick={() => {
+                    // Same path as tapping the juz tile — also checks its surahs.
+                    if (!selectedJuz.has(30)) toggleJuz(30);
+                  }}
+                  className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-bold hover:border-primary/40 active:scale-[0.97] transition"
+                >
+                  {t("setup.quick.juzAmma")}
+                </button>
+                <button
+                  onClick={() =>
+                    setSelectedSurahs((prev) => {
+                      const next = new Set(prev);
+                      for (let n = 105; n <= 114; n++) next.add(n);
+                      return next;
+                    })
+                  }
+                  className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-xs font-bold hover:border-primary/40 active:scale-[0.97] transition"
+                >
+                  {t("setup.quick.last10")}
+                </button>
+              </>
+            )}
+            {selectedCount > 0 && (
+              <button
+                onClick={() => {
+                  setSelectedSurahs(new Set());
+                  setSelectedJuz(new Set());
+                }}
+                className="rounded-full px-3.5 py-1.5 text-xs font-bold text-muted hover:text-foreground active:scale-[0.97] transition"
+              >
+                {t("setup.clearAll")}
+              </button>
+            )}
+          </div>
+        )}
       </header>
 
       {extras.length > 0 && (
