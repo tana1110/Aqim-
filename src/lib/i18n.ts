@@ -500,7 +500,7 @@ const en: Dict = {
   "db.notReady.title": "One moment — Aqim is getting ready",
   "db.notReady.body": "Tap once to set things up:",
 
-  "home.greeting": "Peace be upon you",
+  "home.greeting": "Assalamu alaikum",
   "home.title": "What will you recite in your prayer?",
   "home.subtitle": "Pick a prayer, then let Aqim suggest — with variety.",
   "home.setMemoFirst": "Set your memorization first to start getting suggestions",

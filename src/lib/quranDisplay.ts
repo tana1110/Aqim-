@@ -16,7 +16,17 @@ export function bareSurahNameAr(name: string): string {
       "",
     )
     .trim();
-  return stripped || name.trim();
+  // UI lists show the name in clean standard orthography: the source's
+  // Quranic marks (small sukun, superscript alef, wasla, tatweel) render
+  // at odd sizes in interface fonts. The mushaf itself never uses this —
+  // it renders the exact source text.
+  const clean = (stripped || name.trim())
+    .normalize("NFC") // compose آ/أ/إ/ؤ/ئ so their marks survive the strip
+    .replace(/ٱ/g, "ا") // ٱ (wasla) → plain alef
+    .replace(/ـ/g, "") // tatweel
+    .replace(/\p{M}/gu, "") // harakat + Quranic signs
+    .trim();
+  return clean || name.trim();
 }
 
 // The bare surah name to show for the current language.

@@ -93,6 +93,10 @@ export default function SetupPage() {
   const [seeded, setSeeded] = useState(true);
   // Snapshot of the last-saved selection — the save bar appears on any change.
   const [savedKey, setSavedKey] = useState("");
+  // First visit = nothing saved yet. Only then: the explainer box shows,
+  // and saving continues to home by itself. Returning users get a compact
+  // header and stay here after saving.
+  const [firstTime, setFirstTime] = useState(false);
   // Saved partial ranges that the surah/juz pickers can't represent — kept
   // untouched on every save so re-saving never silently deletes them.
   const [extras, setExtras] = useState<JuzSegment[]>([]);
@@ -111,6 +115,7 @@ export default function SetupPage() {
 
       const byNumber = new Map(s.map((x) => [x.number, x]));
       const saved: JuzSegment[] = mRes.memorization ?? [];
+      setFirstTime(saved.length === 0);
       const preselect = new Set<number>();
       for (const r of saved) {
         const meta = byNumber.get(r.surahNumber);
@@ -240,12 +245,16 @@ export default function SetupPage() {
       });
       if (!res.ok) throw new Error(String(res.status));
       setSavedKey(selectionKey(selectedSurahs, selectedJuz));
-      // Let "saving…" breathe for a beat, show "saved", then go home —
-      // no button to find, the app simply continues.
+      // Let "saving…" breathe for a beat, then show "saved". Only the very
+      // first save continues to home by itself — after that the user is
+      // editing and stays right here.
       const settle = Math.max(0, 900 - (Date.now() - started));
       setTimeout(() => {
         setCeremony("saved");
-        setTimeout(() => router.push("/home"), 2400);
+        setTimeout(() => {
+          if (firstTime) router.push("/home");
+          else setCeremony("idle");
+        }, 2400);
       }, settle);
     } catch {
       setCeremony("idle");
@@ -311,29 +320,39 @@ export default function SetupPage() {
         </div>
       )}
 
-      {/* One organized header: what this page is, and the three steps */}
-      <header className="card p-5 space-y-4">
+      {/* First visit: one explainer card — what this page is, the three
+          steps, and that it stays editable. After the first save it never
+          appears again; returning users get just the title. */}
+      <header className={firstTime ? "card p-5 space-y-4" : "space-y-4"}>
         <div>
           <h1 className="text-xl font-bold mb-1.5">{t("setup.title")}</h1>
-          <p className="text-sm text-muted leading-relaxed">
-            {t("setup.subtitle")}
-          </p>
-        </div>
-        <ol className="flex items-center gap-2 text-[11px] font-bold">
-          {[t("setup.step1"), t("setup.step2"), t("setup.step3")].map(
-            (step, i) => (
-              <li key={i} className="flex items-center gap-1.5 min-w-0">
-                <span className="w-[18px] h-[18px] rounded-full bg-primary-soft text-primary grid place-items-center text-[10px] shrink-0">
-                  {i + 1}
-                </span>
-                <span className="text-muted truncate">{step}</span>
-                {i < 2 && <span className="text-border mx-0.5">—</span>}
-              </li>
-            ),
+          {firstTime && (
+            <p className="text-sm text-muted leading-relaxed">
+              {t("setup.subtitle")}
+            </p>
           )}
-        </ol>
+        </div>
+        {firstTime && (
+          <ol className="flex items-center gap-2 text-[11px] font-bold">
+            {[t("setup.step1"), t("setup.step2"), t("setup.step3")].map(
+              (step, i) => (
+                <li key={i} className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-[18px] h-[18px] rounded-full bg-primary-soft text-primary grid place-items-center text-[10px] shrink-0">
+                    {i + 1}
+                  </span>
+                  <span className="text-muted truncate">{step}</span>
+                  {i < 2 && <span className="text-border mx-0.5">—</span>}
+                </li>
+              ),
+            )}
+          </ol>
+        )}
         {/* Quick select — the most common bundles in one tap */}
-        <div className="flex flex-wrap items-center gap-2 pt-3 border-t border-border">
+        <div
+          className={`flex flex-wrap items-center gap-2 ${
+            firstTime ? "pt-3 border-t border-border" : ""
+          }`}
+        >
           <span className="text-[11px] font-bold text-muted">
             {t("setup.quick")}:
           </span>
