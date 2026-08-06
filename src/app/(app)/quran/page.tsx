@@ -233,28 +233,29 @@ export default function QuranPage() {
   // Tapping the middle toggles the app chrome (bars, controls, nav).
   const [chrome, setChrome] = useState(false);
 
-  // Immersive reading: hide the phone's status bar while in the mushaf.
-  // Browsers only grant fullscreen on a user gesture, so the first touch
-  // enters it — ONCE per visit. The OS shows its own "swipe to exit"
-  // toast on every entry and we can't shorten it, so never re-enter:
-  // if the user swipes out of fullscreen, we respect that until they
-  // come back to the page. No-op where unsupported (iPhone Safari).
+  // Calm reading, no OS toast: the Fullscreen API makes Android show an
+  // uncontrollable "to exit full screen…" message on every entry, so we
+  // don't use it. Instead the status bar CAMOUFLAGES — its color follows
+  // the page background while the mushaf is open, so it blends into the
+  // reading surface instead of sitting on it as a dark band.
   useEffect(() => {
-    let entered = false;
-    const enter = () => {
-      if (entered || window.innerWidth >= 768) return; // phones, once only
-      const el = document.documentElement;
-      if (!document.fullscreenElement && el.requestFullscreen) {
-        entered = true;
-        el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
-      }
-    };
-    window.addEventListener("pointerup", enter);
+    const head = document.head;
+    let meta = head.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const prev = meta?.getAttribute("content") ?? null;
+    const bg =
+      getComputedStyle(document.documentElement)
+        .getPropertyValue("--color-background")
+        .trim() || "#f3eee3";
+    if (!meta) {
+      meta = document.createElement("meta");
+      meta.name = "theme-color";
+      head.appendChild(meta);
+    }
+    meta.setAttribute("content", bg);
+    const el = meta;
     return () => {
-      window.removeEventListener("pointerup", enter);
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
+      if (prev != null) el.setAttribute("content", prev);
+      else el.remove();
     };
   }, []);
 
