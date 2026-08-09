@@ -233,11 +233,63 @@ export default function QuranPage() {
   // Tapping the middle toggles the app chrome (bars, controls, nav).
   const [chrome, setChrome] = useState(false);
 
-  // Calm reading, no OS toast: the Fullscreen API makes Android show an
-  // uncontrollable "to exit full screen…" message on every entry, so we
-  // don't use it. Instead the status bar CAMOUFLAGES — its color follows
-  // the page background while the mushaf is open, so it blends into the
-  // reading surface instead of sitting on it as a dark band.
+  // Immersive reading, tied to the chrome: reading = fullscreen (status
+  // bar hidden); tapping the middle opens the bars AND exits fullscreen
+  // (the "normal screen"); after 2s without touching, the chrome closes
+  // and fullscreen returns on its own. Re-entry rides the transient
+  // user-activation window (~5s after the last touch), so the 2s timer
+  // still counts as gesture-driven for the browser.
+  const chromeRef = useRef(chrome);
+  chromeRef.current = chrome;
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth >= 768) return;
+    const enterFs = () => {
+      const el = document.documentElement;
+      if (!document.fullscreenElement && el.requestFullscreen) {
+        el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+      }
+    };
+    // any touch while reading (page turns, first open) keeps it immersive
+    const onTap = () => {
+      if (!chromeRef.current) enterFs();
+    };
+    window.addEventListener("pointerup", onTap);
+    return () => {
+      window.removeEventListener("pointerup", onTap);
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    };
+  }, []);
+
+  // Chrome open = normal screen; chrome closed = back to fullscreen.
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth >= 768) return;
+    if (chrome) {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      // auto-return: 2s after the last touch, close the bars again
+      let timer: ReturnType<typeof setTimeout>;
+      const arm = () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => setChrome(false), 2000);
+      };
+      arm();
+      const events = ["pointerdown", "pointerup", "scroll", "keydown"];
+      for (const ev of events) window.addEventListener(ev, arm);
+      return () => {
+        clearTimeout(timer);
+        for (const ev of events) window.removeEventListener(ev, arm);
+      };
+    }
+    // bars just closed — dive back into fullscreen
+    const el = document.documentElement;
+    if (!document.fullscreenElement && el.requestFullscreen) {
+      el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+    }
+  }, [chrome]);
+
   useEffect(() => {
     const bg =
       getComputedStyle(document.documentElement)
