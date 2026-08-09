@@ -262,32 +262,25 @@ export default function QuranPage() {
     };
   }, []);
 
-  // Chrome open = normal screen; chrome closed = back to fullscreen.
+  // The bars overlay WITHIN fullscreen — never exit/re-enter for them.
+  // Android shows its "to exit full screen" toast on every entry, so the
+  // only way to see it once per visit is to stay in fullscreen the whole
+  // time. Tap: bars appear on top; 2s idle: they slide away again.
   useEffect(() => {
     if (typeof window === "undefined" || window.innerWidth >= 768) return;
-    if (chrome) {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
-      // auto-return: 2s after the last touch, close the bars again
-      let timer: ReturnType<typeof setTimeout>;
-      const arm = () => {
-        clearTimeout(timer);
-        timer = setTimeout(() => setChrome(false), 2000);
-      };
-      arm();
-      const events = ["pointerdown", "pointerup", "scroll", "keydown"];
-      for (const ev of events) window.addEventListener(ev, arm);
-      return () => {
-        clearTimeout(timer);
-        for (const ev of events) window.removeEventListener(ev, arm);
-      };
-    }
-    // bars just closed — dive back into fullscreen
-    const el = document.documentElement;
-    if (!document.fullscreenElement && el.requestFullscreen) {
-      el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
-    }
+    if (!chrome) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const arm = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => setChrome(false), 2000);
+    };
+    arm();
+    const events = ["pointerdown", "pointerup", "scroll", "keydown"];
+    for (const ev of events) window.addEventListener(ev, arm);
+    return () => {
+      clearTimeout(timer);
+      for (const ev of events) window.removeEventListener(ev, arm);
+    };
   }, [chrome]);
 
   useEffect(() => {
