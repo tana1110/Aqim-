@@ -28,7 +28,7 @@ export async function POST(request: Request) {
         expiresAt: new Date(Date.now() + 3600_000),
       },
     });
-    const link = `https://aqim-eight.vercel.app/account?reset=${token}`;
+    const link = `https://aqimalsalat.app/account?reset=${token}`;
     await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {

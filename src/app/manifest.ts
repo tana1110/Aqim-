@@ -25,7 +25,27 @@ export default function manifest(): MetadataRoute.Manifest {
     icons: [
       { src: "/icon.svg", sizes: "any", type: "image/svg+xml" },
       { src: "/apple-icon", sizes: "180x180", type: "image/png" },
+      {
+        src: "/icon-192",
+        sizes: "192x192",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icon-512",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "any",
+      },
+      {
+        src: "/icon-512-maskable",
+        sizes: "512x512",
+        type: "image/png",
+        purpose: "maskable",
+      },
     ],
+    // Helps Play Store / PWABuilder categorize the app listing.
+    categories: ["lifestyle", "education", "books"],
     // Long-press the app icon → jump straight to a section (OS shortcuts).
     shortcuts: [
       {

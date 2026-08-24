@@ -14,6 +14,6 @@ jobs:
     steps:
       - name: Ping notify endpoint
         run: |
-          curl -fsS -X POST "https://aqim-eight.vercel.app/api/cron/notify" \
+          curl -fsS -X POST "https://aqimalsalat.app/api/cron/notify" \
             -H "x-cron-key: ${{ secrets.CRON_KEY }}" \
             -m 60
