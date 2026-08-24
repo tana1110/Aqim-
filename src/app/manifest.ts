@@ -11,11 +11,21 @@ export default function manifest(): MetadataRoute.Manifest {
     // Installed app opens straight into the app (WhatsApp-style): first launch
     // shows the one-time Welcome onboarding, later launches go to the dashboard.
     // The marketing landing page at "/" is for browser visitors.
+    // A stable identity for this installed app, independent of start_url —
+    // recommended so updating start_url later doesn't register as a new app.
+    id: "/home",
     start_url: "/home",
+    // Every route the manifest/service worker are allowed to control.
+    scope: "/",
     // Standalone, NOT "fullscreen": fullscreen makes Android paint an
     // uncolorable black band in the camera-cutout area on every screen.
     // The status bar instead blends in via theme_color = background.
     display: "standalone",
+    display_override: ["standalone"],
+    // Mobile-first, but not orientation-locked — the app also has a real
+    // desktop/tablet layout.
+    orientation: "any",
+    prefer_related_applications: false,
     background_color: "#f3eee3",
     // Brand status bar everywhere — EXCEPT the Quran page, which swaps
     // the theme-color meta at runtime so the bar blends into the mushaf.
