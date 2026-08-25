@@ -2,8 +2,20 @@ import type { MetadataRoute } from "next";
 
 // Web app manifest — lets the app be added to a phone home screen and launch
 // full-screen (standalone) with brand theming.
-export default function manifest(): MetadataRoute.Manifest {
+//
+// Next's MetadataRoute.Manifest type doesn't model the (optional, older)
+// "serviceworker" manifest member — but PWA analyzers like PWABuilder
+// specifically look for it as a fast, static "yes, this PWA has a service
+// worker" signal, separate from actually crawling the page and waiting for
+// the real runtime registration (done in ReminderScheduler) to complete.
+// The extra field passes straight through Next's JSON serialization.
+type ManifestWithSW = MetadataRoute.Manifest & {
+  serviceworker?: { src: string; scope: string };
+};
+
+export default function manifest(): ManifestWithSW {
   return {
+    serviceworker: { src: "/sw.js", scope: "/" },
     name: "أقِم الصلاة — Aqim Al-Salah",
     short_name: "أقِم",
     description:
