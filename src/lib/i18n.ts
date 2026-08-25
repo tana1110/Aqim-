@@ -149,6 +149,12 @@ const ar: Dict = {
   // prayer reminder
   "reminder.title": "تذكير الصلاة",
   "reminder.hint": "إشعار قبل كل صلاة بخمس دقائق.",
+  "settings.adhan": "الأذان",
+  "settings.adhanHint": "يُشغَّل صوت الأذان عند دخول وقت الصلاة، بينما التطبيق مفتوح.",
+  "settings.adhanVoice": "صوت المؤذن",
+  "settings.adhanTest": "تجربة",
+  "adhan.playing": "الأذان الآن",
+  "adhan.stop": "إيقاف",
   "reminder.explain":
     "نستخدم موقعك لحساب مواقيت الصلاة على جهازك فقط — لا يُرسل موقعك إلى أي خادم.",
   "reminder.method": "طريقة حساب المواقيت",
@@ -623,6 +629,12 @@ const en: Dict = {
 
   "reminder.title": "Prayer reminder",
   "reminder.hint": "A notification 5 minutes before each prayer.",
+  "settings.adhan": "Adhan",
+  "settings.adhanHint": "Plays the call to prayer when its time comes, while the app is open.",
+  "settings.adhanVoice": "Muezzin voice",
+  "settings.adhanTest": "Preview",
+  "adhan.playing": "Adhan now",
+  "adhan.stop": "Stop",
   "reminder.explain":
     "Your location is used only to compute prayer times on your device — it is never sent to any server.",
   "reminder.method": "Calculation method",

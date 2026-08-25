@@ -9,6 +9,7 @@ import { Logo } from "@/components/Logo";
 import { SplashScreen } from "@/components/SplashScreen";
 import { Welcome } from "@/components/Welcome";
 import { ReminderScheduler } from "@/components/ReminderScheduler";
+import { AdhanPlayer } from "@/components/AdhanPlayer";
 import { SyncClient } from "@/components/SyncClient";
 import { BackExitGuard } from "@/components/BackExitGuard";
 
@@ -49,6 +50,7 @@ export default function AppLayout({
       <SplashScreen />
       <Welcome />
       <ReminderScheduler />
+      <AdhanPlayer />
       <SyncClient />
       <BackExitGuard />
       <NavDrawer open={navOpen} onClose={() => setNavOpen(false)} />

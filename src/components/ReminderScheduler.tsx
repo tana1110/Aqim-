@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { computeTimes, loadReminderConfig } from "@/lib/reminder";
 import { loadWird, isDoneToday } from "@/lib/wird";
+import { loadAdhanPref, adhanVoiceUrl } from "@/lib/adhan";
 import { translate, type Lang } from "@/lib/i18n";
 
 const LEAD_MS = 5 * 60 * 1000; // notify 5 minutes before the prayer
@@ -47,6 +48,19 @@ export function ReminderScheduler() {
       try {
         new Notification(title, { body, icon: "/icon.svg" });
       } catch {}
+    }
+
+    // The azan itself — a real recorded muezzin, played through the shared
+    // AdhanPlayer banner (which owns the stop control) rather than here.
+    function playAdhan(prayerKey: string, voiceKey: string) {
+      window.dispatchEvent(
+        new CustomEvent("aqim-azan-play", {
+          detail: {
+            url: adhanVoiceUrl(voiceKey),
+            label: translate(lang(), `prayer.${prayerKey}`),
+          },
+        }),
+      );
     }
 
     async function showWird() {
@@ -142,13 +156,16 @@ export function ReminderScheduler() {
       scheduleWird();
       void syncPush();
       const cfg = loadReminderConfig();
-      if (
-        !cfg.enabled ||
-        cfg.lat == null ||
-        cfg.lng == null ||
-        typeof Notification === "undefined" ||
-        Notification.permission !== "granted"
-      ) {
+      const adhan = loadAdhanPref();
+      // Notifications and the azan are independent preferences — someone
+      // may want the audio azan without ever granting push permission, or
+      // vice versa. Both still need a location to know real prayer times.
+      const notifReady =
+        cfg.enabled &&
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted";
+
+      if ((!notifReady && !adhan.enabled) || cfg.lat == null || cfg.lng == null) {
         return;
       }
 
@@ -159,9 +176,17 @@ export function ReminderScheduler() {
         d.setDate(d.getDate() + dayOffset);
         const times = computeTimes(cfg.lat, cfg.lng, cfg.method, d);
         for (const [key, time] of Object.entries(times)) {
-          const at = time.getTime() - LEAD_MS;
-          if (at > now) {
-            timers.push(setTimeout(() => show(key), at - now));
+          if (notifReady) {
+            const at = time.getTime() - LEAD_MS;
+            if (at > now) timers.push(setTimeout(() => show(key), at - now));
+          }
+          if (adhan.enabled) {
+            const at = time.getTime();
+            if (at > now) {
+              timers.push(
+                setTimeout(() => playAdhan(key, adhan.voice), at - now),
+              );
+            }
           }
         }
       }
@@ -174,10 +199,12 @@ export function ReminderScheduler() {
     schedule();
     window.addEventListener("aqim-reminder-changed", schedule);
     window.addEventListener("aqim-wird-changed", schedule);
+    window.addEventListener("aqim-adhan-changed", schedule);
     return () => {
       clearAll();
       window.removeEventListener("aqim-reminder-changed", schedule);
       window.removeEventListener("aqim-wird-changed", schedule);
+      window.removeEventListener("aqim-adhan-changed", schedule);
     };
   }, []);
 

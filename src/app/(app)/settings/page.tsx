@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, MapPin } from "lucide-react";
+import { Bell, MapPin, Volume2 } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageLoader } from "@/components/Brand";
@@ -15,6 +15,13 @@ import {
   type ReminderConfig,
 } from "@/lib/reminder";
 import { applyTheme, loadTheme, type ThemePref } from "@/lib/theme";
+import {
+  ADHAN_VOICES,
+  adhanVoiceUrl,
+  loadAdhanPref,
+  saveAdhanPref,
+  type AdhanPref,
+} from "@/lib/adhan";
 
 // Font-size steps (root scale). Constrained so every screen stays intact;
 // the slider snaps to exactly these — never an arbitrary in-between value.
@@ -30,6 +37,10 @@ export default function SettingsPage() {
   const [fontScale, setFontScale] = useState("1");
   const [passLen, setPassLen] = useState("medium");
   const [theme, setTheme] = useState<ThemePref>("dark");
+  const [adhanPref, setAdhanPref] = useState<AdhanPref>({
+    enabled: false,
+    voice: ADHAN_VOICES[0].key,
+  });
   const [cfg, setCfg] = useState<ReminderConfig | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // Once a location is confirmed, the pickers hide behind a "change" link.
@@ -41,8 +52,33 @@ export default function SettingsPage() {
       setPassLen(localStorage.getItem("aqim-passage-len") || "medium");
     } catch {}
     setTheme(loadTheme());
+    setAdhanPref(loadAdhanPref());
     setCfg(loadReminderConfig());
   }, []);
+
+  function toggleAdhan() {
+    const next = { ...adhanPref, enabled: !adhanPref.enabled };
+    setAdhanPref(next);
+    saveAdhanPref(next);
+  }
+
+  function setAdhanVoice(voice: string) {
+    const next = { ...adhanPref, voice };
+    setAdhanPref(next);
+    saveAdhanPref(next);
+  }
+
+  function testAdhan() {
+    const v = ADHAN_VOICES.find((x) => x.key === adhanPref.voice);
+    window.dispatchEvent(
+      new CustomEvent("aqim-azan-play", {
+        detail: {
+          url: adhanVoiceUrl(adhanPref.voice),
+          label: v ? (lang === "ar" ? v.ar : v.en) : "",
+        },
+      }),
+    );
+  }
 
   function applyFont(v: string) {
     setFontScale(v);
@@ -306,10 +342,10 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {cfg.enabled && (
+          {(cfg.enabled || adhanPref.enabled) && (
             <>
-              {/* Location — once set, the pickers fold away behind
-                  a small "change" link */}
+              {/* Location — needed by both notifications and the azan;
+                  once set, the pickers fold away behind a "change" link */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between gap-4">
                   <span className="text-sm font-medium flex items-center gap-1.5">
@@ -385,6 +421,67 @@ export default function SettingsPage() {
             <p className="text-xs text-accent bg-accent-soft rounded-lg p-2.5">
               {notice}
             </p>
+          )}
+        </div>
+
+        {/* The azan — a real recorded muezzin, played while the app is
+            open (a background service worker can't autoplay minutes of
+            audio, so this is independent of the push-notification toggle
+            above). */}
+        <div className="p-4 space-y-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-sm font-medium flex items-center gap-1.5">
+                <Volume2 size={15} className="text-primary" />
+                {t("settings.adhan")}
+              </div>
+              <div className="text-xs text-muted mt-0.5">
+                {t("settings.adhanHint")}
+              </div>
+            </div>
+            <button
+              onClick={toggleAdhan}
+              role="switch"
+              aria-checked={adhanPref.enabled}
+              className={`relative w-12 h-7 rounded-full transition-colors shrink-0 ${
+                adhanPref.enabled
+                  ? "bg-primary"
+                  : "bg-surface-2 border border-border"
+              }`}
+            >
+              <span
+                className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow-sm transition-all ${
+                  adhanPref.enabled ? "start-6" : "start-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          {adhanPref.enabled && (
+            <>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm font-medium">
+                  {t("settings.adhanVoice")}
+                </span>
+                <select
+                  value={adhanPref.voice}
+                  onChange={(e) => setAdhanVoice(e.target.value)}
+                  className="rounded-xl border border-border bg-surface px-2 py-1.5 text-xs max-w-[55%]"
+                >
+                  {ADHAN_VOICES.map((v) => (
+                    <option key={v.key} value={v.key}>
+                      {lang === "ar" ? v.ar : v.en}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={testAdhan}
+                className="btn-primary px-4 py-1.5 text-xs"
+              >
+                {t("settings.adhanTest")}
+              </button>
+            </>
           )}
         </div>
       </Section>
