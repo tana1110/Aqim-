@@ -4,13 +4,20 @@ import { computeTimes, type MethodKey } from "@/lib/reminder";
 import { translate, type Lang } from "@/lib/i18n";
 import { streakStatus } from "@/lib/streak";
 
-// Called every few minutes by an external scheduler. Sends web-push
-// notifications whose local time has arrived: prayer reminders (5 min
-// before), the daily wird time, and morning/evening adhkar nudges.
+// Called periodically by an external scheduler (GitHub Actions, every
+// */5 min on paper). Sends web-push notifications whose local time has
+// come due: prayer reminders, the daily wird time, and adhkar nudges.
 // Times are computed here from each subscription's stored coordinates.
-
-const LEAD_MS = 5 * 60 * 1000;
-const WINDOW_MS = 10 * 60 * 1000; // send if due within the last 10 minutes
+//
+// GOTCHA (confirmed from real run logs): GitHub silently throttles a
+// */5 schedule — actual firings land anywhere from ~10 to ~70+ minutes
+// apart, not every 5. A short due-window means most slots land BETWEEN
+// two polls and are simply never sent — this was the actual cause of
+// "notifications don't work" (the pipeline itself was always fine: send
+// attempts that did land inside the old 10-min window succeeded). The
+// window must be wider than the worst realistic gap between polls.
+const LEAD_MS = 30 * 60 * 1000; // open the window 30 min before the prayer
+const WINDOW_MS = 120 * 60 * 1000; // stay "due" for 2h — survives any gap
 const ADHKAR_MORNING = "07:00";
 const ADHKAR_EVENING = "17:30";
 
