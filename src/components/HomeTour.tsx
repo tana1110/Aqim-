@@ -40,6 +40,19 @@ export function HomeTour() {
     return () => window.removeEventListener("aqim-onboarded", maybeStart);
   }, []);
 
+  // Find the first MATCH THAT IS ACTUALLY VISIBLE for a selector. Some
+  // targets exist twice in the DOM (a mobile version and a desktop version
+  // of the same nav, one hidden via CSS at any given width) — picking by
+  // DOM order instead of visibility previously locked onto the hidden one,
+  // whose zero-size rect sent the spotlight to a broken (0,0) position.
+  function visibleMatch(sel: string): Element | null {
+    for (const el of document.querySelectorAll(sel)) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) return el;
+    }
+    return null;
+  }
+
   // Position the spotlight on the current step's element.
   useEffect(() => {
     if (step < 0) return;
@@ -48,7 +61,7 @@ export function HomeTour() {
       return;
     }
     const s = STEPS[step];
-    const el = document.querySelector(s.sel);
+    const el = visibleMatch(s.sel);
     if (!el) {
       setStep(step + 1);
       return;
@@ -56,7 +69,13 @@ export function HomeTour() {
     setRect(null);
     if (s.fixed) window.scrollTo({ top: 0, behavior: "smooth" });
     else el.scrollIntoView({ block: "center", behavior: "smooth" });
-    const id = setTimeout(() => setRect(el.getBoundingClientRect()), 430);
+    const id = setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      // The layout may have shifted (resize, content still loading) during
+      // the wait — re-check rather than trust the stale element reference.
+      if (r.width > 0 && r.height > 0) setRect(r);
+      else setStep(step + 1);
+    }, 430);
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
@@ -70,6 +89,10 @@ export function HomeTour() {
   }
 
   if (step < 0 || step >= STEPS.length || !rect) return null;
+  // Belt-and-suspenders: never render a spotlight/tooltip from a degenerate
+  // rect (e.g. a mid-transition resize) — it would clip against the screen
+  // edge instead of framing anything real.
+  if (rect.width <= 0 || rect.height <= 0) return null;
 
   const pad = 8;
   const last = step === STEPS.length - 1;
@@ -95,8 +118,18 @@ export function HomeTour() {
         className="fixed inset-x-4 max-w-md mx-auto animate-rise"
         style={
           below
-            ? { top: Math.min(rect.bottom + pad + 12, window.innerHeight - 220) }
-            : { bottom: window.innerHeight - rect.top + pad + 12 }
+            ? {
+                top: Math.max(
+                  64,
+                  Math.min(rect.bottom + pad + 12, window.innerHeight - 220),
+                ),
+              }
+            : {
+                bottom: Math.max(
+                  12,
+                  window.innerHeight - rect.top + pad + 12,
+                ),
+              }
         }
       >
         <div className="rounded-3xl bg-surface shadow-lg p-5 space-y-3">

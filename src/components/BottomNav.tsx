@@ -104,7 +104,7 @@ export function SideNav() {
   );
   return (
     <aside className="hidden md:block w-56 shrink-0">
-      <nav className="sticky top-20 space-y-1">
+      <nav data-tour="nav" className="sticky top-20 space-y-1">
         {sections.map(({ href, key, Icon }) => {
           const active = pathname === href;
           return (
