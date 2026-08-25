@@ -46,9 +46,13 @@
   --radius-btn: 1rem; /* 16px */
 }
 
-/* --- Dark mode: deep muted navy, same desaturated relationships --- */
+/* --- Dark mode: deep muted navy, same desaturated relationships ---
+   Applies when the SYSTEM prefers dark (unless the user explicitly chose
+   "light"), AND unconditionally when the user explicitly chose "dark" —
+   see src/lib/theme.ts (data-theme attribute on <html>). Default appearance
+   for anyone who hasn't chosen is "dark" (set pre-paint in layout.tsx). */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --color-background: #1c2830;
     --color-text-primary: #e6eae9;
     --color-primary: #6e93a8;
@@ -66,6 +70,23 @@
     --color-accent-soft: #322b1e;
   }
 }
+:root[data-theme="dark"] {
+  --color-background: #1c2830;
+  --color-text-primary: #e6eae9;
+  --color-primary: #6e93a8;
+  --color-primary-hover: #7fa3b7;
+  --color-secondary: #7fa894;
+  --color-accent: #c9a671;
+  --color-border: #33454f;
+
+  --color-foreground: #e6eae9;
+  --color-surface: #22303a;
+  --color-surface-2: #2a3a45;
+  --color-muted: #93a2ac;
+  --color-primary-soft: #253742;
+  --color-secondary-soft: #24342e;
+  --color-accent-soft: #322b1e;
+}
 
 :root {
   --shadow-soft: 0 1px 2px rgba(38, 51, 61, 0.06),
@@ -74,14 +95,18 @@
   --chart-line: #b9772c;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --chart-line: #d4ac5c;
   }
 }
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3);
   }
+}
+:root[data-theme="dark"] {
+  --chart-line: #d4ac5c;
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 /* User font-size setting: one root scale that every rem-based size (all

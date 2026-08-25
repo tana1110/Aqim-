@@ -2,12 +2,14 @@
 
 import { useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookOpenText, UserRound } from "lucide-react";
+import { Check, BookOpenText, UserRound } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { BrandOverlay } from "@/components/Brand";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { useLang } from "@/components/LanguageProvider";
 import { cleanAyah } from "@/lib/quranDisplay";
+import type { Lang } from "@/lib/i18n";
+import { applyTheme, type ThemePref } from "@/lib/theme";
 
 const FLAG = "aqim-onboarded";
 
@@ -15,10 +17,13 @@ const FLAG = "aqim-onboarded";
 // native app's intro. Ends at the memorization picker. Later opens go straight
 // to the dashboard and never see this again.
 export function Welcome() {
-  const { t, lang } = useLang();
+  const { t, lang, setLang } = useLang();
   const router = useRouter();
   const [visible, setVisible] = useState(false);
   const [ready, setReady] = useState(false);
+  // Two quick choices come before the tour itself: language, then
+  // appearance (dark pre-selected — the app's default look).
+  const [phase, setPhase] = useState<"lang" | "theme" | "tour">("lang");
   const [step, setStep] = useState(0);
   const [leaving, setLeaving] = useState(false);
   const [ayah, setAyah] = useState<{
@@ -52,6 +57,27 @@ export function Welcome() {
 
   // Hand-off transition after finishing/skipping — same brand overlay as boot.
   if (leaving) return <BrandOverlay />;
+
+  // Step 1: language — asked before anything else, in both scripts, so an
+  // English-only reader can read it too. Neither phase waits on `ready`
+  // (the ayah fetch) since neither needs it.
+  if (phase === "lang") {
+    return (
+      <LangStep
+        onPick={(l) => {
+          setLang(l);
+          applyTheme("dark"); // the default the next screen previews live
+          setPhase("theme");
+        }}
+      />
+    );
+  }
+
+  // Step 2: appearance — dark pre-selected (the app default); tapping an
+  // option previews it immediately so the choice is never blind.
+  if (phase === "theme") {
+    return <ThemeStep t={t} onContinue={() => setPhase("tour")} />;
+  }
 
   // Hold the (already-covered) background until the first slide is complete,
   // so all its elements animate in together.
@@ -183,6 +209,92 @@ export function Welcome() {
           {last ? t("welcome.startSetup") : t("welcome.next")}
         </button>
       </div>
+    </div>
+  );
+}
+
+// Language picker — the very first thing anyone sees. Deliberately NOT
+// translated via t(): the reader hasn't chosen a language yet, so both
+// labels are shown in their own true script so either reader recognizes
+// theirs immediately.
+function LangStep({ onPick }: { onPick: (l: Lang) => void }) {
+  return (
+    <div className="fixed inset-0 z-40 bg-background flex flex-col items-center justify-center gap-8 px-8 text-center animate-rise">
+      <Logo variant="icon" size={64} />
+      <div className="space-y-1.5">
+        <p className="text-2xl font-bold text-primary" dir="rtl">
+          اختر لغتك
+        </p>
+        <p className="text-2xl font-bold text-primary" dir="ltr">
+          Choose your language
+        </p>
+      </div>
+      <div className="w-full max-w-sm space-y-3">
+        <button
+          onClick={() => onPick("ar")}
+          dir="rtl"
+          className="btn-primary w-full py-4 text-xl font-bold"
+        >
+          العربية
+        </button>
+        <button
+          onClick={() => onPick("en")}
+          dir="ltr"
+          className="btn-primary w-full py-4 text-xl font-bold"
+        >
+          English
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Appearance picker — dark is pre-selected (the app's default look); tapping
+// any option applies it immediately so the screen itself previews the choice.
+function ThemeStep({
+  t,
+  onContinue,
+}: {
+  t: (key: string) => string;
+  onContinue: () => void;
+}) {
+  const [choice, setChoice] = useState<ThemePref>("dark");
+  const OPTIONS: ThemePref[] = ["dark", "light", "system"];
+
+  return (
+    <div className="fixed inset-0 z-40 bg-background flex flex-col items-center justify-center gap-6 px-8 text-center animate-rise">
+      <Logo variant="icon" size={56} />
+      <h1 className="text-2xl font-bold text-primary">{t("theme.title")}</h1>
+      <div className="w-full max-w-sm space-y-3">
+        {OPTIONS.map((opt) => {
+          const on = choice === opt;
+          return (
+            <button
+              key={opt}
+              onClick={() => {
+                setChoice(opt);
+                applyTheme(opt);
+              }}
+              aria-pressed={on}
+              className={`w-full flex items-center justify-between rounded-2xl border-2 px-5 py-4 text-lg font-bold transition ${
+                on
+                  ? "border-primary bg-primary-soft text-primary"
+                  : "border-border text-foreground"
+              }`}
+            >
+              {t(`theme.${opt}`)}
+              {on && <Check size={20} />}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-xs text-muted">{t("theme.hint")}</p>
+      <button
+        onClick={onContinue}
+        className="btn-cta w-full max-w-sm py-4 text-lg"
+      >
+        {t("common.continue")}
+      </button>
     </div>
   );
 }

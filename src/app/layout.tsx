@@ -75,7 +75,9 @@ export default function RootLayout({
         <style
           dangerouslySetInnerHTML={{
             __html:
-              "html{background:#f3eee3}@media (prefers-color-scheme:dark){html{background:#1c2830}}",
+              "html{background:#f3eee3}" +
+              "@media (prefers-color-scheme:dark){html:not([data-theme=light]){background:#1c2830}}" +
+              "html[data-theme=dark]{background:#1c2830}",
           }}
         />
         {/* Apply the saved language before paint to avoid a flash of the wrong
@@ -86,6 +88,9 @@ export default function RootLayout({
               "try{var l=localStorage.getItem('aqim-lang');if(l==='en'){document.documentElement.lang='en';document.documentElement.dir='ltr';}}catch(e){}" +
               // Apply the saved font scale before paint.
               "try{var f=localStorage.getItem('aqim-font-scale');if(f){document.documentElement.style.setProperty('--font-scale',f);}}catch(e){}" +
+              // Appearance: "dark" is the app-wide default until the user
+              // explicitly picks "light" or "system" (Welcome or Settings).
+              "try{var th=localStorage.getItem('aqim-theme')||'dark';if(th!=='system'){document.documentElement.setAttribute('data-theme',th);}}catch(e){}" +
               // First run: raise a paint-blocking cover BEFORE anything renders,
               // so the Welcome appears without the home page flashing first.
               "try{if(!localStorage.getItem('aqim-onboarded')){document.documentElement.setAttribute('data-welcome','1');}}catch(e){}",

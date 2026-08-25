@@ -14,6 +14,7 @@ import {
   type MethodKey,
   type ReminderConfig,
 } from "@/lib/reminder";
+import { applyTheme, loadTheme, type ThemePref } from "@/lib/theme";
 
 // Font-size steps (root scale). Constrained so every screen stays intact;
 // the slider snaps to exactly these — never an arbitrary in-between value.
@@ -28,6 +29,7 @@ export default function SettingsPage() {
   const { t, lang } = useLang();
   const [fontScale, setFontScale] = useState("1");
   const [passLen, setPassLen] = useState("medium");
+  const [theme, setTheme] = useState<ThemePref>("dark");
   const [cfg, setCfg] = useState<ReminderConfig | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // Once a location is confirmed, the pickers hide behind a "change" link.
@@ -38,6 +40,7 @@ export default function SettingsPage() {
       setFontScale(localStorage.getItem("aqim-font-scale") || "1");
       setPassLen(localStorage.getItem("aqim-passage-len") || "medium");
     } catch {}
+    setTheme(loadTheme());
     setCfg(loadReminderConfig());
   }, []);
 
@@ -159,6 +162,32 @@ export default function SettingsPage() {
         <Row label={t("settings.language")}>
           <LanguageToggle />
         </Row>
+        <div className="p-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm font-medium">
+              {t("settings.appearance")}
+            </span>
+            <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
+              {(["dark", "light", "system"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => {
+                    setTheme(v);
+                    applyTheme(v);
+                  }}
+                  aria-pressed={theme === v}
+                  className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap ${
+                    theme === v
+                      ? "bg-primary text-white"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {t(`theme.${v}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </Section>
 
       {/* ---- Reading & display ---- */}
