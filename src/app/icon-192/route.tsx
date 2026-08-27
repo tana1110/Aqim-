@@ -21,6 +21,6 @@ export async function GET() {
         <SujoodMark size={192} />
       </div>
     ),
-    { ...size },
+    { ...size, headers: { "Access-Control-Allow-Origin": "*" } },
   );
 }

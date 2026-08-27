@@ -4,17 +4,14 @@ import { NextResponse } from "next/server";
 // PWABuilder/Bubblewrap as a Trusted Web Activity) are owned by the same
 // party, so Android opens the app full-screen with no address bar.
 //
-// PLACEHOLDER: fill `package_name` and `sha256_cert_fingerprints` once the
-// Android package is generated (PWABuilder shows the fingerprint, or it's
-// in Play Console → Setup → App integrity after the first upload).
+// These values are public by design (this file is meant to be fetched by
+// Android itself) — not secrets, so no need to route them through env vars.
+// Fingerprint is the Play Console "App signing key certificate" SHA-256.
+const packageName = "app.aqimalsalat";
+const fingerprint =
+  "63:51:54:06:17:CF:73:53:8E:2C:0E:88:DA:82:10:25:54:56:3E:04:0A:35:B0:F9:59:38:2C:9F:DA:02:2C:C7";
+
 export async function GET() {
-  const packageName = process.env.ANDROID_PACKAGE_NAME;
-  const fingerprint = process.env.ANDROID_SHA256_FINGERPRINT;
-
-  if (!packageName || !fingerprint) {
-    return NextResponse.json([]);
-  }
-
   return NextResponse.json([
     {
       relation: [
