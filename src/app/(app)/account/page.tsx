@@ -294,7 +294,7 @@ export default function AccountPage() {
                     autoComplete="new-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 pe-10 text-sm text-foreground"
+                    className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 pl-10 text-sm text-foreground"
                     dir="ltr"
                   />
                   <button
@@ -303,7 +303,7 @@ export default function AccountPage() {
                     aria-label={t(
                       showPassword ? "account.hidePassword" : "account.showPassword",
                     )}
-                    className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -371,7 +371,7 @@ export default function AccountPage() {
                   autoComplete={tab === "login" ? "current-password" : "new-password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 pe-10 text-sm text-foreground"
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 pl-10 text-sm text-foreground"
                   dir="ltr"
                 />
                 <button
@@ -380,7 +380,7 @@ export default function AccountPage() {
                   aria-label={t(
                     showPassword ? "account.hidePassword" : "account.showPassword",
                   )}
-                  className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted"
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted"
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
