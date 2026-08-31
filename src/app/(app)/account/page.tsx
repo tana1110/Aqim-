@@ -26,7 +26,17 @@ declare global {
 export default function AccountPage() {
   const { t, lang } = useLang();
   const router = useRouter();
-  const [account, setAccount] = useState<{ email: string | null } | null>(null);
+  const [account, setAccount] = useState<{
+    email: string | null;
+    name: string | null;
+  } | null>(null);
+  const [dash, setDash] = useState<{
+    fullSurahs: number;
+    fullJuz: number;
+    totalAyat: number;
+    streak: number;
+    reviews: number;
+  } | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -56,8 +66,7 @@ export default function AccountPage() {
     } catch {}
   }, []);
 
-  async function requestReset(e: React.FormEvent) {
-    e.preventDefault();
+  async function doRequestReset(targetEmail: string) {
     setBusy(true);
     setError(null);
     setNotice(null);
@@ -65,7 +74,7 @@ export default function AccountPage() {
       const r = await fetch("/api/auth/reset-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: targetEmail }),
       });
       if (r.status === 501) {
         setNotice(t("account.resetUnavailable"));
@@ -77,6 +86,11 @@ export default function AccountPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function requestReset(e: React.FormEvent) {
+    e.preventDefault();
+    await doRequestReset(email);
   }
 
   async function confirmReset(e: React.FormEvent) {
@@ -98,7 +112,7 @@ export default function AccountPage() {
       }
       clearPageCaches();
       router.refresh();
-      setAccount({ email: d.email ?? null });
+      await refreshAccount();
       setFlow("auth");
       setNotice(t("account.resetDone"));
     } catch {
@@ -111,12 +125,87 @@ export default function AccountPage() {
 
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-  useEffect(() => {
-    fetch("/api/auth/me")
+  function refreshAccount() {
+    return fetch("/api/auth/me")
       .then((r) => r.json())
-      .then((d) => setAccount(d.account))
-      .finally(() => setLoaded(true));
+      .then((d) => setAccount(d.account));
+  }
+
+  useEffect(() => {
+    refreshAccount().finally(() => setLoaded(true));
   }, []);
+
+  // Dashboard stats — same merged-coverage math as the History page, plus
+  // streak and total-reviews, so a signed-in user sees their whole journey.
+  useEffect(() => {
+    if (!account) {
+      setDash(null);
+      return;
+    }
+    Promise.all([
+      fetch("/api/memorization").then((r) => r.json()),
+      fetch("/api/surahs").then((r) => r.json()),
+      fetch("/api/juz").then((r) => r.json()),
+      fetch(`/api/streak?tz=${-new Date().getTimezoneOffset()}`).then((r) =>
+        r.json(),
+      ),
+      fetch("/api/history/stats").then((r) => r.json()),
+    ])
+      .then(([m, sur, j, streak, stats]) => {
+        const memo: { surahNumber: number; fromAyah: number; toAyah: number }[] =
+          m.memorization ?? [];
+        const surahMap = new Map(
+          (sur.surahs ?? []).map((x: { number: number; ayahCount: number }) => [
+            x.number,
+            x,
+          ]),
+        );
+        const bySurah = new Map<number, [number, number][]>();
+        for (const r of memo) {
+          const l = bySurah.get(r.surahNumber) ?? [];
+          l.push([r.fromAyah, r.toAyah]);
+          bySurah.set(r.surahNumber, l);
+        }
+        let totalAyat = 0;
+        let fullSurahs = 0;
+        const merged = new Map<number, [number, number][]>();
+        for (const [n, list] of bySurah) {
+          list.sort((a, b) => a[0] - b[0]);
+          const out: [number, number][] = [];
+          for (const iv of list) {
+            const last = out[out.length - 1];
+            if (last && iv[0] <= last[1] + 1) last[1] = Math.max(last[1], iv[1]);
+            else out.push([...iv]);
+          }
+          merged.set(n, out);
+          for (const [a, b] of out) totalAyat += b - a + 1;
+          const count = (surahMap.get(n) as { ayahCount?: number } | undefined)
+            ?.ayahCount;
+          if (count && out.length === 1 && out[0][0] === 1 && out[0][1] >= count)
+            fullSurahs++;
+        }
+        const covered = (n: number, a: number, b: number) =>
+          (merged.get(n) ?? []).some(([x, y]) => x <= a && b <= y);
+        let fullJuz = 0;
+        for (const jz of j.juz ?? []) {
+          if (
+            jz.segments.length > 0 &&
+            jz.segments.every((seg: { surahNumber: number; fromAyah: number; toAyah: number }) =>
+              covered(seg.surahNumber, seg.fromAyah, seg.toAyah),
+            )
+          )
+            fullJuz++;
+        }
+        setDash({
+          fullSurahs,
+          fullJuz,
+          totalAyat,
+          streak: streak.count ?? 0,
+          reviews: stats.allTime?.totalRecitations ?? 0,
+        });
+      })
+      .catch(() => setDash(null));
+  }, [account]);
 
   // Google Identity Services button (only when configured + signed out).
   useEffect(() => {
@@ -139,7 +228,7 @@ export default function AccountPage() {
             if (!r.ok) throw new Error(d.error);
             clearPageCaches(); // the visible data belongs to the account now
             router.refresh();
-            setAccount({ email: d.email ?? null });
+            await refreshAccount();
             if (next) router.push(next);
           } catch {
             setError(t("account.err.generic"));
@@ -186,7 +275,7 @@ export default function AccountPage() {
       }
       clearPageCaches(); // the visible data belongs to the account now
       router.refresh();
-      setAccount({ email: d.email ?? email });
+      await refreshAccount();
       if (next) router.push(next);
     } catch {
       setError(t("account.err.generic"));
@@ -219,18 +308,50 @@ export default function AccountPage() {
       </div>
 
       {account ? (
-        <div className="card p-5 space-y-4">
-          <div className="flex items-center gap-3">
-            <span className="w-11 h-11 rounded-full bg-primary-soft text-primary grid place-items-center">
-              <UserRound size={20} />
-            </span>
-            <div className="min-w-0">
-              <div className="text-xs text-muted">{t("account.signedInAs")}</div>
-              <div className="text-sm font-bold truncate" dir="ltr">
-                {account.email ?? "—"}
+        <div className="space-y-4">
+          {/* Profile */}
+          <div className="card p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="w-11 h-11 rounded-full bg-primary-soft text-primary grid place-items-center shrink-0">
+                <UserRound size={20} />
+              </span>
+              <div className="min-w-0">
+                <div className="text-sm font-bold truncate">
+                  {account.name ?? t("account.signedInAs")}
+                </div>
+                <div className="text-xs text-muted truncate" dir="ltr">
+                  {account.email ?? "—"}
+                </div>
               </div>
             </div>
+
+            {notice && (
+              <p className="text-xs text-secondary bg-secondary-soft rounded-lg p-2.5">
+                {notice}
+              </p>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              {account.email && (
+                <button
+                  onClick={() => doRequestReset(account.email!)}
+                  disabled={busy}
+                  className="rounded-xl border border-border px-4 py-2 text-xs font-bold text-muted hover:text-foreground disabled:opacity-60"
+                >
+                  {t("account.dashResetPassword")}
+                </button>
+              )}
+              <button
+                onClick={signOut}
+                disabled={busy}
+                className="rounded-xl border border-border px-4 py-2 text-xs font-bold text-muted hover:text-foreground flex items-center gap-1.5 disabled:opacity-60"
+              >
+                <LogOut size={14} />
+                {t("account.signOut")}
+              </button>
+            </div>
           </div>
+
           {next && (
             <button
               onClick={() => router.push(next)}
@@ -239,14 +360,64 @@ export default function AccountPage() {
               {t("welcome.next")}
             </button>
           )}
-          <button
-            onClick={signOut}
-            disabled={busy}
-            className="w-full rounded-xl border border-border py-2.5 text-sm font-bold text-muted hover:text-foreground flex items-center justify-center gap-2 disabled:opacity-60"
-          >
-            <LogOut size={15} />
-            {t("account.signOut")}
-          </button>
+
+          {/* Dashboard — the whole journey at a glance */}
+          <div className="card p-4">
+            <div className="text-xs font-bold text-muted mb-3">
+              {t("account.dashboard")}
+            </div>
+            {!dash ? (
+              <PageLoader />
+            ) : (
+              <>
+                <div className="grid grid-cols-3 divide-x divide-border rtl:divide-x-reverse text-center">
+                  <div className="px-2">
+                    <div className="text-2xl font-bold text-primary tabular-nums">
+                      {dash.fullSurahs}
+                    </div>
+                    <div className="text-[10px] text-muted mt-0.5">
+                      {t("setup.fullSurahs")}
+                    </div>
+                  </div>
+                  <div className="px-2">
+                    <div className="text-2xl font-bold text-primary tabular-nums">
+                      {dash.fullJuz}
+                      <span className="text-sm text-muted font-normal"> / 30</span>
+                    </div>
+                    <div className="text-[10px] text-muted mt-0.5">
+                      {t("setup.fullJuz")}
+                    </div>
+                  </div>
+                  <div className="px-2">
+                    <div className="text-2xl font-bold text-primary tabular-nums">
+                      {dash.totalAyat}
+                    </div>
+                    <div className="text-[10px] text-muted mt-0.5">
+                      {t("setup.totalAyat")}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 divide-x divide-border rtl:divide-x-reverse text-center mt-4 pt-3 border-t border-border">
+                  <div className="px-2">
+                    <div className="text-2xl font-bold text-accent tabular-nums">
+                      {dash.streak}
+                    </div>
+                    <div className="text-[10px] text-muted mt-0.5">
+                      {t("account.dashStreak")}
+                    </div>
+                  </div>
+                  <div className="px-2">
+                    <div className="text-2xl font-bold text-accent tabular-nums">
+                      {dash.reviews}
+                    </div>
+                    <div className="text-[10px] text-muted mt-0.5">
+                      {t("account.dashReviews")}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       ) : (
         <div className="card p-5 space-y-4">
