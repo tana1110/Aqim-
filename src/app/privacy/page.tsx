@@ -144,11 +144,11 @@ function ArabicPolicy({ updated }: { updated: string }) {
         <p>
           لأي استفسار حول هذه السياسة أو لطلب حذف بياناتك، راسلنا على:{" "}
           <a
-            href="mailto:jumanaomer74@gmail.com"
+            href="mailto:aqimsalat@gmail.com"
             className="text-primary underline"
             dir="ltr"
           >
-            jumanaomer74@gmail.com
+            aqimsalat@gmail.com
           </a>
         </p>
       </Section>
@@ -254,10 +254,10 @@ function EnglishPolicy({ updated }: { updated: string }) {
           For any question about this policy, or to request deletion of
           your data, email us at:{" "}
           <a
-            href="mailto:jumanaomer74@gmail.com"
+            href="mailto:aqimsalat@gmail.com"
             className="text-primary underline"
           >
-            jumanaomer74@gmail.com
+            aqimsalat@gmail.com
           </a>
         </p>
       </Section>
