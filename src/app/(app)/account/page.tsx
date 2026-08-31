@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserRound, LogOut } from "lucide-react";
+import { UserRound, LogOut, Eye, EyeOff } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 import { clearPageCaches } from "@/lib/cache";
@@ -38,6 +38,7 @@ export default function AccountPage() {
   // "forgot" collects the email; a ?reset= link switches to "reset".
   const [flow, setFlow] = useState<"auth" | "forgot" | "reset">("auth");
   const [resetToken, setResetToken] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   // Onboarding hands off here with ?next= — after signing in (or choosing to
   // continue without an account) the journey resumes there.
   const [next, setNext] = useState<string | null>(null);
@@ -285,16 +286,28 @@ export default function AccountPage() {
             <form onSubmit={confirmReset} className="space-y-3">
               <label className="block text-xs font-medium text-muted space-y-1.5">
                 <span>{t("account.newPassword")}</span>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
-                  dir="ltr"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 pe-10 text-sm text-foreground"
+                    dir="ltr"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={t(
+                      showPassword ? "account.hidePassword" : "account.showPassword",
+                    )}
+                    className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </label>
               {error && (
                 <p className="text-xs text-accent bg-accent-soft rounded-lg p-2.5">{error}</p>
@@ -350,16 +363,28 @@ export default function AccountPage() {
             </label>
             <label className="block text-xs font-medium text-muted space-y-1.5">
               <span>{t("account.password")}</span>
-              <input
-                type="password"
-                required
-                minLength={6}
-                autoComplete={tab === "login" ? "current-password" : "new-password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-foreground"
-                dir="ltr"
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  required
+                  minLength={6}
+                  autoComplete={tab === "login" ? "current-password" : "new-password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 pe-10 text-sm text-foreground"
+                  dir="ltr"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={t(
+                    showPassword ? "account.hidePassword" : "account.showPassword",
+                  )}
+                  className="absolute end-2.5 top-1/2 -translate-y-1/2 text-muted"
+                >
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
             </label>
 
             {tab === "login" && (
