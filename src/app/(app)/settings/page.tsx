@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, MapPin, Volume2 } from "lucide-react";
+import { Bell, ExternalLink, MapPin, Shield, Volume2 } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageLoader } from "@/components/Brand";
@@ -501,6 +501,30 @@ export default function SettingsPage() {
           >
             {t("settings.replayTourHint")}
           </button>
+        </Row>
+      </Section>
+
+      {/* ---- About & legal ---- */}
+      <Section title={t("settings.sec.about")}>
+        <Row label={t("settings.privacy")}>
+          <Link
+            href="/privacy"
+            className="btn-primary px-4 py-1.5 text-xs inline-flex items-center gap-1.5"
+          >
+            <Shield size={13} />
+            {t("settings.privacy")}
+          </Link>
+        </Row>
+        <Row label={t("settings.instagram")}>
+          <a
+            href="https://www.instagram.com/aqimsalat"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-primary px-4 py-1.5 text-xs inline-flex items-center gap-1.5"
+          >
+            <ExternalLink size={13} />
+            @aqimsalat
+          </a>
         </Row>
       </Section>
     </div>
