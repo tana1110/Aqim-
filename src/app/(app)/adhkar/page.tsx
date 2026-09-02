@@ -1,8 +1,15 @@
 "use client";
 
-import { Suspense, useEffect, useLayoutEffect, useMemo, useState } from "react";
+import {
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Check, RotateCcw } from "lucide-react";
+import { Search, Check, RotateCcw, X } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { WirdStrip } from "@/components/WirdCard";
 import { useLang } from "@/components/LanguageProvider";
@@ -376,6 +383,33 @@ function ChapterView({
 
   if (!items) return <PageLoader />;
 
+  // Morning/evening are meant to be worked through one at a time, in order —
+  // a full-screen snap deck (Stories-style). Sleep, after-prayer, and any
+  // chapter opened via search stay a normal scrollable list.
+  if (part === "morning" || part === "evening") {
+    return (
+      <>
+        <SnapDeck
+          items={items}
+          title={chapter.title}
+          onBack={onBack}
+          onComplete={onCardComplete}
+        />
+        {toast && (
+          <div
+            className="fixed inset-x-0 z-50 px-4 animate-rise"
+            style={{ top: "calc(env(safe-area-inset-top, 0px) + 64px)" }}
+          >
+            <div className="mx-auto w-fit flex items-center gap-2 rounded-full bg-secondary text-white px-5 py-2.5 text-sm font-bold shadow-lg">
+              <Check size={16} strokeWidth={3} />
+              {toast}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <div className="space-y-4 pt-2 max-w-3xl">
       <div className="flex items-center justify-between gap-3">
@@ -422,6 +456,211 @@ function ChapterView({
         {t("adhkar.source")}
       </p>
     </div>
+  );
+}
+
+// Full-screen, one-at-a-time deck for morning/evening adhkar — CSS
+// scroll-snap does the actual snapping; an IntersectionObserver just watches
+// which screen is currently in view to drive the progress bar. Fixed to
+// cover the whole viewport (header/bottom nav included) so it reads as a
+// true full-screen experience regardless of the app shell around it.
+function SnapDeck({
+  items,
+  title,
+  onBack,
+  onComplete,
+}: {
+  items: Dhikr[];
+  title: string;
+  onBack: () => void;
+  onComplete?: () => void;
+}) {
+  const { t } = useLang();
+  const [active, setActive] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const idx = sectionRefs.current.indexOf(
+              entry.target as HTMLDivElement,
+            );
+            if (idx !== -1) setActive(idx);
+          }
+        }
+      },
+      { root: container, threshold: 0.6 },
+    );
+    for (const el of sectionRefs.current) if (el) observer.observe(el);
+    return () => observer.disconnect();
+  }, [items.length]);
+
+  return (
+    <div className="fixed inset-0 z-40 bg-[#33546A]" dir="rtl">
+      {/* Header: close + chapter title */}
+      <div
+        className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pb-2"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)" }}
+      >
+        <button
+          onClick={onBack}
+          aria-label={t("adhkar.back")}
+          className="w-9 h-9 rounded-full grid place-items-center text-[#F3EEE3]/90 hover:bg-white/10 transition"
+        >
+          <X size={20} />
+        </button>
+        <span className="text-[13px] font-bold text-[#F3EEE3]/90 truncate max-w-[60%]">
+          {title}
+        </span>
+        <span className="w-9" aria-hidden />
+      </div>
+
+      {/* Stories-style progress segments */}
+      <div
+        className="absolute inset-x-0 top-0 z-10 flex gap-1 px-3"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 52px)" }}
+      >
+        {items.map((_, i) => (
+          <div
+            key={i}
+            className="h-1 flex-1 rounded-full bg-white/25 overflow-hidden"
+          >
+            <div
+              className="h-full bg-[#F3EEE3] transition-all duration-200"
+              style={{ width: i <= active ? "100%" : "0%" }}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div
+        ref={containerRef}
+        className="h-full w-full overflow-y-auto"
+        style={{ scrollSnapType: "y mandatory" }}
+      >
+        {items.map((d, i) => (
+          <div
+            key={d.id}
+            ref={(el) => {
+              sectionRefs.current[i] = el;
+            }}
+            style={{ scrollSnapAlign: "start", scrollSnapStop: "always" }}
+            className="h-dvh w-full"
+          >
+            <DhikrFullScreen d={d} onComplete={onComplete} />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// One full-screen dhikr — same tap-to-count behavior/storage as the list
+// view's DhikrCard, just laid out to fill the screen.
+function DhikrFullScreen({
+  d,
+  onComplete,
+}: {
+  d: Dhikr;
+  onComplete?: () => void;
+}) {
+  const { t } = useLang();
+  const [taps, setTaps] = useState(0);
+  const [refOpen, setRefOpen] = useState(false);
+  useEffect(() => {
+    setTaps(loadTaps(d.id));
+  }, [d.id]);
+  const done = taps >= d.count;
+
+  function bump() {
+    const next = taps + 1;
+    setTaps(next);
+    saveTaps(d.id, next);
+    try {
+      navigator.vibrate?.(10);
+    } catch {}
+    if (next >= d.count) onComplete?.();
+  }
+  function reset(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (taps > 10 && !window.confirm(t("adhkar.resetConfirm"))) return;
+    setTaps(0);
+    saveTaps(d.id, 0);
+  }
+
+  return (
+    <button
+      onClick={bump}
+      className="relative w-full h-full flex flex-col items-center justify-center text-center px-7"
+    >
+      <p
+        className="font-quran text-[26px] leading-[2.1] text-[#F3EEE3]"
+        dir="rtl"
+      >
+        {d.text}
+      </p>
+
+      {refOpen && d.reference && (
+        <p
+          className="font-ui text-xs text-[#F3EEE3]/70 leading-relaxed mt-5 max-w-sm"
+          dir="rtl"
+          onClick={(e) => {
+            e.stopPropagation();
+            setRefOpen(false);
+          }}
+        >
+          {d.reference}
+        </p>
+      )}
+
+      <div
+        className="absolute inset-x-0 flex flex-col items-center gap-2.5 px-6"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
+      >
+        {d.reference && !refOpen && (
+          <span
+            role="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setRefOpen(true);
+            }}
+            className="font-ui text-[11px] text-[#F3EEE3]/60 underline decoration-dotted truncate max-w-full"
+          >
+            {d.reference}
+          </span>
+        )}
+        <div className="flex items-center gap-3">
+          {d.count > 1 && (
+            <span className="font-ui text-[11px] text-[#F3EEE3]/70">
+              {t("adhkar.reps")}: ×{d.count}
+            </span>
+          )}
+          <span
+            className={`min-w-11 h-8 px-2.5 rounded-full flex items-center justify-center gap-1 text-sm font-bold tabular-nums ${
+              done ? "bg-[#B99257] text-[#33546A]" : "bg-white/15 text-[#F3EEE3]"
+            }`}
+          >
+            {done && <Check size={14} />}
+            {`${taps}/${d.count}`}
+          </span>
+          {taps > 0 && (
+            <span
+              role="button"
+              aria-label={t("adhkar.reset")}
+              onClick={reset}
+              className="w-8 h-8 rounded-full grid place-items-center text-[#F3EEE3]/70 hover:bg-white/10 transition"
+            >
+              <RotateCcw size={15} />
+            </span>
+          )}
+        </div>
+      </div>
+    </button>
   );
 }
 
