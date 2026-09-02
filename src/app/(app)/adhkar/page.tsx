@@ -5,6 +5,7 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -474,6 +475,15 @@ function SnapDeck({
   onComplete?: () => void;
 }) {
   const { t } = useLang();
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  // Two ways to move to the next dhikr: scroll manually, or finish its
+  // required repetitions and it advances on its own after a short pause
+  // (long enough to see the completed count, not so long it feels stuck).
+  function advanceTo(i: number) {
+    const el = sectionRefs.current[i];
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   // Same immersive treatment as the Quran reading page on phones: hide the
   // browser/system chrome entirely (status bar included), not just the
@@ -523,13 +533,22 @@ function SnapDeck({
         className="h-full w-full overflow-y-auto"
         style={{ scrollSnapType: "y mandatory" }}
       >
-        {items.map((d) => (
+        {items.map((d, i) => (
           <div
             key={d.id}
+            ref={(el) => {
+              sectionRefs.current[i] = el;
+            }}
             style={{ scrollSnapAlign: "start", scrollSnapStop: "always" }}
             className="h-dvh w-full"
           >
-            <DhikrFullScreen d={d} onComplete={onComplete} />
+            <DhikrFullScreen
+              d={d}
+              onComplete={onComplete}
+              onAdvance={
+                i < items.length - 1 ? () => advanceTo(i + 1) : undefined
+              }
+            />
           </div>
         ))}
       </div>
@@ -542,9 +561,11 @@ function SnapDeck({
 function DhikrFullScreen({
   d,
   onComplete,
+  onAdvance,
 }: {
   d: Dhikr;
   onComplete?: () => void;
+  onAdvance?: () => void;
 }) {
   const { t } = useLang();
   const [taps, setTaps] = useState(0);
@@ -561,7 +582,12 @@ function DhikrFullScreen({
     try {
       navigator.vibrate?.(10);
     } catch {}
-    if (next >= d.count) onComplete?.();
+    // Only the tap that JUST finished the count auto-advances — not every
+    // tap after it, so someone can keep repeating past the target in place.
+    if (next === d.count) {
+      onComplete?.();
+      setTimeout(() => onAdvance?.(), 600);
+    }
   }
   function reset(e: React.MouseEvent) {
     e.stopPropagation();
