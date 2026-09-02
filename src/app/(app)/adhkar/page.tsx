@@ -480,6 +480,22 @@ function SnapDeck({
   const containerRef = useRef<HTMLDivElement>(null);
   const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
+  // Same immersive treatment as the Quran reading page on phones: hide the
+  // browser/system chrome entirely (status bar included), not just the
+  // app's own header/nav — exit on close/unmount.
+  useEffect(() => {
+    if (typeof window === "undefined" || window.innerWidth >= 768) return;
+    const el = document.documentElement;
+    if (!document.fullscreenElement && el.requestFullscreen) {
+      el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+    }
+    return () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    };
+  }, []);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -501,7 +517,7 @@ function SnapDeck({
   }, [items.length]);
 
   return (
-    <div className="fixed inset-0 z-40 bg-[#33546A]" dir="rtl">
+    <div className="fixed inset-0 z-40 bg-[#1C2830]" dir="rtl">
       {/* Header: close + chapter title */}
       <div
         className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pb-2"
@@ -642,7 +658,7 @@ function DhikrFullScreen({
           )}
           <span
             className={`min-w-11 h-8 px-2.5 rounded-full flex items-center justify-center gap-1 text-sm font-bold tabular-nums ${
-              done ? "bg-[#B99257] text-[#33546A]" : "bg-white/15 text-[#F3EEE3]"
+              done ? "bg-[#C9A671] text-[#1C2830]" : "bg-white/15 text-[#F3EEE3]"
             }`}
           >
             {done && <Check size={14} />}
