@@ -482,14 +482,22 @@ function SnapDeck({
 
   // Same immersive treatment as the Quran reading page on phones: hide the
   // browser/system chrome entirely (status bar included), not just the
-  // app's own header/nav — exit on close/unmount.
+  // app's own header/nav. Browsers only grant requestFullscreen() inside a
+  // real user gesture — calling it once on mount is silently rejected, so
+  // (like the Quran page) re-attempt it on every tap/scroll until it takes.
   useEffect(() => {
     if (typeof window === "undefined" || window.innerWidth >= 768) return;
     const el = document.documentElement;
-    if (!document.fullscreenElement && el.requestFullscreen) {
-      el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
-    }
+    const enterFs = () => {
+      if (!document.fullscreenElement && el.requestFullscreen) {
+        el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
+      }
+    };
+    enterFs();
+    const events = ["pointerdown", "pointerup", "scroll", "touchstart"];
+    for (const ev of events) window.addEventListener(ev, enterFs);
     return () => {
+      for (const ev of events) window.removeEventListener(ev, enterFs);
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
       }
