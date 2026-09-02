@@ -291,37 +291,47 @@ export async function selectPassages(
     chosenKeys.add(passageKey(pick));
   }
 
-  // Target recitation length for the rest of this prayer's rak'ahs.
+  // Target recitation length — still used as a tiebreaker when continuity
+  // offers more than one candidate in the same surah.
   const target = chosen[0].words;
-  const inBand = (c: Candidate) =>
-    c.words >= target * 0.55 && c.words <= target * 1.85;
 
-  // --- Remaining rak'ahs: same/adjacent length band, else closest length. ---
+  // Continuity: a later rak'ah stays in the SAME surah as the one before it
+  // (a different unused part) whenever that surah has anything left; only
+  // once it's exhausted does it move to the very next surah in Mushaf order,
+  // starting from that surah's beginning. This deliberately outranks the
+  // anti-repeat "freshness" check below — staying connected matters more
+  // than avoiding a recent repeat, per explicit product decision.
+  function pickContinuous(prev: Candidate, pool: Candidate[]): Candidate {
+    const sameSurah = pool.filter((c) => c.surahNumber === prev.surahNumber);
+    if (sameSurah.length) {
+      // Prefer picking up right where the previous passage left off.
+      const continuing = sameSurah.filter((c) => c.fromAyah > prev.toAyah);
+      if (continuing.length) {
+        return [...continuing].sort((a, b) => a.fromAyah - b.fromAyah)[0];
+      }
+      // Nothing further ahead in this surah — any other unused part of it,
+      // preferring one close to the target recitation length.
+      return pickClosest(sameSurah, target);
+    }
+    // This surah is used up — move to the next surah (in Mushaf order) that
+    // still has candidates, starting from its beginning. Wraps back to the
+    // earliest surah available if we've reached the end of what's memorized.
+    const later = pool.filter((c) => c.surahNumber > prev.surahNumber);
+    const nextPool = later.length ? later : pool;
+    const nextSurahNum = Math.min(...nextPool.map((c) => c.surahNumber));
+    const inNextSurah = nextPool.filter((c) => c.surahNumber === nextSurahNum);
+    return [...inNextSurah].sort((a, b) => a.fromAyah - b.fromAyah)[0];
+  }
+
+  // --- Remaining rak'ahs: continuity first, review spotlight can override it. ---
   while (chosen.length < count) {
     const pool = available();
     if (pool.length === 0) break; // no more distinct candidates
 
-    const fresh = pool.filter(isFresh);
-    let pick: Candidate;
     const focused = focusPick(pool);
-    const freshInBand = fresh.filter(inBand);
-    if (focused) {
-      // Stay inside the review spotlight whenever it can supply passages.
-      pick = focused;
-    } else if (freshInBand.length) {
-      // Comparable length AND not recently used — the ideal case.
-      pick = pickRandom(freshInBand);
-    } else if (fresh.length) {
-      // No comparable-length fresh option: take the closest length available.
-      pick = pickClosest(fresh, target);
-    } else {
-      // Everything left was recently used — relax anti-repeat, keep length close.
-      relaxed = true;
-      const relaxedInBand = pool.filter(inBand);
-      pick = relaxedInBand.length
-        ? pickClosest(relaxedInBand, target)
-        : pickClosest(pool, target);
-    }
+    const pick = focused ?? pickContinuous(chosen[chosen.length - 1], pool);
+    if (!isFresh(pick)) relaxed = true;
+
     chosen.push(pick);
     chosenKeys.add(passageKey(pick));
   }
