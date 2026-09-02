@@ -586,7 +586,7 @@ function DhikrFullScreen({
     // tap after it, so someone can keep repeating past the target in place.
     if (next === d.count) {
       onComplete?.();
-      setTimeout(() => onAdvance?.(), 600);
+      setTimeout(() => onAdvance?.(), 250);
     }
   }
   function reset(e: React.MouseEvent) {
