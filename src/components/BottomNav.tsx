@@ -12,6 +12,7 @@ import {
   Heart,
   BarChart3,
   Settings,
+  UserRound,
   X,
 } from "lucide-react";
 import { Logo } from "@/components/Logo";
@@ -196,6 +197,21 @@ export function NavDrawer({
           </button>
         </div>
         <nav className="p-3 space-y-1">
+          {/* Account — first and set apart, so it's the easiest thing to
+              reach from the menu, not buried inside Settings. */}
+          <Link
+            href="/account"
+            onClick={onClose}
+            aria-current={pathname === "/account" ? "page" : undefined}
+            className={`flex items-center gap-3 rounded-xl px-4 py-3.5 text-[15px] font-bold transition-colors mb-2 border-b border-border ${
+              pathname === "/account"
+                ? "text-primary"
+                : "text-foreground hover:bg-surface-2"
+            }`}
+          >
+            <UserRound size={20} strokeWidth={pathname === "/account" ? 2.4 : 2} />
+            {t("account.title")}
+          </Link>
           {TABS.map(({ href, key, Icon }) => {
             const active = pathname === href;
             return (

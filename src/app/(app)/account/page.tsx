@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { UserRound, LogOut, Eye, EyeOff } from "lucide-react";
+import { UserRound, LogOut, Eye, EyeOff, Pencil, Check } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 import { clearPageCaches } from "@/lib/cache";
@@ -37,6 +37,9 @@ export default function AccountPage() {
     streak: number;
     reviews: number;
   } | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameInput, setNameInput] = useState("");
+  const [nameSaving, setNameSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [tab, setTab] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
@@ -296,6 +299,30 @@ export default function AccountPage() {
     }
   }
 
+  function startEditName() {
+    setNameInput(account?.name ?? "");
+    setEditingName(true);
+  }
+
+  async function saveName() {
+    const name = nameInput.trim();
+    if (!name) return;
+    setNameSaving(true);
+    try {
+      const r = await fetch("/api/auth/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (r.ok) {
+        await refreshAccount();
+        setEditingName(false);
+      }
+    } finally {
+      setNameSaving(false);
+    }
+  }
+
   if (!loaded) return <PageLoader />;
 
   return (
@@ -312,10 +339,40 @@ export default function AccountPage() {
               <span className="w-11 h-11 rounded-full bg-primary-soft text-primary grid place-items-center shrink-0">
                 <UserRound size={20} />
               </span>
-              <div className="min-w-0">
-                <div className="text-sm font-bold truncate">
-                  {account.name ?? t("account.signedInAs")}
-                </div>
+              <div className="min-w-0 flex-1">
+                {editingName ? (
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      autoFocus
+                      value={nameInput}
+                      onChange={(e) => setNameInput(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && saveName()}
+                      maxLength={60}
+                      className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-2 py-1 text-sm font-bold"
+                    />
+                    <button
+                      onClick={saveName}
+                      disabled={nameSaving || !nameInput.trim()}
+                      aria-label={t("account.saveName")}
+                      className="w-7 h-7 rounded-full grid place-items-center bg-primary text-white shrink-0 disabled:opacity-50"
+                    >
+                      <Check size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-bold truncate">
+                      {account.name ?? t("account.signedInAs")}
+                    </span>
+                    <button
+                      onClick={startEditName}
+                      aria-label={t("account.editName")}
+                      className="text-muted hover:text-foreground shrink-0"
+                    >
+                      <Pencil size={13} />
+                    </button>
+                  </div>
+                )}
                 <div className="text-xs text-muted truncate" dir="ltr">
                   {account.email ?? "—"}
                 </div>
@@ -329,15 +386,6 @@ export default function AccountPage() {
             )}
 
             <div className="flex flex-wrap gap-2">
-              {account.email && (
-                <button
-                  onClick={() => doRequestReset(account.email!)}
-                  disabled={busy}
-                  className="rounded-xl border border-border px-4 py-2 text-xs font-bold text-muted hover:text-foreground disabled:opacity-60"
-                >
-                  {t("account.dashResetPassword")}
-                </button>
-              )}
               <button
                 onClick={signOut}
                 disabled={busy}

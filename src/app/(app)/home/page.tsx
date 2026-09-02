@@ -426,9 +426,13 @@ export default function HomePage() {
       <div className="space-y-5 lg:sticky lg:top-20">
         {/* Greeting — THE home header on phones (the brand bar hides here) */}
         <div className="flex items-center gap-3 px-1 pt-1">
-          <span className="w-11 h-11 rounded-full bg-surface shadow-sm grid place-items-center shrink-0">
+          <Link
+            href="/account"
+            aria-label={t("account.title")}
+            className="w-11 h-11 rounded-full bg-surface shadow-sm grid place-items-center shrink-0 active:scale-95 transition"
+          >
             <Logo variant="icon" size={26} />
-          </span>
+          </Link>
           <div className="min-w-0 flex-1">
             <div className="text-lg font-extrabold leading-tight truncate">
               {t("home.greeting")}

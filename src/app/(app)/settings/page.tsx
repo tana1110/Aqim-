@@ -190,11 +190,6 @@ export default function SettingsPage() {
 
       {/* ---- Account & language ---- */}
       <Section title={t("settings.sec.account")}>
-        <Row label={t("settings.account")}>
-          <Link href="/account" className="btn-primary px-4 py-1.5 text-xs">
-            {t("account.title")}
-          </Link>
-        </Row>
         <Row label={t("settings.language")}>
           <LanguageToggle />
         </Row>
