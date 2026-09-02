@@ -1,11 +1,12 @@
 name: Send reminder notifications
 
-# Web-push reminders (prayer times, wird, adhkar) are computed and sent by
-# the app's /api/cron/notify endpoint. GitHub's scheduler pings it every
-# 5 minutes (delivery can drift a few minutes — the endpoint dedupes).
+# DISABLED (2026-09-02): GitHub's scheduled-workflow trigger turned out to be
+# unreliable for this — real run logs showed gaps of 2 to 5.5 hours between
+# supposedly-every-5-minute firings, GitHub silently deprioritizes cron
+# triggers on free/quiet repos. Replaced with cron-job.org, which actually
+# fires on schedule. Kept as workflow_dispatch (manual trigger) for testing;
+# the schedule trigger is intentionally removed, not just paused.
 on:
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
