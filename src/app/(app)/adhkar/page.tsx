@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search, Check, RotateCcw, X } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
@@ -509,8 +510,11 @@ function SnapDeck({
     };
   }, []);
 
-  return (
-    <div className="fixed inset-0 z-40 bg-[#1C2830]" dir="rtl">
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const deck = (
+    <div className="fixed inset-0 z-[999] bg-[#1C2830]" dir="rtl">
       {/* Header: close + chapter title */}
       <div
         className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pb-2"
@@ -554,6 +558,14 @@ function SnapDeck({
       </div>
     </div>
   );
+
+  // Escape the app shell entirely via a portal to <body> — a nested `fixed`
+  // element can still lose the stacking fight against the shell's own
+  // sticky header/floating bottom nav depending on the browser/WebView, so
+  // rendering it as a true sibling of the whole app (not a descendant of
+  // <main>) is the reliable fix rather than trusting z-index alone.
+  if (!mounted) return null;
+  return createPortal(deck, document.body);
 }
 
 // One full-screen dhikr — same tap-to-count behavior/storage as the list
