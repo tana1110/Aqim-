@@ -5,7 +5,6 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -460,10 +459,9 @@ function ChapterView({
 }
 
 // Full-screen, one-at-a-time deck for morning/evening adhkar — CSS
-// scroll-snap does the actual snapping; an IntersectionObserver just watches
-// which screen is currently in view to drive the progress bar. Fixed to
-// cover the whole viewport (header/bottom nav included) so it reads as a
-// true full-screen experience regardless of the app shell around it.
+// scroll-snap does the actual snapping. Fixed to cover the whole viewport
+// (header/bottom nav included) so it reads as a true full-screen experience
+// regardless of the app shell around it.
 function SnapDeck({
   items,
   title,
@@ -476,9 +474,6 @@ function SnapDeck({
   onComplete?: () => void;
 }) {
   const { t } = useLang();
-  const [active, setActive] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   // Same immersive treatment as the Quran reading page on phones: hide the
   // browser/system chrome entirely (status bar included), not just the
@@ -504,26 +499,6 @@ function SnapDeck({
     };
   }, []);
 
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            const idx = sectionRefs.current.indexOf(
-              entry.target as HTMLDivElement,
-            );
-            if (idx !== -1) setActive(idx);
-          }
-        }
-      },
-      { root: container, threshold: 0.6 },
-    );
-    for (const el of sectionRefs.current) if (el) observer.observe(el);
-    return () => observer.disconnect();
-  }, [items.length]);
-
   return (
     <div className="fixed inset-0 z-40 bg-[#1C2830]" dir="rtl">
       {/* Header: close + chapter title */}
@@ -544,35 +519,13 @@ function SnapDeck({
         <span className="w-9" aria-hidden />
       </div>
 
-      {/* Stories-style progress segments */}
       <div
-        className="absolute inset-x-0 top-0 z-10 flex gap-1 px-3"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 52px)" }}
-      >
-        {items.map((_, i) => (
-          <div
-            key={i}
-            className="h-1 flex-1 rounded-full bg-white/25 overflow-hidden"
-          >
-            <div
-              className="h-full bg-[#F3EEE3] transition-all duration-200"
-              style={{ width: i <= active ? "100%" : "0%" }}
-            />
-          </div>
-        ))}
-      </div>
-
-      <div
-        ref={containerRef}
         className="h-full w-full overflow-y-auto"
         style={{ scrollSnapType: "y mandatory" }}
       >
-        {items.map((d, i) => (
+        {items.map((d) => (
           <div
             key={d.id}
-            ref={(el) => {
-              sectionRefs.current[i] = el;
-            }}
             style={{ scrollSnapAlign: "start", scrollSnapStop: "always" }}
             className="h-dvh w-full"
           >
