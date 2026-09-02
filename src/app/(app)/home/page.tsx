@@ -12,6 +12,7 @@ import {
   Flame,
   Shield,
   ChevronLeft,
+  ChevronRight,
   Menu,
   Settings2,
   X,
@@ -1261,6 +1262,9 @@ function Stepper({
   );
 }
 
+// One rak'ah fills the screen at a time — page-turn arrows move between
+// them, the same "no scrolling to see the next one" feel as the Quran
+// reading page, instead of stacking every rak'ah in one long scroll.
 function PlanView({
   plan,
   prayer,
@@ -1271,6 +1275,17 @@ function PlanView({
   lang: string;
 }) {
   const { t } = useLang();
+  const [page, setPage] = useState(0);
+
+  // A new prayer/plan always starts back at the first rak'ah.
+  useEffect(() => {
+    setPage(0);
+  }, [plan]);
+
+  const total = plan.slots.length;
+  const clamped = Math.min(page, total - 1);
+  const slot = plan.slots[clamped];
+
   return (
     <section className="space-y-3 animate-rise">
       <div className="flex items-baseline justify-between pt-1">
@@ -1290,22 +1305,42 @@ function PlanView({
         </p>
       )}
 
-      <p className="text-[11px] text-muted px-1">{t("home.logHint")}</p>
+      {total > 1 && (
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={clamped === 0}
+            aria-label={t("common.previous")}
+            className="w-9 h-9 rounded-full grid place-items-center border border-border bg-surface disabled:opacity-30 hover:border-primary/40 transition"
+          >
+            <ChevronRight size={18} />
+          </button>
+          <span className="text-xs font-bold text-muted tabular-nums">
+            {t("home.rakahOf", { n: clamped + 1, total })}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(total - 1, p + 1))}
+            disabled={clamped === total - 1}
+            aria-label={t("common.next")}
+            className="w-9 h-9 rounded-full grid place-items-center border border-border bg-surface disabled:opacity-30 hover:border-primary/40 transition"
+          >
+            <ChevronLeft size={18} />
+          </button>
+        </div>
+      )}
 
-      {plan.slots.map((slot, i) => (
-        <SlotView
-          key={i}
-          rakah={slot.rakah}
-          kind={slot.kind}
-          label={slot.label}
-          content={slot.content}
-          mode={plan.mode}
-          prayer={prayer}
-          otherPassages={plan.slots
-            .map((s) => s.content)
-            .filter((c): c is PassageContent => !!c)}
-        />
-      ))}
+      <SlotView
+        key={clamped}
+        rakah={slot.rakah}
+        kind={slot.kind}
+        label={slot.label}
+        content={slot.content}
+        mode={plan.mode}
+        prayer={prayer}
+        otherPassages={plan.slots
+          .map((s) => s.content)
+          .filter((c): c is PassageContent => !!c)}
+      />
     </section>
   );
 }

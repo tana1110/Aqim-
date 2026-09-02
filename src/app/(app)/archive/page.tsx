@@ -62,7 +62,6 @@ export default function ArchivePage() {
       <div className="space-y-6 pt-2 max-w-3xl" aria-busy>
         <div>
           <h1 className="text-xl font-bold mb-1">{t("archive.title")}</h1>
-          <p className="text-sm text-muted">{t("archive.subtitle")}</p>
         </div>
         {[0, 1, 2].map((i) => (
           <section key={i} className="space-y-2.5 animate-pulse">
@@ -92,7 +91,6 @@ export default function ArchivePage() {
     <div className="space-y-6 pt-2 max-w-3xl">
       <div>
         <h1 className="text-xl font-bold mb-1">{t("archive.title")}</h1>
-        <p className="text-sm text-muted">{t("archive.subtitle")}</p>
       </div>
 
       {days.map((d) => (

@@ -326,11 +326,6 @@ export default function SetupPage() {
       <header className={firstTime ? "card p-5 space-y-4" : "space-y-4"}>
         <div>
           <h1 className="text-xl font-bold mb-1.5">{t("setup.title")}</h1>
-          {firstTime && (
-            <p className="text-sm text-muted leading-relaxed">
-              {t("setup.subtitle")}
-            </p>
-          )}
         </div>
         {firstTime && (
           <ol className="flex items-center gap-2 text-[11px] font-bold">

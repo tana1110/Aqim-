@@ -160,7 +160,6 @@ export default function HistoryPage() {
     <div className="space-y-5 pt-2 max-w-3xl">
       <div>
         <h1 className="text-xl font-bold mb-1">{t("history.title")}</h1>
-        <p className="text-sm text-muted">{t("history.subtitle")}</p>
       </div>
 
       {/* Two clear worlds: what I recited, and my memorization journey */}

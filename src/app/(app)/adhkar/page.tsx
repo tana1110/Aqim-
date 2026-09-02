@@ -210,7 +210,6 @@ function AdhkarInner() {
       <div className="flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold mb-1">{t("adhkar.title")}</h1>
-          <p className="text-sm text-muted">{t("adhkar.subtitle")}</p>
         </div>
         <button
           onClick={() => {

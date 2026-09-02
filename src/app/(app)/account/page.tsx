@@ -302,9 +302,6 @@ export default function AccountPage() {
     <div className="space-y-5 pt-2 max-w-md mx-auto">
       <div>
         <h1 className="text-xl font-bold mb-1">{t("account.title")}</h1>
-        <p className="text-sm text-muted leading-relaxed">
-          {t("account.benefit")}
-        </p>
       </div>
 
       {account ? (
