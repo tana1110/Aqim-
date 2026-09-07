@@ -63,6 +63,7 @@ import type {
   Mode,
   PassageContent,
   ResolvedPlan,
+  ResolvedSlot,
   SurahMeta,
 } from "@/lib/types";
 
@@ -1266,9 +1267,29 @@ function Stepper({
   );
 }
 
-// One rak'ah fills the screen at a time — page-turn arrows move between
-// them, the same "no scrolling to see the next one" feel as the Quran
-// reading page, instead of stacking every rak'ah in one long scroll.
+type PlanPage =
+  | { kind: "combined"; slots: [ResolvedSlot, ResolvedSlot] }
+  | { kind: "single"; slot: ResolvedSlot };
+
+// The first two rak'ahs, when both are free-choice, read together as one
+// connected passage rather than two isolated blocks — everything after
+// that (fixed Fatiha-only rak'ahs, further qiyam rak'ahs, ...) still gets
+// its own page.
+function buildPages(slots: ResolvedSlot[]): PlanPage[] {
+  const pages: PlanPage[] = [];
+  let i = 0;
+  if (slots.length >= 2 && slots[0].kind === "suggest" && slots[1].kind === "suggest") {
+    pages.push({ kind: "combined", slots: [slots[0], slots[1]] });
+    i = 2;
+  }
+  for (; i < slots.length; i++) pages.push({ kind: "single", slot: slots[i] });
+  return pages;
+}
+
+// One rak'ah (or the connected first-two) fills the screen at a time —
+// page-turn arrows move between them, the same "no scrolling to see the
+// next one" feel as the Quran reading page, instead of stacking every
+// rak'ah in one long scroll.
 function PlanView({
   plan,
   prayer,
@@ -1286,9 +1307,13 @@ function PlanView({
     setPage(0);
   }, [plan]);
 
-  const total = plan.slots.length;
+  const pages = buildPages(plan.slots);
+  const total = pages.length;
   const clamped = Math.min(page, total - 1);
-  const slot = plan.slots[clamped];
+  const current = pages[clamped];
+  const otherPassages = plan.slots
+    .map((s) => s.content)
+    .filter((c): c is PassageContent => !!c);
 
   return (
     <section className="space-y-3 animate-rise">
@@ -1333,19 +1358,61 @@ function PlanView({
         </div>
       )}
 
-      <SlotView
-        key={clamped}
-        rakah={slot.rakah}
-        kind={slot.kind}
-        label={slot.label}
-        content={slot.content}
-        mode={plan.mode}
-        prayer={prayer}
-        otherPassages={plan.slots
-          .map((s) => s.content)
-          .filter((c): c is PassageContent => !!c)}
-      />
+      {current.kind === "combined" ? (
+        <CombinedSlots
+          key={clamped}
+          slots={current.slots}
+          mode={plan.mode}
+          prayer={prayer}
+          otherPassages={otherPassages}
+        />
+      ) : (
+        <SlotView
+          key={clamped}
+          rakah={current.slot.rakah}
+          kind={current.slot.kind}
+          label={current.slot.label}
+          content={current.slot.content}
+          mode={plan.mode}
+          prayer={prayer}
+          otherPassages={otherPassages}
+        />
+      )}
     </section>
+  );
+}
+
+// The first two rak'ahs, connected in one continuous view instead of two
+// isolated cards — one shared frame, a divider between them, each rak'ah
+// still independently mark-as-used/suggest-another via bare SlotViews.
+function CombinedSlots({
+  slots,
+  mode,
+  prayer,
+  otherPassages,
+}: {
+  slots: [ResolvedSlot, ResolvedSlot];
+  mode: Mode;
+  prayer: string;
+  otherPassages: PassageContent[];
+}) {
+  return (
+    <div className="card overflow-hidden divide-y divide-border">
+      {slots.map((s, i) => (
+        <div key={i} className="p-5">
+          <SlotView
+            bare
+            rakah={s.rakah}
+            kind={s.kind}
+            label={s.label}
+            content={s.content}
+            mode={mode}
+            prayer={prayer}
+            otherPassages={otherPassages}
+          />
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1357,6 +1424,7 @@ function SlotView({
   mode,
   prayer,
   otherPassages,
+  bare = false,
 }: {
   rakah: number;
   kind: string;
@@ -1365,6 +1433,7 @@ function SlotView({
   mode: Mode;
   prayer: string;
   otherPassages: PassageContent[];
+  bare?: boolean;
 }) {
   const { t } = useLang();
   const [content, setContent] = useState<PassageContent | null>(initial);
@@ -1477,6 +1546,7 @@ function SlotView({
       <PassageCard
         content={content}
         fixedLabel={kind === "fixed" ? label : undefined}
+        bare={bare}
       />
       {kind === "suggest" && (
         <div className="flex gap-2">
