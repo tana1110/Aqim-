@@ -11,8 +11,6 @@ import {
   Sparkles,
   Flame,
   Shield,
-  ChevronLeft,
-  ChevronRight,
   Menu,
   Settings2,
   X,
@@ -1267,29 +1265,9 @@ function Stepper({
   );
 }
 
-type PlanPage =
-  | { kind: "combined"; slots: [ResolvedSlot, ResolvedSlot] }
-  | { kind: "single"; slot: ResolvedSlot };
-
-// The first two rak'ahs, when both are free-choice, read together as one
-// connected passage rather than two isolated blocks — everything after
-// that (fixed Fatiha-only rak'ahs, further qiyam rak'ahs, ...) still gets
-// its own page.
-function buildPages(slots: ResolvedSlot[]): PlanPage[] {
-  const pages: PlanPage[] = [];
-  let i = 0;
-  if (slots.length >= 2 && slots[0].kind === "suggest" && slots[1].kind === "suggest") {
-    pages.push({ kind: "combined", slots: [slots[0], slots[1]] });
-    i = 2;
-  }
-  for (; i < slots.length; i++) pages.push({ kind: "single", slot: slots[i] });
-  return pages;
-}
-
-// One rak'ah (or the connected first-two) fills the screen at a time —
-// page-turn arrows move between them, the same "no scrolling to see the
-// next one" feel as the Quran reading page, instead of stacking every
-// rak'ah in one long scroll.
+// Every rak'ah reads together as one continuous, connected view — one
+// shared frame, a divider and label between each rak'ah — instead of
+// separate isolated cards or a page-turn-through-them flow.
 function PlanView({
   plan,
   prayer,
@@ -1300,17 +1278,6 @@ function PlanView({
   lang: string;
 }) {
   const { t } = useLang();
-  const [page, setPage] = useState(0);
-
-  // A new prayer/plan always starts back at the first rak'ah.
-  useEffect(() => {
-    setPage(0);
-  }, [plan]);
-
-  const pages = buildPages(plan.slots);
-  const total = pages.length;
-  const clamped = Math.min(page, total - 1);
-  const current = pages[clamped];
   const otherPassages = plan.slots
     .map((s) => s.content)
     .filter((c): c is PassageContent => !!c);
@@ -1334,64 +1301,27 @@ function PlanView({
         </p>
       )}
 
-      {total > 1 && (
-        <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={() => setPage((p) => Math.max(0, p - 1))}
-            disabled={clamped === 0}
-            aria-label={t("common.previous")}
-            className="w-9 h-9 rounded-full grid place-items-center border border-border bg-surface disabled:opacity-30 hover:border-primary/40 transition"
-          >
-            <ChevronRight size={18} />
-          </button>
-          <span className="text-xs font-bold text-muted tabular-nums">
-            {t("home.rakahOf", { n: clamped + 1, total })}
-          </span>
-          <button
-            onClick={() => setPage((p) => Math.min(total - 1, p + 1))}
-            disabled={clamped === total - 1}
-            aria-label={t("common.next")}
-            className="w-9 h-9 rounded-full grid place-items-center border border-border bg-surface disabled:opacity-30 hover:border-primary/40 transition"
-          >
-            <ChevronLeft size={18} />
-          </button>
-        </div>
-      )}
-
-      {current.kind === "combined" ? (
-        <CombinedSlots
-          key={clamped}
-          slots={current.slots}
-          mode={plan.mode}
-          prayer={prayer}
-          otherPassages={otherPassages}
-        />
-      ) : (
-        <SlotView
-          key={clamped}
-          rakah={current.slot.rakah}
-          kind={current.slot.kind}
-          label={current.slot.label}
-          content={current.slot.content}
-          mode={plan.mode}
-          prayer={prayer}
-          otherPassages={otherPassages}
-        />
-      )}
+      <CombinedSlots
+        slots={plan.slots}
+        mode={plan.mode}
+        prayer={prayer}
+        otherPassages={otherPassages}
+      />
     </section>
   );
 }
 
-// The first two rak'ahs, connected in one continuous view instead of two
-// isolated cards — one shared frame, a divider between them, each rak'ah
-// still independently mark-as-used/suggest-another via bare SlotViews.
+// All of a prayer's rak'ahs, connected in one continuous view instead of
+// separate isolated cards — one shared frame, a divider between each, each
+// rak'ah still independently mark-as-used/suggest-another via bare
+// SlotViews.
 function CombinedSlots({
   slots,
   mode,
   prayer,
   otherPassages,
 }: {
-  slots: [ResolvedSlot, ResolvedSlot];
+  slots: ResolvedSlot[];
   mode: Mode;
   prayer: string;
   otherPassages: PassageContent[];
@@ -1452,7 +1382,13 @@ function SlotView({
 
   if (kind === "fatiha-only") {
     return (
-      <div className="card p-4 flex items-center justify-between">
+      <div
+        className={
+          bare
+            ? "flex items-center justify-between"
+            : "card p-4 flex items-center justify-between"
+        }
+      >
         <span className="text-sm font-bold">{rakahLabel}</span>
         <span className="text-sm text-muted">{t("home.fatihaOnly")}</span>
       </div>
@@ -1461,7 +1397,7 @@ function SlotView({
 
   if (!content) {
     return (
-      <div className="card p-4 text-sm text-muted">
+      <div className={bare ? "text-sm text-muted" : "card p-4 text-sm text-muted"}>
         {rakahLabel}: {t("home.noSuggestion")}
       </div>
     );

@@ -325,6 +325,27 @@ body {
   font-size: 0.72em; /* the ۝-number medallion stays legible when fitted */
 }
 
+/* Suggestion cards (PassageCard): same justified, multi-ayah-per-line
+   Mushaf feel as .fit-quran, but roomier — these are short excerpts read
+   standalone, not a full page, so the ultra-dense 1.68 line-height read as
+   cramped and let the last ayah's mark crowd the meaning box right below
+   it. A touch more breathing room, still nowhere near the old spread-out
+   one-verse-per-block style. */
+.passage-dense .quran-text {
+  font-size: 1em;
+  line-height: 1.95;
+  word-spacing: 0;
+  text-align: justify;
+  text-align-last: center;
+}
+.passage-dense .bismillah-line {
+  font-size: 0.85em;
+  line-height: 1.6;
+}
+.passage-dense .ayah-mark {
+  font-size: 0.68em;
+}
+
 /* Exact (QCF) lines: a uniform hair of inter-word space — some V2 word
    glyphs sit flush against their neighbor; sacred text must never read as
    joined words. The width solver measures margins, so lines still fill. */

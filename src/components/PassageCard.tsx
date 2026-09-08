@@ -87,11 +87,12 @@ export function PassageCard({
     </div>
   );
 
-  // Same dense, justified, tight-leading rendering as the Quran reading
-  // page (the .fit-quran ruleset) — one shared look for Quranic text
-  // everywhere in the app, not a separate stretched-out style here.
+  // Justified, multi-ayah-per-line Mushaf feel like the Quran reading page,
+  // but roomier (.passage-dense, not .fit-quran) — these are short excerpts
+  // read standalone, not a full page, so the ultra-dense page spacing felt
+  // cramped and let the last ayah's mark crowd whatever comes after it.
   const body = (
-    <div className={bare ? "px-1" : "px-5 py-6"}>
+    <div className={bare ? "px-1 py-2" : "px-5 py-6"}>
       {bism.line && (
         <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
           {bism.line}
@@ -100,7 +101,7 @@ export function PassageCard({
           )}
         </p>
       )}
-      <div className="fit-quran" style={{ fontSize: "1.7rem" }}>
+      <div className="passage-dense mb-4" style={{ fontSize: "1.7rem" }}>
         <p className="quran-text" dir="rtl">
           {renderAyahs.map((a) => (
             <span key={a.ayahNumber}>

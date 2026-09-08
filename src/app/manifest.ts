@@ -29,12 +29,16 @@ export default function manifest(): ManifestWithSW {
     start_url: "/home",
     // Every route the manifest/service worker are allowed to control.
     scope: "/",
-    // Fullscreen (edge-to-edge, no status/nav bar) — retried 2026-09-08 at
-    // explicit request after previously reverting this for an uncolorable
-    // black band around the camera cutout on some phones. If that band
-    // reappears, revert display/display_override to "standalone" only.
-    display: "fullscreen",
-    display_override: ["fullscreen", "standalone"],
+    // Standalone, NOT "fullscreen" — reverted 2026-09-08 after retrying it:
+    // true fullscreen risks an uncolorable black band around the camera
+    // cutout on some phones, AND Android shows a "to exit full screen..."
+    // system toast on every fresh app launch (not just once), which can't
+    // be suppressed. Neither is worth it. The status bar instead blends
+    // seamlessly into the app by matching theme_color to the background —
+    // same visual effect (one solid color, no visible bar) without
+    // triggering real immersive-mode side effects.
+    display: "standalone",
+    display_override: ["standalone"],
     // Mobile-first, but not orientation-locked — the app also has a real
     // desktop/tablet layout.
     orientation: "any",
