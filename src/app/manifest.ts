@@ -29,11 +29,12 @@ export default function manifest(): ManifestWithSW {
     start_url: "/home",
     // Every route the manifest/service worker are allowed to control.
     scope: "/",
-    // Standalone, NOT "fullscreen": fullscreen makes Android paint an
-    // uncolorable black band in the camera-cutout area on every screen.
-    // The status bar instead blends in via theme_color = background.
-    display: "standalone",
-    display_override: ["standalone"],
+    // Fullscreen (edge-to-edge, no status/nav bar) — retried 2026-09-08 at
+    // explicit request after previously reverting this for an uncolorable
+    // black band around the camera cutout on some phones. If that band
+    // reappears, revert display/display_override to "standalone" only.
+    display: "fullscreen",
+    display_override: ["fullscreen", "standalone"],
     // Mobile-first, but not orientation-locked — the app also has a real
     // desktop/tablet layout.
     orientation: "any",
