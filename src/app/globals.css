@@ -422,6 +422,12 @@ html[data-welcome="1"] body::before {
 html[dir="rtl"] .animate-drawer {
   animation-name: drawerInRtl;
 }
+/* Forced literal-left entrance, regardless of dir — for the one trigger
+   (home page's hamburger) that sits on the left even in RTL. See
+   NavDrawer's anchorLeft in BottomNav.tsx. */
+.animate-drawer-left {
+  animation: drawerInLtr 0.24s ease both;
+}
 
 /* One page-level fade used for every route change (see (app)/template.tsx).
    OPACITY ONLY — a retained transform on this wrapper would become the

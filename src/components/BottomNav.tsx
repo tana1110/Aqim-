@@ -157,8 +157,12 @@ export function TopNav() {
   );
 }
 
-// Mobile: hamburger-triggered side drawer (slides from the start side —
-// right in RTL, left in LTR — with a dismissible backdrop).
+// Mobile: hamburger-triggered side drawer (slides from wherever the
+// hamburger that opened it actually sits). Every page's hamburger sits on
+// the "start" side (right in RTL, left in LTR) — EXCEPT the home page's,
+// which sits at the end of its own header row (the opposite side) — so the
+// drawer has to anchor there specifically, or it opens from the wrong
+// corner relative to the button that opened it.
 export function NavDrawer({
   open,
   onClose,
@@ -168,6 +172,7 @@ export function NavDrawer({
 }) {
   const pathname = usePathname();
   const { t } = useLang();
+  const anchorLeft = pathname === "/home";
 
   if (!open) return null;
 
@@ -180,7 +185,13 @@ export function NavDrawer({
         aria-hidden
       />
       {/* panel */}
-      <div className="absolute inset-y-0 start-0 w-72 max-w-[82%] bg-surface border-e border-border shadow-lg flex flex-col animate-drawer">
+      <div
+        className={`absolute inset-y-0 w-72 max-w-[82%] bg-surface shadow-lg flex flex-col ${
+          anchorLeft
+            ? "left-0 border-r border-border animate-drawer-left"
+            : "start-0 border-e border-border animate-drawer"
+        }`}
+      >
         <div className="flex items-center justify-between p-4 border-b border-border">
           <span className="flex items-center gap-2">
             <Logo variant={2} size={30} />
