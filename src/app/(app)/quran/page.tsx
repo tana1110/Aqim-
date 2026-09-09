@@ -16,6 +16,7 @@ import { PageLoader } from "@/components/Brand";
 import { BottomTabs } from "@/components/BottomNav";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, getBismillahDisplay, cleanAyah } from "@/lib/quranDisplay";
+import { enterImmersive, exitImmersive } from "@/lib/nativeBridge";
 import {
   isDoneToday,
   loadWird,
@@ -243,22 +244,17 @@ export default function QuranPage() {
   chromeRef.current = chrome;
   useEffect(() => {
     if (typeof window === "undefined" || window.innerWidth >= 768) return;
-    const enterFs = () => {
-      const el = document.documentElement;
-      if (!document.fullscreenElement && el.requestFullscreen) {
-        el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
-      }
-    };
+    // The native bridge (unlike the browser Fullscreen API) needs no user
+    // gesture, so go immersive immediately rather than waiting for a tap.
+    enterImmersive();
     // any touch while reading (page turns, first open) keeps it immersive
     const onTap = () => {
-      if (!chromeRef.current) enterFs();
+      if (!chromeRef.current) enterImmersive();
     };
     window.addEventListener("pointerup", onTap);
     return () => {
       window.removeEventListener("pointerup", onTap);
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
+      exitImmersive();
     };
   }, []);
 

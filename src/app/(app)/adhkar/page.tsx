@@ -14,6 +14,7 @@ import { Search, Check, RotateCcw, X } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { WirdStrip } from "@/components/WirdCard";
 import { useLang } from "@/components/LanguageProvider";
+import { enterImmersive, exitImmersive } from "@/lib/nativeBridge";
 import {
   adhkarPartsToday,
   dayKey,
@@ -487,25 +488,18 @@ function SnapDeck({
 
   // Same immersive treatment as the Quran reading page on phones: hide the
   // browser/system chrome entirely (status bar included), not just the
-  // app's own header/nav. Browsers only grant requestFullscreen() inside a
-  // real user gesture — calling it once on mount is silently rejected, so
-  // (like the Quran page) re-attempt it on every tap/scroll until it takes.
+  // app's own header/nav. In the native app this goes through a direct
+  // bridge (no user-gesture restriction); in a browser it's the standard
+  // Fullscreen API, which DOES need a gesture — re-attempted on every
+  // tap/scroll until it takes there.
   useEffect(() => {
     if (typeof window === "undefined" || window.innerWidth >= 768) return;
-    const el = document.documentElement;
-    const enterFs = () => {
-      if (!document.fullscreenElement && el.requestFullscreen) {
-        el.requestFullscreen({ navigationUI: "hide" }).catch(() => {});
-      }
-    };
-    enterFs();
+    enterImmersive();
     const events = ["pointerdown", "pointerup", "scroll", "touchstart"];
-    for (const ev of events) window.addEventListener(ev, enterFs);
+    for (const ev of events) window.addEventListener(ev, enterImmersive);
     return () => {
-      for (const ev of events) window.removeEventListener(ev, enterFs);
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(() => {});
-      }
+      for (const ev of events) window.removeEventListener(ev, enterImmersive);
+      exitImmersive();
     };
   }, []);
 
