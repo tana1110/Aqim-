@@ -212,7 +212,14 @@ export function NavDrawer({
             <UserRound size={20} strokeWidth={pathname === "/account" ? 2.4 : 2} />
             {t("account.title")}
           </Link>
-          {TABS.map(({ href, key, Icon }) => {
+          {[
+            ...TABS,
+            // Qibla/Tasbih only ever had a desktop entry point (SideNav) —
+            // mobile had no way to reach Qibla at all. Tasbih already has a
+            // home-page tile, but belongs here too for discoverability.
+            { href: "/tasbih", key: "tasbih.title", Icon: CircleDot },
+            { href: "/qibla", key: "qibla.title", Icon: Compass },
+          ].map(({ href, key, Icon }) => {
             const active = pathname === href;
             return (
               <Link
