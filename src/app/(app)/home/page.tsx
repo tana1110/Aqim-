@@ -12,7 +12,7 @@ import {
   Flame,
   Shield,
   Menu,
-  Settings2,
+  Plus,
   X,
 } from "lucide-react";
 import { Logo, LogoLoader } from "@/components/Logo";
@@ -651,12 +651,15 @@ export default function HomePage() {
         {/* Review — the user picks what to review (drives Focus mode) */}
         {widgets.review && status?.hasMemorization && <ReviewPicker />}
 
-        {/* Each person shapes their own home page */}
+        {/* Each person shapes their own home page — a real, visible button,
+            not a faint text link: with most widgets off by default, this
+            is now the only way to bring any of them back, so it has to be
+            impossible to miss. */}
         <button
           onClick={() => setCustomize(true)}
-          className="mx-auto flex items-center gap-1.5 text-xs text-muted hover:text-foreground py-1"
+          className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border py-3.5 text-sm font-bold text-muted hover:text-primary hover:border-primary/40 transition"
         >
-          <Settings2 size={13} />
+          <Plus size={16} />
           {t("widgets.title")}
         </button>
         {customize && (
