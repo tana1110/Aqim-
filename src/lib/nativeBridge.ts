@@ -6,7 +6,10 @@
 // website itself (a normal browser tab, or the old TWA build).
 declare global {
   interface Window {
-    AndroidApp?: { setImmersive?: (on: boolean) => void };
+    AndroidApp?: {
+      setImmersive?: (on: boolean) => void;
+      updateWidgets?: (json: string) => void;
+    };
   }
 }
 
@@ -31,4 +34,20 @@ export function exitImmersive() {
   if (document.fullscreenElement) {
     document.exitFullscreen().catch(() => {});
   }
+}
+
+// Pushes current glance data (next prayer, tasbih, adhkar, wird) into the
+// native shell's SharedPreferences so the four home-screen widgets — which
+// run in their own process and can't read the WebView's localStorage — have
+// something to show. No-ops outside the native app.
+export interface WidgetSyncPayload {
+  prayer?: { label: string; time: string } | null;
+  tasbih?: { phrase: string; count: number; target: number };
+  adhkar?: { morning: boolean; evening: boolean; sleep: boolean };
+  wird?: { done: boolean; streak: number };
+}
+
+export function pushWidgetData(payload: WidgetSyncPayload) {
+  if (typeof window === "undefined") return;
+  window.AndroidApp?.updateWidgets?.(JSON.stringify(payload));
 }

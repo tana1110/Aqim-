@@ -12,6 +12,7 @@ import { ReminderScheduler } from "@/components/ReminderScheduler";
 import { AdhanPlayer } from "@/components/AdhanPlayer";
 import { SyncClient } from "@/components/SyncClient";
 import { BackExitGuard } from "@/components/BackExitGuard";
+import { WidgetSync } from "@/components/WidgetSync";
 
 // App shell: bottom tab bar + hamburger drawer on mobile, inline header
 // tabs on desktop.
@@ -53,6 +54,7 @@ export default function AppLayout({
       <AdhanPlayer />
       <SyncClient />
       <BackExitGuard />
+      <WidgetSync />
       <NavDrawer open={navOpen} onClose={() => setNavOpen(false)} />
 
       <header
