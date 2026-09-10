@@ -34,7 +34,13 @@ export function BottomTabs({ force = false }: { force?: boolean }) {
   const pathname = usePathname();
   const { t } = useLang();
   const [hidden, setHidden] = useState(false);
-  const tabs = TABS.filter((x) => x.href !== "/settings");
+  // Settings replaces Setup in the always-visible bottom bar — Setup
+  // (marking what you've memorized) is a one-time/occasional task, while
+  // Settings is something people need to find quickly and often couldn't
+  // (it was buried in the hamburger menu, which hurts discoverability
+  // significantly — NN/g's hamburger-menu usability research). Setup is
+  // still reachable from the hamburger.
+  const tabs = TABS.filter((x) => x.href !== "/setup");
 
   useEffect(() => {
     let last = window.scrollY;

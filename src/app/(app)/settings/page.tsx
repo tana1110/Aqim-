@@ -2,7 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Bell, ExternalLink, MapPin, Shield, Volume2 } from "lucide-react";
+import {
+  Bell,
+  ChevronDown,
+  ExternalLink,
+  MapPin,
+  Shield,
+  Volume2,
+} from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageLoader } from "@/components/Brand";
@@ -105,6 +112,11 @@ export default function SettingsPage() {
   }
 
   const [prePrompt, setPrePrompt] = useState(false);
+  // Reading/display, replay-tour, and about/legal are all things people set
+  // once (or never) rather than daily — collapsed by default so the page
+  // people actually use often (language, appearance, notifications) isn't
+  // buried under a long scroll of rarely-touched controls.
+  const [showMore, setShowMore] = useState(false);
 
   async function toggleReminder() {
     if (!cfg) return;
@@ -219,79 +231,6 @@ export default function SettingsPage() {
             </div>
           </div>
         </div>
-      </Section>
-
-      {/* ---- Reading & display ---- */}
-      <Section title={t("settings.sec.reading")}>
-        {/* Font size — a stepped slider like the phone's own display
-            settings; snaps to the four safe sizes. */}
-        <div className="p-4 space-y-3">
-          <span className="text-sm font-medium">{t("settings.fontSize")}</span>
-          <input
-            type="range"
-            min={0}
-            max={FONT_STEPS.length - 1}
-            step={1}
-            value={fontIdx}
-            onChange={(e) => applyFont(FONT_STEPS[+e.target.value].value)}
-            aria-label={t("settings.fontSize")}
-            className="font-slider w-full"
-            style={
-              {
-                "--p": `${(fontIdx / (FONT_STEPS.length - 1)) * 100}%`,
-              } as React.CSSProperties
-            }
-          />
-          <div className="flex justify-between text-[10px] font-bold">
-            {FONT_STEPS.map((s, i) => (
-              <button
-                key={s.value}
-                onClick={() => applyFont(s.value)}
-                className={i === fontIdx ? "text-primary" : "text-muted"}
-              >
-                {t(s.key)}
-              </button>
-            ))}
-          </div>
-          {/* Live preview — updates while dragging */}
-          <p
-            className="rounded-xl bg-surface-2 p-3 text-muted leading-relaxed"
-            style={{ fontSize: `calc(0.875rem * ${fontScale})` }}
-          >
-            {t("settings.fontPreview")}
-          </p>
-        </div>
-
-        {/* Suggested passage length */}
-        <div className="p-4">
-          <div className="flex items-center justify-between gap-4">
-            <span className="text-sm font-medium">
-              {t("settings.passageLen")}
-            </span>
-            <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
-              {(["short", "medium", "long"] as const).map((v) => (
-                <button
-                  key={v}
-                  onClick={() => applyPassLen(v)}
-                  aria-pressed={passLen === v}
-                  className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap ${
-                    passLen === v
-                      ? "bg-primary text-white"
-                      : "text-muted hover:text-foreground"
-                  }`}
-                >
-                  {t(`len.${v}`)}
-                </button>
-              ))}
-            </div>
-          </div>
-          <p className="text-[11px] text-muted mt-1.5">
-            {t("settings.lenHint")}
-          </p>
-        </div>
-
-        {/* Offline Quran — download all 604 pages into the local cache */}
-        <OfflineRow />
       </Section>
 
       {/* ---- Notifications & location ---- */}
@@ -481,47 +420,139 @@ export default function SettingsPage() {
         </div>
       </Section>
 
-      {/* ---- General ---- */}
-      <Section title={t("settings.sec.general")}>
-        <Row label={t("settings.replayTour")}>
-          <button
-            onClick={() => {
-              try {
-                localStorage.removeItem("aqim-onboarded");
-                localStorage.removeItem("aqim-tour-done");
-              } catch {}
-              window.location.href = "/home";
-            }}
-            className="btn-primary px-4 py-1.5 text-xs"
-          >
-            {t("settings.replayTourHint")}
-          </button>
-        </Row>
-      </Section>
+      {/* ---- More settings — collapsed by default. Reading/display,
+          replay-tour, and about/legal are all set-once-or-never controls,
+          not daily ones, so they stay out of the way until asked for. ---- */}
+      <button
+        onClick={() => setShowMore((v) => !v)}
+        aria-expanded={showMore}
+        className="w-full flex items-center justify-between px-1 py-2 text-sm font-bold text-muted hover:text-foreground transition"
+      >
+        {t("settings.more")}
+        <ChevronDown
+          size={16}
+          className={`transition-transform ${showMore ? "rotate-180" : ""}`}
+        />
+      </button>
 
-      {/* ---- About & legal ---- */}
-      <Section title={t("settings.sec.about")}>
-        <Row label={t("settings.privacy")}>
-          <Link
-            href="/privacy"
-            className="btn-primary px-4 py-1.5 text-xs inline-flex items-center gap-1.5"
-          >
-            <Shield size={13} />
-            {t("settings.privacy")}
-          </Link>
-        </Row>
-        <Row label={t("settings.instagram")}>
-          <a
-            href="https://www.instagram.com/aqimsalat"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-primary px-4 py-1.5 text-xs inline-flex items-center gap-1.5"
-          >
-            <ExternalLink size={13} />
-            @aqimsalat
-          </a>
-        </Row>
-      </Section>
+      {showMore && (
+        <div className="space-y-6">
+          {/* ---- Reading & display ---- */}
+          <Section title={t("settings.sec.reading")}>
+            {/* Font size — a stepped slider like the phone's own display
+                settings; snaps to the four safe sizes. */}
+            <div className="p-4 space-y-3">
+              <span className="text-sm font-medium">{t("settings.fontSize")}</span>
+              <input
+                type="range"
+                min={0}
+                max={FONT_STEPS.length - 1}
+                step={1}
+                value={fontIdx}
+                onChange={(e) => applyFont(FONT_STEPS[+e.target.value].value)}
+                aria-label={t("settings.fontSize")}
+                className="font-slider w-full"
+                style={
+                  {
+                    "--p": `${(fontIdx / (FONT_STEPS.length - 1)) * 100}%`,
+                  } as React.CSSProperties
+                }
+              />
+              <div className="flex justify-between text-[10px] font-bold">
+                {FONT_STEPS.map((s, i) => (
+                  <button
+                    key={s.value}
+                    onClick={() => applyFont(s.value)}
+                    className={i === fontIdx ? "text-primary" : "text-muted"}
+                  >
+                    {t(s.key)}
+                  </button>
+                ))}
+              </div>
+              {/* Live preview — updates while dragging */}
+              <p
+                className="rounded-xl bg-surface-2 p-3 text-muted leading-relaxed"
+                style={{ fontSize: `calc(0.875rem * ${fontScale})` }}
+              >
+                {t("settings.fontPreview")}
+              </p>
+            </div>
+
+            {/* Suggested passage length */}
+            <div className="p-4">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-sm font-medium">
+                  {t("settings.passageLen")}
+                </span>
+                <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
+                  {(["short", "medium", "long"] as const).map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => applyPassLen(v)}
+                      aria-pressed={passLen === v}
+                      className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap ${
+                        passLen === v
+                          ? "bg-primary text-white"
+                          : "text-muted hover:text-foreground"
+                      }`}
+                    >
+                      {t(`len.${v}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-[11px] text-muted mt-1.5">
+                {t("settings.lenHint")}
+              </p>
+            </div>
+
+            {/* Offline Quran — download all 604 pages into the local cache */}
+            <OfflineRow />
+          </Section>
+
+          {/* ---- General ---- */}
+          <Section title={t("settings.sec.general")}>
+            <Row label={t("settings.replayTour")}>
+              <button
+                onClick={() => {
+                  try {
+                    localStorage.removeItem("aqim-onboarded");
+                    localStorage.removeItem("aqim-tour-done");
+                  } catch {}
+                  window.location.href = "/home";
+                }}
+                className="btn-primary px-4 py-1.5 text-xs"
+              >
+                {t("settings.replayTourHint")}
+              </button>
+            </Row>
+          </Section>
+
+          {/* ---- About & legal ---- */}
+          <Section title={t("settings.sec.about")}>
+            <Row label={t("settings.privacy")}>
+              <Link
+                href="/privacy"
+                className="btn-primary px-4 py-1.5 text-xs inline-flex items-center gap-1.5"
+              >
+                <Shield size={13} />
+                {t("settings.privacy")}
+              </Link>
+            </Row>
+            <Row label={t("settings.instagram")}>
+              <a
+                href="https://www.instagram.com/aqimsalat"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn-primary px-4 py-1.5 text-xs inline-flex items-center gap-1.5"
+              >
+                <ExternalLink size={13} />
+                @aqimsalat
+              </a>
+            </Row>
+          </Section>
+        </div>
+      )}
     </div>
   );
 }
