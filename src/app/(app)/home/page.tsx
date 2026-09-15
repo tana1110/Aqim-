@@ -424,7 +424,7 @@ export default function HomePage() {
       {/* Controls column — fixed, deliberate order */}
       <div className="space-y-5 lg:sticky lg:top-20">
         {/* Greeting — THE home header on phones (the brand bar hides here) */}
-        <div className="flex items-center gap-3 px-1 pt-1">
+        <div className="flex items-center gap-3 px-1 pt-safe-1 md:pt-1">
           <Link
             href="/account"
             aria-label={t("account.title")}

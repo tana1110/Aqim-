@@ -379,6 +379,12 @@ body {
 .h-nav {
   height: calc(4.25rem + env(safe-area-inset-bottom, 0px));
 }
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pt-safe-1 {
+  padding-top: calc(env(safe-area-inset-top, 0px) + 0.25rem);
+}
 
 /* Hide scrollbars on horizontal chip rows (still scrollable). */
 .no-scrollbar {

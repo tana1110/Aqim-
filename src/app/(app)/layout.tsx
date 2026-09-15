@@ -58,7 +58,7 @@ export default function AppLayout({
       <NavDrawer open={navOpen} onClose={() => setNavOpen(false)} />
 
       <header
-        className={`sticky top-0 z-20 bg-background border-b border-border ${
+        className={`sticky top-0 z-20 bg-background border-b border-border pt-safe ${
           isHome ? "hidden md:block" : ""
         }`}
       >
