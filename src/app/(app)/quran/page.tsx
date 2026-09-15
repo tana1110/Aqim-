@@ -647,6 +647,30 @@ export default function QuranPage() {
     audio.onended = () => playFrom(idx + 1);
     audio.onerror = () => stopAudio();
     audio.play().catch(() => stopAudio());
+
+    // Prefetch the NEXT ayah's audio into the cache while this one plays —
+    // without this, each ayah only starts downloading after the previous
+    // one ends, and that network round-trip is exactly the audible pause
+    // between ayahs the reciter shouldn't have.
+    const next = list[idx + 1];
+    if (next) {
+      const gNext = globalAyahNumber(
+        surahsRef.current,
+        next.surahNumber,
+        next.ayahNumber,
+      );
+      if (gNext != null) {
+        const nextUrl = ayahAudioUrl(gNext, reciterRef.current);
+        caches
+          .open("aqim-audio-v1")
+          .then(async (cache) => {
+            if (await cache.match(nextUrl)) return;
+            const res = await fetch(nextUrl, { mode: "no-cors" });
+            await cache.put(nextUrl, res);
+          })
+          .catch(() => {});
+      }
+    }
   };
 
   // When the next page's content arrives mid-recitation, keep going;
