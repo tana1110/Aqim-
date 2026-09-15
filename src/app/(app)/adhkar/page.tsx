@@ -384,10 +384,10 @@ function ChapterView({
 
   if (!items) return <PageLoader />;
 
-  // Morning/evening are meant to be worked through one at a time, in order —
-  // a full-screen snap deck (Stories-style). Sleep, after-prayer, and any
-  // chapter opened via search stay a normal scrollable list.
-  if (part === "morning" || part === "evening") {
+  // Morning/evening/sleep are meant to be worked through one at a time, in
+  // order — a full-screen snap deck (Stories-style). After-prayer, and any
+  // chapter opened via search, stay a normal scrollable list.
+  if (part === "morning" || part === "evening" || part === "sleep") {
     return (
       <>
         <SnapDeck
