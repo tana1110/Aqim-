@@ -583,12 +583,15 @@ function OfflineRow() {
   const [done, setDone] = useState(0);
 
   useEffect(() => {
-    // Consider it downloaded if a spread of probe pages is cached.
+    // Consider it downloaded if a spread of probe pages (text + font) is cached.
     (async () => {
       try {
         const cache = await caches.open("aqim-mushaf-v1");
         for (const p of [1, 302, 604]) {
-          if (!(await cache.match(`${location.origin}/api/mushaf?page=${p}`)))
+          if (
+            !(await cache.match(`${location.origin}/api/mushaf?page=${p}`)) ||
+            !(await cache.match(`${location.origin}/api/qcf-font/${p}`))
+          )
             return;
         }
         setState("done");
@@ -606,10 +609,15 @@ function OfflineRow() {
       for (let p = 1; p <= 604; p += 8) {
         const batch: Promise<void>[] = [];
         for (let q = p; q < Math.min(p + 8, 605); q++) {
-          // text + the exact 15-line layout (page fonts cache as you read)
+          // text + the exact 15-line layout + that page's own glyph font —
+          // all three are needed to render the real Madani page with no
+          // network at all; leaving the font out (as before) meant a page
+          // never actually opened yet fell back to a lower-fidelity render
+          // when offline instead of the true Mushaf typeset.
           for (const url of [
             `${location.origin}/api/mushaf?page=${q}`,
             `${location.origin}/api/mushaf-exact?page=${q}&v=2`,
+            `${location.origin}/api/qcf-font/${q}`,
           ]) {
             batch.push(
               cache.match(url).then(async (hit) => {
@@ -637,7 +645,14 @@ function OfflineRow() {
 
   return (
     <div className="p-4 flex items-center justify-between gap-4">
-      <span className="text-sm font-medium">{t("settings.offline")}</span>
+      <div>
+        <span className="text-sm font-medium">{t("settings.offline")}</span>
+        {state !== "done" && (
+          <div className="text-[11px] text-muted mt-0.5">
+            {t("settings.offlineSize")}
+          </div>
+        )}
+      </div>
       {state === "done" ? (
         <span className="text-xs text-secondary font-bold">
           {t("settings.offlineDone")}
