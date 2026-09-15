@@ -2,6 +2,7 @@
 
 import { useLayoutEffect, useState } from "react";
 import { BrandOverlay } from "@/components/Brand";
+import { isNativeApp } from "@/lib/nativeBridge";
 
 // Boot splash — ONE brand moment per session (a fresh app launch). Never on
 // refreshes or in-app navigation, and skipped when the first-run Welcome is
@@ -18,6 +19,14 @@ export function SplashScreen() {
   const [fading, setFading] = useState(false);
 
   useLayoutEffect(() => {
+    // The native app's own splash (a plain themed screen, no animation)
+    // already covers the cold-boot moment before the WebView even loads
+    // this page — replaying the animated web splash on top of that just
+    // looks like the logo jumping/settling a second time.
+    if (isNativeApp()) {
+      setVisible(false);
+      return;
+    }
     try {
       if (
         !localStorage.getItem("aqim-onboarded") ||

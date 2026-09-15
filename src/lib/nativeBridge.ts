@@ -13,6 +13,10 @@ declare global {
   }
 }
 
+export function isNativeApp(): boolean {
+  return typeof window !== "undefined" && !!window.AndroidApp;
+}
+
 export function enterImmersive() {
   if (typeof window === "undefined") return;
   if (window.AndroidApp?.setImmersive) {
