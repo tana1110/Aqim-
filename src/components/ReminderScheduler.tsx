@@ -5,6 +5,7 @@ import { computeTimes, loadReminderConfig } from "@/lib/reminder";
 import { loadWird, isDoneToday } from "@/lib/wird";
 import { loadAdhanPref, adhanVoiceUrl } from "@/lib/adhan";
 import { translate, type Lang } from "@/lib/i18n";
+import { pushLocalReminders, type LocalReminderItem } from "@/lib/nativeBridge";
 
 const LEAD_MS = 5 * 60 * 1000; // notify 5 minutes before the prayer
 
@@ -151,9 +152,64 @@ export function ReminderScheduler() {
       } catch {}
     }
 
+    // Arms real OS alarms (native app only — no-ops elsewhere) so prayer and
+    // wird reminders fire even with the app fully closed and no network at
+    // all. Independent of the web Notification permission above, which is
+    // a browser-only concept; the native app manages its own permission.
+    const PRAYER_ID: Record<string, number> = {
+      fajr: 1,
+      dhuhr: 2,
+      asr: 3,
+      maghrib: 4,
+      isha: 5,
+    };
+    function pushNative() {
+      const l = lang();
+      const cfg = loadReminderConfig();
+      const items: LocalReminderItem[] = [];
+      if (cfg.enabled && cfg.lat != null && cfg.lng != null) {
+        const now = Date.now();
+        for (const dayOffset of [0, 1]) {
+          const d = new Date();
+          d.setDate(d.getDate() + dayOffset);
+          const times = computeTimes(cfg.lat, cfg.lng, cfg.method, d);
+          for (const [key, time] of Object.entries(times)) {
+            const at = time.getTime() - LEAD_MS;
+            if (at <= now) continue;
+            items.push({
+              id: PRAYER_ID[key] + dayOffset * 10,
+              title: translate(l, "reminder.notifTitle", {
+                prayer: translate(l, `prayer.${key}`),
+              }),
+              body: translate(l, "reminder.notifBody"),
+              route: "/home",
+              timeMillis: at,
+            });
+          }
+        }
+      }
+      const w = loadWird();
+      if (w.enabled && !isDoneToday()) {
+        const [hh, mm] = w.time.split(":").map(Number);
+        const at = new Date();
+        at.setHours(hh || 20, mm || 0, 0, 0);
+        if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
+        items.push({
+          id: 20,
+          title: translate(l, "wird.notifTitle"),
+          body: translate(l, "wird.notifBody"),
+          route: "/home",
+          timeMillis: at.getTime(),
+          repeatDaily: true,
+        });
+      }
+      pushLocalReminders(items);
+    }
+
     function schedule() {
       clearAll();
       scheduleWird();
+      pushNative();
       void syncPush();
       const cfg = loadReminderConfig();
       const adhan = loadAdhanPref();

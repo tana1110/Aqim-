@@ -9,6 +9,7 @@ declare global {
     AndroidApp?: {
       setImmersive?: (on: boolean) => void;
       updateWidgets?: (json: string) => void;
+      scheduleLocalReminders?: (json: string) => void;
     };
   }
 }
@@ -54,4 +55,22 @@ export interface WidgetSyncPayload {
 export function pushWidgetData(payload: WidgetSyncPayload) {
   if (typeof window === "undefined") return;
   window.AndroidApp?.updateWidgets?.(JSON.stringify(payload));
+}
+
+// Arms real OS alarms for prayer/wird reminders so they fire with the app
+// fully closed and no network — web push (ReminderScheduler.tsx) needs the
+// service worker alive plus a round-trip to the cron notifier; this needs
+// neither. No-ops outside the native app.
+export interface LocalReminderItem {
+  id: number;
+  title: string;
+  body: string;
+  route: string;
+  timeMillis: number;
+  repeatDaily?: boolean;
+}
+
+export function pushLocalReminders(items: LocalReminderItem[]) {
+  if (typeof window === "undefined") return;
+  window.AndroidApp?.scheduleLocalReminders?.(JSON.stringify(items));
 }
