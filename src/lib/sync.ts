@@ -22,6 +22,8 @@ const STATIC_KEYS = [
   "aqim-lang",
   "aqim-font-scale",
   "aqim-reminder",
+  "aqim-memorization",
+  "aqim-recitation-history",
 ];
 const DAY_PREFIXES = [
   "aqim-adhkar-parts:",

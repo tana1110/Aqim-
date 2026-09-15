@@ -32,6 +32,9 @@ import {
   type WirdConfig,
 } from "@/lib/wird";
 import { loadTasbih, tapTasbih, type TasbihState } from "@/lib/tasbih";
+import { pushHistoryLocal } from "@/lib/localMemo";
+import type { LengthPref } from "@/lib/selection";
+import type { SuggestionRequest } from "@/lib/plan";
 import {
   clientStreakStatus,
   formatRemaining,
@@ -377,24 +380,40 @@ export default function HomePage() {
     const seq = suggestSeq.current;
     setLoading(true);
     setError(null);
+    const storedLengthPref = localStorage.getItem("aqim-passage-len");
+    const lengthPref: LengthPref = (
+      ["short", "medium", "long"] as const
+    ).includes(storedLengthPref as LengthPref)
+      ? (storedLengthPref as LengthPref)
+      : "medium";
+    const req: SuggestionRequest = {
+      mode,
+      prayer,
+      rakahs,
+      focus: focusPayload(),
+      lengthPref,
+    };
     try {
       const res = await fetch("/api/suggest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode,
-          prayer,
-          rakahs,
-          focus: focusPayload(),
-          lengthPref: localStorage.getItem("aqim-passage-len") || "medium",
-        }),
+        body: JSON.stringify(req),
       });
       const data = await res.json();
       if (seq !== suggestSeq.current) return; // context changed mid-flight
       if (data.error) setError(data.error);
       else setPlan(data.plan);
     } catch {
-      if (seq === suggestSeq.current) setError(t("home.error"));
+      // No network (or the request never reached the server) — build the
+      // same plan entirely on-device from the bundled Quran data + local
+      // memorization/history, so recitation suggestions still work offline.
+      try {
+        const { buildSuggestionOffline } = await import("@/lib/offlinePlan");
+        const plan = await buildSuggestionOffline(req);
+        if (seq === suggestSeq.current) setPlan(plan);
+      } catch {
+        if (seq === suggestSeq.current) setError(t("home.error"));
+      }
     } finally {
       if (seq === suggestSeq.current) setLoading(false);
     }
@@ -1455,6 +1474,11 @@ function SlotView({
       return;
     }
     setBusy(true);
+    const passage = {
+      surahNumber: content!.surahNumber,
+      fromAyah: content!.fromAyah,
+      toAyah: content!.toAyah,
+    };
     try {
       const res = await fetch("/api/history", {
         method: "POST",
@@ -1463,13 +1487,17 @@ function SlotView({
           prayerType: prayer,
           mode,
           rakahNumber: rakah,
-          surahNumber: content!.surahNumber,
-          fromAyah: content!.fromAyah,
-          toAyah: content!.toAyah,
+          ...passage,
         }),
       });
       const data = await res.json();
       setEntryId(data.entry?.id ?? null);
+      setUsed(true);
+      pushHistoryLocal([passage]);
+    } catch {
+      // No network — still record locally so anti-repetition keeps working
+      // offline; it'll simply have no server-side entry id to undo by.
+      pushHistoryLocal([passage]);
       setUsed(true);
     } finally {
       setBusy(false);

@@ -8,6 +8,7 @@ import { Logo } from "@/components/Logo";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName } from "@/lib/quranDisplay";
 import type { SurahMeta } from "@/lib/types";
+import { saveMemorization } from "@/lib/localMemo";
 
 interface JuzSegment {
   surahNumber: number;
@@ -116,6 +117,9 @@ export default function SetupPage() {
       const byNumber = new Map(s.map((x) => [x.number, x]));
       const saved: JuzSegment[] = mRes.memorization ?? [];
       setFirstTime(saved.length === 0);
+      // Mirror to localStorage so the offline suggestion engine has real
+      // memorization data even with no network.
+      saveMemorization(saved);
       const preselect = new Set<number>();
       for (const r of saved) {
         const meta = byNumber.get(r.surahNumber);
@@ -244,6 +248,7 @@ export default function SetupPage() {
         body: JSON.stringify({ ranges }),
       });
       if (!res.ok) throw new Error(String(res.status));
+      saveMemorization(ranges);
       setSavedKey(selectionKey(selectedSurahs, selectedJuz));
       // Let "saving…" breathe for a beat, then show "saved". Only the very
       // first save continues to home by itself — after that the user is
