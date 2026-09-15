@@ -25,6 +25,7 @@ import {
   recordPageRead,
 } from "@/lib/wird";
 import { pageCountsToday, postStreak } from "@/lib/streak";
+import { markKhatmaPage } from "@/lib/khatma";
 import {
   RECITERS,
   ayahAudioUrl,
@@ -720,6 +721,7 @@ export default function QuranPage() {
     // Reading here counts toward the wird automatically — pages mode by
     // count, surah mode by finishing every page of the chosen surahs.
     const donePages = recordPageRead(page);
+    markKhatmaPage(page);
     const doneSurahs = maybeCompleteSurahWird(surahs);
     // Daily streak (server-side truth): the wird saves the day; without a
     // wird any page does; a wird still owed gets the 23:00–01:00 mercy.

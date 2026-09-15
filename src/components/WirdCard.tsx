@@ -24,6 +24,12 @@ import {
   postStreak,
 } from "@/lib/streak";
 import type { SurahMeta } from "@/lib/types";
+import {
+  khatmaStatus,
+  startKhatma,
+  stopKhatma,
+  type KhatmaStatus,
+} from "@/lib/khatma";
 
 // Daily wird — configured and lived on the QURAN page. Portion can be defined
 // by pages, by a surah, or by minutes of reading; shows the next reminder,
@@ -44,6 +50,7 @@ export function WirdStrip() {
   const [surahQuery, setSurahQuery] = useState("");
 
   const [pagesToday, setPagesToday] = useState(0);
+  const [khatma, setKhatma] = useState<KhatmaStatus | null>(null);
 
   function refresh() {
     setCfg(loadWird());
@@ -51,15 +58,18 @@ export function WirdStrip() {
     setStreak(clientStreakStatus(loadStreakCache()));
     setPagesToday(pagesReadToday());
     setWeeks({ wird: wirdWeek(), adhkar: adhkarWeek() });
+    setKhatma(khatmaStatus());
   }
   useEffect(() => {
     refresh();
     window.addEventListener("aqim-wird-changed", refresh);
     window.addEventListener("aqim-streak-changed", refresh);
+    window.addEventListener("aqim-khatma-changed", refresh);
     const tick = setInterval(refresh, 60_000); // keep the countdown honest
     return () => {
       window.removeEventListener("aqim-wird-changed", refresh);
       window.removeEventListener("aqim-streak-changed", refresh);
+      window.removeEventListener("aqim-khatma-changed", refresh);
       clearInterval(tick);
     };
   }, []);
@@ -113,31 +123,58 @@ export function WirdStrip() {
               className="w-14 rounded-xl border border-border bg-surface px-2 py-1.5 text-sm"
             />
           </label>
-          {/* Khatmah shortcuts: pick a finish-line, we compute the pace */}
-          <div className="flex flex-wrap gap-1.5">
-            {[
-              { key: "wird.k30", pages: Math.ceil(604 / 30) },
-              { key: "wird.k60", pages: Math.ceil(604 / 60) },
-            ].map((k) => (
-              <button
-                key={k.key}
-                onClick={() => apply({ ...c, pages: k.pages })}
-                className={`rounded-full px-3 py-1 text-[11px] font-bold border transition ${
-                  c.pages === k.pages
-                    ? "border-transparent bg-primary text-white"
-                    : "border-border text-muted hover:text-foreground"
-                }`}
-              >
-                {t(k.key)}
-              </button>
-            ))}
-          </div>
-          <p className="text-[11px] text-muted">
-            {t("wird.khatmahIn", {
-              n: c.pages,
-              d: Math.ceil(604 / c.pages),
-            })}
-          </p>
+          {/* Khatmah: pick a finish-line, the daily pace recalculates on
+              its own from whatever is actually left — read ahead one day
+              and tomorrow's number drops by itself; fall behind and it
+              rises. */}
+          {khatma ? (
+            <div className="rounded-xl bg-surface-2 p-3 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold">
+                  {khatma.finished
+                    ? t("wird.khatmaFinished")
+                    : t("wird.khatmaToday", { n: khatma.pagesPerDayNeeded })}
+                </span>
+                <button
+                  onClick={() => stopKhatma()}
+                  className="text-[11px] text-muted underline"
+                >
+                  {t("wird.khatmaStop")}
+                </button>
+              </div>
+              {!khatma.finished && (
+                <p className="text-[11px] text-muted">
+                  {t("wird.khatmaLeft", {
+                    pages: khatma.pagesLeft,
+                    days: khatma.daysLeft,
+                  })}
+                  {khatma.aheadBy !== 0 &&
+                    " · " +
+                      t(
+                        khatma.aheadBy > 0
+                          ? "wird.khatmaAhead"
+                          : "wird.khatmaBehind",
+                        { n: Math.abs(khatma.aheadBy) },
+                      )}
+                </p>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                { key: "wird.k30", days: 30 },
+                { key: "wird.k60", days: 60 },
+              ].map((k) => (
+                <button
+                  key={k.key}
+                  onClick={() => startKhatma(k.days)}
+                  className="rounded-full px-3 py-1 text-[11px] font-bold border border-border text-muted hover:text-foreground transition"
+                >
+                  {t(k.key)}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       );
     if (c.mode === "minutes")
