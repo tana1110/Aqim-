@@ -5,7 +5,11 @@ import { computeTimes, loadReminderConfig } from "@/lib/reminder";
 import { loadWird, isDoneToday } from "@/lib/wird";
 import { loadAdhanPref, adhanVoiceUrl } from "@/lib/adhan";
 import { translate, type Lang } from "@/lib/i18n";
-import { pushLocalReminders, type LocalReminderItem } from "@/lib/nativeBridge";
+import {
+  isNativeApp,
+  pushLocalReminders,
+  type LocalReminderItem,
+} from "@/lib/nativeBridge";
 
 const LEAD_MS = 5 * 60 * 1000; // notify 5 minutes before the prayer
 
@@ -82,6 +86,9 @@ export function ReminderScheduler() {
     }
 
     function scheduleWird() {
+      // The native app's own alarm (pushNative below) covers this without
+      // the web Notification path's "via aqimalsalat.app" attribution line.
+      if (isNativeApp()) return;
       const w = loadWird();
       if (
         !w.enabled ||
@@ -115,6 +122,10 @@ export function ReminderScheduler() {
     }
 
     async function syncPush() {
+      // The native app relies entirely on its own local alarms (no server,
+      // works fully offline); registering web push on top of that only
+      // risks a second, domain-attributed notification for the same event.
+      if (isNativeApp()) return;
       try {
         if (
           typeof Notification === "undefined" ||
@@ -217,6 +228,7 @@ export function ReminderScheduler() {
       // may want the audio azan without ever granting push permission, or
       // vice versa. Both still need a location to know real prayer times.
       const notifReady =
+        !isNativeApp() &&
         cfg.enabled &&
         typeof Notification !== "undefined" &&
         Notification.permission === "granted";
