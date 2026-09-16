@@ -19,7 +19,7 @@ export default function manifest(): ManifestWithSW {
     name: "أقِم الصلاة — Aqim Al-Salah",
     short_name: "أقِم",
     description:
-      "اقرأ بخشوع، لا بعادة — آية مختلفة من محفوظاتك لكل صلاة، لتراجع حفظك وتتدبر أكثر.",
+      "صلِّ بخشوع، لا بعادة — آية مختلفة من محفوظاتك لكل صلاة، لتراجع حفظك وتتدبر أكثر.",
     // Installed app opens straight into the app (WhatsApp-style): first launch
     // shows the one-time Welcome onboarding, later launches go to the dashboard.
     // The marketing landing page at "/" is for browser visitors.
