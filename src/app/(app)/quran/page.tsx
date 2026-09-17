@@ -525,9 +525,14 @@ export default function QuranPage() {
     return (
       <div
         ref={exactRef}
-        className="h-full grid"
+        className="grid min-h-full"
         style={{
-          gridTemplateRows: `repeat(${rows.length}, 1fr)`,
+          // Rows take their natural height at this font size rather than
+          // being force-stretched to fill the container — on a short
+          // landscape screen, stretching 15 rows into too little height
+          // made lines overlap into an unreadable smear instead of just
+          // scrolling for the rest of the page.
+          gridTemplateRows: `repeat(${rows.length}, auto)`,
           fontSize: `${exactSize}px`,
         }}
       >
@@ -943,7 +948,7 @@ export default function QuranPage() {
             if (showCoach) dismissCoach();
             setChrome((c) => !c);
           }}
-          className="h-full px-4 fit-center overflow-hidden select-none"
+          className="h-full px-4 fit-center overflow-y-auto overflow-x-hidden select-none no-scrollbar"
           style={{
             paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)",
             paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
