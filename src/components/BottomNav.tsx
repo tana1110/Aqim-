@@ -60,7 +60,7 @@ export function BottomTabs({ force = false }: { force?: boolean }) {
 
   return (
     <nav
-      className={`md:hidden fixed bottom-3 inset-x-3 z-30 transition-transform duration-300 ${
+      className={`desktop:hidden fixed bottom-3 inset-x-3 z-30 transition-transform duration-300 ${
         hidden ? "translate-y-[140%]" : ""
       }`}
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
@@ -110,7 +110,7 @@ export function SideNav() {
     a.href === "/settings" ? 1 : b.href === "/settings" ? -1 : 0,
   );
   return (
-    <aside className="hidden md:block w-56 shrink-0">
+    <aside className="hidden desktop:block w-56 shrink-0">
       <nav data-tour="nav" className="sticky top-20 space-y-1">
         {sections.map(({ href, key, Icon }) => {
           const active = pathname === href;
@@ -140,7 +140,7 @@ export function TopNav() {
   const pathname = usePathname();
   const { t } = useLang();
   return (
-    <nav className="hidden md:flex items-center gap-1">
+    <nav className="hidden desktop:flex items-center gap-1">
       {TABS.map(({ href, key, Icon }) => {
         const active = pathname === href;
         return (
@@ -183,7 +183,7 @@ export function NavDrawer({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-40 md:hidden">
+    <div className="fixed inset-0 z-40 desktop:hidden">
       {/* backdrop */}
       <div
         className="absolute inset-0 bg-black/40"

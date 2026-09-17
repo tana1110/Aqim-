@@ -59,15 +59,15 @@ export default function AppLayout({
 
       <header
         className={`sticky top-0 z-20 bg-background border-b border-border pt-safe ${
-          isHome ? "hidden md:block" : ""
+          isHome ? "hidden desktop:block" : ""
         }`}
       >
-        <div className="mx-auto max-w-6xl px-3 md:px-8 py-3 flex items-center justify-between gap-3">
+        <div className="mx-auto max-w-6xl px-3 desktop:px-8 py-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5">
             <button
               onClick={() => setNavOpen(true)}
               aria-label="menu"
-              className="md:hidden w-10 h-10 grid place-items-center rounded-lg text-foreground hover:bg-surface-2 active:scale-95 transition"
+              className="desktop:hidden w-10 h-10 grid place-items-center rounded-lg text-foreground hover:bg-surface-2 active:scale-95 transition"
             >
               <Menu size={22} />
             </button>
@@ -85,7 +85,7 @@ export default function AppLayout({
       </header>
 
       {/* Desktop: side navigation (all sections); mobile: floating pill nav */}
-      <main className="flex-1 w-full mx-auto max-w-6xl px-4 md:px-8 pb-28 md:pb-12 pt-2 md:flex md:gap-8 md:items-start">
+      <main className="flex-1 w-full mx-auto max-w-6xl px-4 desktop:px-8 pb-28 desktop:pb-12 pt-2 desktop:flex desktop:gap-8 desktop:items-start">
         <SideNav />
         <div className="flex-1 min-w-0">{children}</div>
       </main>

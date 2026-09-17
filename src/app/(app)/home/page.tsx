@@ -461,7 +461,7 @@ export default function HomePage() {
           <button
             onClick={() => window.dispatchEvent(new Event("aqim-open-nav"))}
             aria-label="menu"
-            className="md:hidden w-10 h-10 grid place-items-center rounded-full bg-surface shadow-sm text-foreground active:scale-95 transition shrink-0"
+            className="desktop:hidden w-10 h-10 grid place-items-center rounded-full bg-surface shadow-sm text-foreground active:scale-95 transition shrink-0"
           >
             <Menu size={20} />
           </button>

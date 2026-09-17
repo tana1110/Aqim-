@@ -935,7 +935,7 @@ export default function QuranPage() {
     <>
       {/* MOBILE: the Quran IS the page — one fitted mushaf page, edge to
           edge. Tap the middle for the chrome; tap again to just read. */}
-      <div className="md:hidden fixed inset-0 z-30 bg-background overflow-hidden">
+      <div className="desktop:hidden fixed inset-0 z-30 bg-background overflow-hidden">
         <div
           {...swipeFull}
           key={"m-" + (exact?.page ?? data.page)}
@@ -1036,7 +1036,7 @@ export default function QuranPage() {
       </div>
 
       {/* DESKTOP: the framed reading layout */}
-      <div className="hidden md:block pt-1 max-w-2xl mx-auto">
+      <div className="hidden desktop:block pt-1 max-w-2xl mx-auto">
       {/* Reading progress for the current surah */}
       <div className="sticky top-[64px] z-10 -mx-4 px-4 py-2 bg-background">
         <div className="flex items-center justify-between text-[11px] text-muted mb-1">

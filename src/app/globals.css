@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* A phone rotated to landscape is wide enough to trip Tailwind's plain
+   width-based "md" breakpoint, so it got the desktop sidebar chrome on a
+   screen far too short for it. "desktop" additionally requires real
+   vertical room (tablets/laptops), so a landscape phone keeps the mobile
+   bottom-nav layout, just wider. */
+@custom-variant desktop (@media (min-width: 768px) and (min-height: 600px));
+
 /* ---------------------------------------------------------------------------
    Aqim — visual identity
    Inspired by the tilework of the Dome of the Rock: deep muted tile-blue,
