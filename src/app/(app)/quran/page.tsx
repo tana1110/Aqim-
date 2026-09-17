@@ -389,15 +389,37 @@ export default function QuranPage() {
     el.querySelectorAll("[data-exact-line]").forEach((n) => {
       maxW = Math.max(maxW, (n as HTMLElement).scrollWidth);
     });
-    if (availW <= 0 || availH <= 0 || maxW <= 0) return;
-    // Width decides the glyph size (like print); the 15 grid rows already
-    // stretch to fill the full height, so no height constraint here.
-    const scale = (availW / maxW) * 0.995;
+    const contentH = el.scrollHeight;
+    if (availW <= 0 || availH <= 0 || maxW <= 0 || contentH <= 0) return;
+    // Width decides the glyph size, like print — UNLESS the viewport is
+    // short relative to how wide it is (a landscape phone: plenty of
+    // width, not much height), in which case filling the width would
+    // solve for a font whose 15 rows can't all fit the height without
+    // bleeding into each other; the height ratio caps it in that case.
+    const scale = Math.min(availW / maxW, availH / contentH) * 0.995;
     if (scale < 0.99 || scale > 1.02) {
       exactIter.current++;
       setExactSize((s) => Math.min(42, Math.max(8, s * scale)));
     }
-  }, [exact, exactSize]);
+    // `data` is also a dependency: the exact-page fetch can resolve before
+    // the ayah fetch does, and while `data` is still null the page renders
+    // the loading state instead of this grid — exactRef never mounts, so
+    // this bails out via `!el` above. Without `data` here, that first solve
+    // attempt is lost for good (exact/exactSize don't change again on their
+    // own) and the page is stuck at the unsolved default font size.
+  }, [exact, exactSize, data]);
+
+  // Re-solve on viewport changes (device rotation, or any resize): a size
+  // solved for the old width/height is meaningless after either changes —
+  // same reasoning as the fitSize resize handler below.
+  useEffect(() => {
+    const onResize = () => {
+      exactIter.current = 0;
+      setExactSize(22);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   // Render the true 15-line Madani page: word glyphs on their real lines,
   // surah cartouches and the basmalah on the layout's header lines, empty
