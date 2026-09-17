@@ -604,31 +604,40 @@ function DhikrFullScreen({
   return (
     <button
       onClick={bump}
-      className="relative w-full h-full flex flex-col items-center justify-center text-center px-7"
+      className="relative w-full h-full flex flex-col text-center px-7"
     >
-      <p
-        className="font-quran text-[26px] leading-[2.1] text-[#F3EEE3]"
-        dir="rtl"
+      {/* A long dhikr (e.g. the three Quls combined) can grow taller than
+          the screen — this area scrolls internally instead of the text
+          spilling over the reference/counter footer below it, which used
+          to sit at a fixed absolute position with no space reserved for it. */}
+      <div
+        className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center gap-3 py-4"
+        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 56px)" }}
       >
-        {d.text}
-      </p>
-
-      {refOpen && d.reference && (
         <p
-          className="font-ui text-xs text-[#F3EEE3]/70 leading-relaxed mt-5 max-w-sm"
+          className="font-quran text-[26px] leading-[2.1] text-[#F3EEE3]"
           dir="rtl"
-          onClick={(e) => {
-            e.stopPropagation();
-            setRefOpen(false);
-          }}
         >
-          {d.reference}
+          {d.text}
         </p>
-      )}
+
+        {refOpen && d.reference && (
+          <p
+            className="font-ui text-xs text-[#F3EEE3]/70 leading-relaxed max-w-sm"
+            dir="rtl"
+            onClick={(e) => {
+              e.stopPropagation();
+              setRefOpen(false);
+            }}
+          >
+            {d.reference}
+          </p>
+        )}
+      </div>
 
       <div
-        className="absolute inset-x-0 flex flex-col items-center gap-2.5 px-6"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
+        className="shrink-0 flex flex-col items-center gap-2.5 px-6"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
       >
         {d.reference && !refOpen && (
           <span
