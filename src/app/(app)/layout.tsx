@@ -13,6 +13,7 @@ import { AdhanPlayer } from "@/components/AdhanPlayer";
 import { SyncClient } from "@/components/SyncClient";
 import { BackExitGuard } from "@/components/BackExitGuard";
 import { WidgetSync } from "@/components/WidgetSync";
+import { UpdateBanner } from "@/components/UpdateBanner";
 
 // App shell: bottom tab bar + hamburger drawer on mobile, inline header
 // tabs on desktop.
@@ -55,6 +56,7 @@ export default function AppLayout({
       <SyncClient />
       <BackExitGuard />
       <WidgetSync />
+      <UpdateBanner />
       <NavDrawer open={navOpen} onClose={() => setNavOpen(false)} />
 
       <header
