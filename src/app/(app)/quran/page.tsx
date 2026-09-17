@@ -1,19 +1,21 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSwipeable } from "react-swipeable";
 import {
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
   Download,
+  Menu,
   Play,
   Search,
   Square,
   X,
 } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
-import { BottomTabs } from "@/components/BottomNav";
 import { useLang } from "@/components/LanguageProvider";
 import { surahName, getBismillahDisplay, cleanAyah } from "@/lib/quranDisplay";
 import { enterImmersive, exitImmersive } from "@/lib/nativeBridge";
@@ -231,54 +233,23 @@ export default function QuranPage() {
   const [wirdToast, setWirdToast] = useState(false);
   const [navOpen, setNavOpen] = useState(false);
 
-  // On phones the Quran IS the page: one full-bleed fitted mushaf page.
-  // Tapping the middle toggles the app chrome (bars, controls, nav).
-  const [chrome, setChrome] = useState(false);
-
-  // Immersive reading, tied to the chrome: reading = fullscreen (status
-  // bar hidden); tapping the middle opens the bars AND exits fullscreen
-  // (the "normal screen"); after 2s without touching, the chrome closes
-  // and fullscreen returns on its own. Re-entry rides the transient
-  // user-activation window (~5s after the last touch), so the 2s timer
-  // still counts as gesture-driven for the browser.
-  const chromeRef = useRef(chrome);
-  chromeRef.current = chrome;
+  // On phones the Quran IS the page: a full-bleed, continuously scrollable
+  // reader (icon rail down the side, sticky header, flowing text) — reading
+  // is fullscreen (status bar hidden) the whole time, no tap-to-reveal
+  // chrome to manage.
   useEffect(() => {
     if (typeof window === "undefined" || window.innerWidth >= 768) return;
     // The native bridge (unlike the browser Fullscreen API) needs no user
     // gesture, so go immersive immediately rather than waiting for a tap.
     enterImmersive();
     // any touch while reading (page turns, first open) keeps it immersive
-    const onTap = () => {
-      if (!chromeRef.current) enterImmersive();
-    };
+    const onTap = () => enterImmersive();
     window.addEventListener("pointerup", onTap);
     return () => {
       window.removeEventListener("pointerup", onTap);
       exitImmersive();
     };
   }, []);
-
-  // The bars overlay WITHIN fullscreen — never exit/re-enter for them.
-  // Android shows its "to exit full screen" toast on every entry, so the
-  // only way to see it once per visit is to stay in fullscreen the whole
-  // time. Tap: bars appear on top; 2s idle: they slide away again.
-  useEffect(() => {
-    if (typeof window === "undefined" || window.innerWidth >= 768) return;
-    if (!chrome) return;
-    let timer: ReturnType<typeof setTimeout>;
-    const arm = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => setChrome(false), 2000);
-    };
-    arm();
-    const events = ["pointerdown", "pointerup", "scroll", "keydown"];
-    for (const ev of events) window.addEventListener(ev, arm);
-    return () => {
-      clearTimeout(timer);
-      for (const ev of events) window.removeEventListener(ev, arm);
-    };
-  }, [chrome]);
 
   useEffect(() => {
     const bg =
@@ -305,321 +276,6 @@ export default function QuranPage() {
       });
     };
   }, []);
-
-  // ---- EXACT Madani layout (QCF V2: the King Fahd Complex per-page fonts
-  // and real 15-line word placement). Falls back to the Amiri renderer when
-  // layout data or the page font can't load. ----
-  interface ExactWord {
-    c: string;
-    s: number;
-    a: number;
-    e?: number; // 1 = ayah-end medallion
-  }
-  interface ExactPageData {
-    page: number;
-    lines: Record<number, ExactWord[]>;
-    starts: { surah: number; firstLine: number }[];
-  }
-  const [exact, setExact] = useState<ExactPageData | null>(null);
-  const loadedFonts = useRef<Set<number>>(new Set());
-
-  async function ensurePageFont(p: number): Promise<void> {
-    if (loadedFonts.current.has(p)) return;
-    const family = `QCFP${p}`;
-    const face = new FontFace(family, `url(/api/qcf-font/${p})`, {
-      display: "block",
-    });
-    await face.load();
-    document.fonts.add(face);
-    loadedFonts.current.add(p);
-  }
-
-  // No flash on page turns: the CURRENT exact page keeps showing until the
-  // next page's layout AND font are both ready, then they swap atomically.
-  useEffect(() => {
-    if (page == null) return;
-    let alive = true;
-    (async () => {
-      try {
-        const [res] = await Promise.all([
-          fetch(`/api/mushaf-exact?page=${page}&v=2`),
-          ensurePageFont(page),
-        ]);
-        if (!res.ok) throw new Error(String(res.status));
-        const d = (await res.json()) as ExactPageData;
-        if (!alive || d.page !== page) return;
-        exactIter.current = 0; // re-solve, starting from the previous size
-        setExact(d);
-        // warm the next page for a seamless turn
-        if (page < 604) {
-          fetch(`/api/mushaf-exact?page=${page + 1}&v=2`).catch(() => {});
-          fetch(`/api/qcf-font/${page + 1}`).catch(() => {});
-        }
-      } catch {
-        // exact layout unavailable — fall back to the Amiri renderer
-        if (alive) setExact(null);
-      }
-    })();
-    return () => {
-      alive = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
-
-  // Solve the exact page's font size: the widest line must fill the width,
-  // fifteen line-slots must fill the height.
-  const exactRef = useRef<HTMLDivElement>(null);
-  const [exactSize, setExactSize] = useState(22);
-  const exactIter = useRef(0);
-  useLayoutEffect(() => {
-    if (!exact) return;
-    const el = exactRef.current;
-    const box = el?.parentElement;
-    if (!el || !box || exactIter.current >= 8) return;
-    const cs = getComputedStyle(box);
-    const availW =
-      box.clientWidth -
-      parseFloat(cs.paddingLeft || "0") -
-      parseFloat(cs.paddingRight || "0");
-    const availH =
-      box.clientHeight -
-      parseFloat(cs.paddingTop || "0") -
-      parseFloat(cs.paddingBottom || "0");
-    let maxW = 0;
-    el.querySelectorAll("[data-exact-line]").forEach((n) => {
-      maxW = Math.max(maxW, (n as HTMLElement).scrollWidth);
-    });
-    const contentH = el.scrollHeight;
-    if (availW <= 0 || availH <= 0 || maxW <= 0 || contentH <= 0) return;
-    // Width decides the glyph size, like print — UNLESS the viewport is
-    // short relative to how wide it is (a landscape phone: plenty of
-    // width, not much height), in which case filling the width would
-    // solve for a font whose 15 rows can't all fit the height without
-    // bleeding into each other; the height ratio caps it in that case.
-    const scale = Math.min(availW / maxW, availH / contentH) * 0.995;
-    if (scale < 0.99 || scale > 1.02) {
-      exactIter.current++;
-      setExactSize((s) => Math.min(42, Math.max(8, s * scale)));
-    }
-    // `data` is also a dependency: the exact-page fetch can resolve before
-    // the ayah fetch does, and while `data` is still null the page renders
-    // the loading state instead of this grid — exactRef never mounts, so
-    // this bails out via `!el` above. Without `data` here, that first solve
-    // attempt is lost for good (exact/exactSize don't change again on their
-    // own) and the page is stuck at the unsolved default font size.
-  }, [exact, exactSize, data]);
-
-  // Re-solve on viewport changes (device rotation, or any resize): a size
-  // solved for the old width/height is meaningless after either changes —
-  // same reasoning as the fitSize resize handler below.
-  useEffect(() => {
-    const onResize = () => {
-      exactIter.current = 0;
-      setExactSize(22);
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  // Render the true 15-line Madani page: word glyphs on their real lines,
-  // surah cartouches and the basmalah on the layout's header lines, empty
-  // slots preserved (that's what centers Al-Fatiha like the printed page).
-  const renderExact = () => {
-    if (!exact) return null;
-    const hasWords = (n: number) => (exact.lines[n]?.length ?? 0) > 0;
-    const headerLines = new Map<
-      number,
-      { type: "banner" | "bsml"; surah: number }
-    >();
-    // EVERY surah must open with its banner, and its basmalah (except
-    // At-Tawbah; Al-Fatiha's basmalah is its first ayah). Spare layout
-    // lines host them when available; otherwise rows are INSERTED before
-    // the surah's first line — the opening is never allowed to go missing.
-    const inserts = new Map<
-      number,
-      { surah: number; banner: boolean; bsml: boolean }
-    >(); // firstLine -> what to inject before it
-    for (const st of exact.starts) {
-      let n = st.firstLine - 1;
-      const run: number[] = [];
-      while (n >= 1 && !hasWords(n) && !headerLines.has(n)) {
-        run.unshift(n);
-        n--;
-      }
-      const needsBsml = st.surah !== 1 && st.surah !== 9;
-      let hasBanner = false;
-      let hasBsml = !needsBsml;
-      if (run.length >= 1) {
-        headerLines.set(run[0], { type: "banner", surah: st.surah });
-        hasBanner = true;
-      }
-      if (run.length >= 2 && needsBsml) {
-        headerLines.set(run[1], { type: "bsml", surah: st.surah });
-        hasBsml = true;
-      }
-      if (!hasBanner || !hasBsml) {
-        inserts.set(st.firstLine, {
-          surah: st.surah,
-          banner: !hasBanner,
-          bsml: !hasBsml,
-        });
-      }
-    }
-    const bannerRow = (key: string, surah: number) => {
-      const meta = surahs.find((x) => x.number === surah);
-      return (
-        <div
-          key={key}
-          className="flex items-center min-h-0"
-          style={{ fontSize: "0.68em" }}
-        >
-          <div className="w-full">
-            <SurahBanner bare name={meta?.nameArabic ?? ""} />
-          </div>
-        </div>
-      );
-    };
-    const bsmlRow = (key: string, surah: number) => {
-      const a1 = data?.ayahs.find(
-        (x) => x.surahNumber === surah && x.ayahNumber === 1,
-      );
-      const bsmLine = a1 ? getBismillahDisplay(surah, 1, a1.text).line : null;
-      return (
-        <div
-          key={key}
-          dir="rtl"
-          className="flex items-center justify-center font-quran text-primary min-h-0 text-[0.95em] leading-none"
-        >
-          {bsmLine ?? "﷽"}
-        </div>
-      );
-    };
-
-    const rows: React.ReactNode[] = [];
-    for (let n = 1; n <= 15; n++) {
-      // A surah whose layout left no spare lines gets its opening INSERTED
-      // right before its first words — the basmalah can never go missing.
-      const inj = inserts.get(n);
-      if (inj) {
-        if (inj.banner) rows.push(bannerRow(`inj-banner-${n}`, inj.surah));
-        if (inj.bsml) rows.push(bsmlRow(`inj-bsml-${n}`, inj.surah));
-      }
-      const words = exact.lines[n];
-      if (words?.length) {
-        rows.push(
-          <div key={n} className="flex items-center justify-center min-h-0">
-            <div
-              data-exact-line
-              dir="rtl"
-              className="exact-line whitespace-nowrap leading-none"
-              style={{ fontFamily: `QCFP${exact.page}` }}
-            >
-              {words.map((w, i) => (
-                <span
-                  key={i}
-                  className={[
-                    // the ۝-number medallion wears the theme's gold
-                    w.e ? "mx-[0.09em] text-accent" : "",
-                    playing?.s === w.s && playing?.a === w.a
-                      ? "bg-accent-soft rounded-sm"
-                      : "",
-                  ]
-                    .join(" ")
-                    .trim() || undefined}
-                >
-                  {w.c}
-                </span>
-              ))}
-            </div>
-          </div>,
-        );
-      } else {
-        const h = headerLines.get(n);
-        if (h?.type === "banner") {
-          rows.push(bannerRow(String(n), h.surah));
-        } else if (h?.type === "bsml") {
-          rows.push(bsmlRow(String(n), h.surah));
-        } else {
-          rows.push(<div key={n} />);
-        }
-      }
-    }
-    return (
-      <div
-        ref={exactRef}
-        className="grid min-h-full"
-        style={{
-          // Rows take their natural height at this font size rather than
-          // being force-stretched to fill the container — on a short
-          // landscape screen, stretching 15 rows into too little height
-          // made lines overlap into an unreadable smear instead of just
-          // scrolling for the rest of the page.
-          gridTemplateRows: `repeat(${rows.length}, auto)`,
-          fontSize: `${exactSize}px`,
-        }}
-      >
-        {rows}
-      </div>
-    );
-  };
-
-  // Fit-to-screen: the WHOLE page must fit the viewport — no scrolling.
-  // Text size is solved per page: render, measure, refine.
-  const fitRef = useRef<HTMLDivElement>(null);
-  const fitIter = useRef(0);
-  const [fitSize, setFitSize] = useState(24);
-
-  useEffect(() => {
-    fitIter.current = 0;
-    setFitSize(24);
-  }, [data?.page]);
-
-  useEffect(() => {
-    const onResize = () => {
-      fitIter.current = 0;
-      setFitSize(24);
-    };
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-
-  // CRITICAL: the Quran webfont loads asynchronously and is taller (stacked
-  // harakat) than the fallback the first measurements see — without a
-  // re-solve on fonts.ready, pages measured too early overflow and the last
-  // lines get clipped.
-  useEffect(() => {
-    let alive = true;
-    document.fonts?.ready
-      ?.then(() => {
-        if (!alive) return;
-        fitIter.current = 0;
-        setFitSize((s) => s + 0.001); // nudge a re-solve with real metrics
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  useLayoutEffect(() => {
-    if (!data) return;
-    const el = fitRef.current;
-    const box = el?.parentElement;
-    if (!el || !box) return;
-    const avail = box.clientHeight;
-    const content = el.scrollHeight;
-    if (avail <= 0 || content <= 0 || fitIter.current >= 10) return;
-    const ratio = avail / content;
-    if (content > avail * 0.995) {
-      // overflowing (or razor-thin) — shrink decisively so nothing clips
-      fitIter.current++;
-      setFitSize((s) => Math.max(10, s * ratio * 0.96));
-    } else if (ratio > 1.2 && fitSize < 30) {
-      // lots of empty space — grow gently
-      fitIter.current++;
-      setFitSize((s) => Math.min(30, s * Math.min(ratio * 0.9, 1.25)));
-    }
-  }, [data, fitSize]);
 
   // ---- Recitation playback (real recorded audio; plays page by page) ----
   // ONE reusable <audio> element: creating a fresh element per ayah breaks
@@ -960,106 +616,87 @@ export default function QuranPage() {
 
   return (
     <>
-      {/* MOBILE: the Quran IS the page — one fitted mushaf page, edge to
-          edge. Tap the middle for the chrome; tap again to just read. */}
-      <div className="desktop:hidden fixed inset-0 z-30 bg-background overflow-hidden">
+      {/* MOBILE: a continuous, scrollable reader — a slim icon rail down
+          the side for navigation, the verified Quran text flowing and
+          wrapping normally (never squeezed to fit one screen, never
+          absolutely positioned) so it simply scrolls in any orientation. */}
+      <div
+        dir="ltr"
+        className="desktop:hidden fixed inset-0 z-30 bg-background flex overflow-hidden"
+      >
+        {/* icon rail */}
         <div
-          {...swipeFull}
-          key={"m-" + (exact?.page ?? data.page)}
-          onClick={() => {
-            if (showCoach) dismissCoach();
-            setChrome((c) => !c);
-          }}
-          className="h-full px-4 fit-center overflow-y-auto overflow-x-hidden select-none no-scrollbar"
+          className="shrink-0 w-14 flex flex-col items-center gap-1 overflow-y-auto no-scrollbar bg-surface border-e border-border py-2"
           style={{
             paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)",
             paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
           }}
         >
-          {exact ? (
-            renderExact()
-          ) : (
-            <div
-              ref={fitRef}
-              className="fit-quran"
-              style={{ fontSize: fitSize + "px" }}
-            >
-              {renderGroups(true)}
-            </div>
-          )}
+          <button
+            aria-label="menu"
+            onClick={() => window.dispatchEvent(new Event("aqim-open-nav"))}
+            className="w-10 h-10 shrink-0 grid place-items-center rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition"
+          >
+            <Menu size={19} />
+          </button>
+          <button
+            aria-label="navigator"
+            onClick={() => setNavOpen(true)}
+            className="w-10 h-10 shrink-0 grid place-items-center rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition"
+          >
+            <Search size={17} />
+          </button>
+          <div className="flex-1 min-h-2" />
+          <button
+            aria-label="previous"
+            onClick={() => turn(-1)}
+            disabled={data.page <= 1}
+            className="w-10 h-10 shrink-0 grid place-items-center rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition disabled:opacity-30"
+          >
+            <ChevronUp size={19} />
+          </button>
+          <button
+            aria-label="next"
+            onClick={() => turn(1)}
+            disabled={data.page >= 604}
+            className="w-10 h-10 shrink-0 grid place-items-center rounded-full text-muted hover:text-foreground hover:bg-surface-2 transition disabled:opacity-30"
+          >
+            <ChevronDown size={19} />
+          </button>
+          <span className="mt-1 shrink-0 text-[11px] font-bold text-accent tabular-nums">
+            {digits(data.page)}
+          </span>
         </div>
 
-        {/* edge taps: left = next (Arabic book order), right = previous */}
-        <button
-          aria-hidden
-          tabIndex={-1}
-          onClick={(e) => {
-            e.stopPropagation();
-            turn(1);
-          }}
-          className="absolute inset-y-0 left-0 w-[15%] z-10"
-        />
-        <button
-          aria-hidden
-          tabIndex={-1}
-          onClick={(e) => {
-            e.stopPropagation();
-            turn(-1);
-          }}
-          className="absolute inset-y-0 right-0 w-[15%] z-10"
-        />
-
-        {showCoach && !chrome && (
+        {/* reading pane */}
+        <div
+          {...swipeFull}
+          key={"m-" + data.page}
+          className="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden select-none no-scrollbar"
+        >
           <div
-            className="absolute inset-x-0 z-20 mx-auto w-fit rounded-full bg-primary text-white px-4 py-2 text-xs font-bold shadow-lg animate-rise pointer-events-none"
-            style={{ top: "calc(env(safe-area-inset-top, 0px) + 14px)" }}
+            className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 pb-2.5 space-y-2"
+            style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)" }}
           >
-            {t("quran.tapForBars")}
-          </div>
-        )}
-
-        {/* Always-on page number — just the number, like a printed mushaf.
-            The open chrome covers this spot, so it hides then. */}
-        {!chrome && (
-          <div
-            className="absolute inset-x-0 z-10 text-center text-[11px] font-bold text-accent/80 tabular-nums pointer-events-none"
-            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4px)" }}
-          >
-            {digits(data.page)}
-          </div>
-        )}
-
-        {chrome && (
-          <>
-            <div
-              className="absolute top-0 inset-x-0 z-20 bg-background/95 backdrop-blur border-b border-border px-4 pb-3 space-y-2.5 animate-rise"
-              style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
-            >
-              <div className="flex items-center justify-between gap-3">
-                <button
-                  onClick={() => setNavOpen(true)}
-                  className="min-w-0 flex items-center gap-2 text-start"
-                >
-                  <span className="text-sm font-bold text-primary truncate">
-                    {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
-                  </span>
-                  <Search size={13} className="text-muted shrink-0" />
-                </button>
-                <span className="shrink-0 text-xs text-muted tabular-nums">
-                  {t("setup.juz")} {digits(data.juz)} · {t("quran.page")} {digits(data.page)} / {digits(604)}
-                </span>
-              </div>
-              <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
-                <div
-                  className="h-full rounded-full bg-secondary transition-all duration-300"
-                  style={{ width: (progress * 100) + "%" }}
-                />
-              </div>
-              {controlsRow}
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-bold text-primary truncate">
+                {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
+              </span>
+              <span className="shrink-0 text-xs text-muted tabular-nums">
+                {t("setup.juz")} {digits(data.juz)} · {t("quran.page")} {digits(data.page)} / {digits(604)}
+              </span>
             </div>
-            <BottomTabs force />
-          </>
-        )}
+            <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-secondary transition-all duration-300"
+                style={{ width: (progress * 100) + "%" }}
+              />
+            </div>
+            {controlsRow}
+          </div>
+
+          <div className="px-4 pb-10 pt-3">{renderGroups(true)}</div>
+        </div>
       </div>
 
       {/* DESKTOP: the framed reading layout */}

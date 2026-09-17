@@ -315,29 +315,9 @@ body {
     0 0 0 4px var(--color-accent);
 }
 
-/* Full-page Quran fit: text scales with the container's font-size (set in
-   px by the fit-to-screen solver), overriding the fixed clamp() sizes. */
-.fit-quran .quran-text {
-  font-size: 1em !important;
-  line-height: 1.68 !important; /* dense like a printed mushaf */
-  word-spacing: 0 !important;
-  text-align: justify !important;
-  text-align-last: center; /* mushaf pages center their closing line */
-}
-.fit-quran .bismillah-line {
-  font-size: 0.85em !important;
-  line-height: 1.55 !important;
-}
-.fit-quran .ayah-mark {
-  font-size: 0.72em; /* the ۝-number medallion stays legible when fitted */
-}
-
-/* Suggestion cards (PassageCard): same justified, multi-ayah-per-line
-   Mushaf feel as .fit-quran, but roomier — these are short excerpts read
-   standalone, not a full page, so the ultra-dense 1.68 line-height read as
-   cramped and let the last ayah's mark crowd the meaning box right below
-   it. A touch more breathing room, still nowhere near the old spread-out
-   one-verse-per-block style. */
+/* Suggestion cards (PassageCard): justified, multi-ayah-per-line Mushaf
+   feel, roomier than a dense printed page — these are short excerpts read
+   standalone, not a full page. */
 .passage-dense .quran-text {
   font-size: 1em;
   line-height: 1.95;
@@ -351,20 +331,6 @@ body {
 }
 .passage-dense .ayah-mark {
   font-size: 0.68em;
-}
-
-/* Exact (QCF) lines: a uniform hair of inter-word space — some V2 word
-   glyphs sit flush against their neighbor; sacred text must never read as
-   joined words. The width solver measures margins, so lines still fill. */
-.exact-line > span {
-  margin-inline: 0.024em;
-}
-/* Center when it fits; never clip the top when it (transiently) overflows. */
-.fit-center {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  justify-content: safe center;
 }
 
 /* Floating bottom pill nav — solid deep navy in light mode; in dark mode a
