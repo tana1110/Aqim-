@@ -143,6 +143,11 @@ export default function QuranPage() {
   const [loadError, setLoadError] = useState(false);
   const [showCoach, setShowCoach] = useState(false);
   const fetchSeq = useRef(0);
+  // Set by turn() below; read once by the render that remounts the reading
+  // pane with the matching page-turn flip class, then cleared (see the
+  // effect near jumpToSurah for why that has to happen on data.page, not
+  // on the `page` state itself).
+  const turnDirRef = useRef<1 | -1 | null>(null);
 
   // Resume exactly where the reader left off — unless another page handed
   // us a position (wird tile, review card). The handoff keys are consumed
@@ -464,6 +469,19 @@ export default function QuranPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
+  // The page-turn flip class is read once, by the render that remounts the
+  // reading pane — which is keyed on data.page (the fetched content), not
+  // on the `page` state above: `page` updates the instant turn() is called,
+  // but the pane doesn't actually swap to the new content (or its key)
+  // until the fetch that effect kicked off resolves. Clearing the ref THERE
+  // instead of up in that effect matters: clearing it on the `page` effect
+  // (which runs synchronously, well before the fetch's async .then()) would
+  // null it out before the remount that's supposed to read it ever
+  // happens, so it would always land on the plain fade instead.
+  useEffect(() => {
+    turnDirRef.current = null;
+  }, [data?.page]);
+
   async function jumpToSurah(n: number) {
     const r = await fetch(`/api/mushaf?surah=${n}`);
     const d = await r.json();
@@ -475,8 +493,15 @@ export default function QuranPage() {
   // swiping it toward the right turns forward.
   function turn(delta: 1 | -1) {
     if (showCoach) dismissCoach();
+    turnDirRef.current = delta;
     setPage((p) => Math.min(604, Math.max(1, (p ?? 1) + delta)));
   }
+  const turnAnim =
+    turnDirRef.current === 1
+      ? "animate-page-turn-next"
+      : turnDirRef.current === -1
+        ? "animate-page-turn-prev"
+        : "animate-page";
   const swipe = useSwipeable({
     onSwipedRight: () => turn(1),
     onSwipedLeft: () => turn(-1),
@@ -755,21 +780,27 @@ export default function QuranPage() {
             </div>
           )}
 
-          <div
-            {...swipeFull}
-            key={"m-" + data.page}
-            onClick={() => {
-              if (!mobileLandscape) return;
-              setHeaderOpen((o) => !o);
-              enterImmersive(); // this tap is a real gesture — a good moment to retry fullscreen
-            }}
-            className="h-full overflow-y-auto overflow-x-hidden select-none no-scrollbar"
-          >
-            {!mobileLandscape && (
-              <div className="sticky top-0 z-10">{readerHeader}</div>
-            )}
+          {/* Keyed on the page number so a turn remounts this wrapper fresh
+              — that's what makes the CSS animation on it replay every
+              turn. It only wraps (doesn't itself scroll), so the flip
+              transform can't interfere with the sticky header or the
+              scrolling inside the pane it contains. */}
+          <div key={"m-" + data.page} className={`h-full ${turnAnim}`}>
+            <div
+              {...swipeFull}
+              onClick={() => {
+                if (!mobileLandscape) return;
+                setHeaderOpen((o) => !o);
+                enterImmersive(); // this tap is a real gesture — a good moment to retry fullscreen
+              }}
+              className="h-full overflow-y-auto overflow-x-hidden select-none no-scrollbar"
+            >
+              {!mobileLandscape && (
+                <div className="sticky top-0 z-10">{readerHeader}</div>
+              )}
 
-            <div className="px-4 pb-10 pt-3">{renderGroups(true)}</div>
+              <div className="px-4 pb-10 pt-3">{renderGroups(true)}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -857,7 +888,7 @@ export default function QuranPage() {
           className="sm:hidden absolute inset-y-0 right-0 w-[18%] z-10"
         />
 
-        <div {...swipe} key={data.page} className="animate-page select-none">
+        <div {...swipe} key={data.page} className={`${turnAnim} select-none`}>
           {pageInner}
         </div>
       </div>

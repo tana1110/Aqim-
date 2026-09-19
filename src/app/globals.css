@@ -439,6 +439,65 @@ html[dir="rtl"] .animate-drawer {
   animation: pageFade 0.22s ease both;
 }
 
+/* A page-turn swipe/tap gets a real "paper turning" flip instead of the
+   plain fade above — a 3D rotation around the spine edge (the incoming
+   page settling flat), with a brightness dip standing in for the shadow
+   a turning page catches. In an Arabic (RTL) book the next page comes
+   from the left, the previous page from the right (matches the existing
+   swipe/tap-zone convention elsewhere on this page), so each direction
+   hinges on the opposite edge. Reserved for actual page turns — jumping
+   to an arbitrary page (search, surah/juz picker) still uses the plain
+   fade above, since "flipping" many pages at once doesn't read as one. */
+@keyframes pageTurnNext {
+  0% {
+    transform: perspective(1400px) rotateY(-100deg);
+    transform-origin: left center;
+    opacity: 0.55;
+    filter: brightness(0.65);
+  }
+  /* An explicit midpoint keeps the rotation visibly in motion for most of
+     the duration — a single ease-out 0%→100% span front-loads nearly all
+     of the turn into its first ~60ms, which reads as a snap, not a turn. */
+  50% {
+    transform: perspective(1400px) rotateY(-38deg);
+    transform-origin: left center;
+    opacity: 0.85;
+    filter: brightness(0.82);
+  }
+  100% {
+    transform: perspective(1400px) rotateY(0deg);
+    transform-origin: left center;
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+@keyframes pageTurnPrev {
+  0% {
+    transform: perspective(1400px) rotateY(100deg);
+    transform-origin: right center;
+    opacity: 0.55;
+    filter: brightness(0.65);
+  }
+  50% {
+    transform: perspective(1400px) rotateY(38deg);
+    transform-origin: right center;
+    opacity: 0.85;
+    filter: brightness(0.82);
+  }
+  100% {
+    transform: perspective(1400px) rotateY(0deg);
+    transform-origin: right center;
+    opacity: 1;
+    filter: brightness(1);
+  }
+}
+.animate-page-turn-next {
+  animation: pageTurnNext 0.5s ease-in-out both;
+}
+.animate-page-turn-prev {
+  animation: pageTurnPrev 0.5s ease-in-out both;
+}
+
 @keyframes rise {
   from {
     opacity: 0;
