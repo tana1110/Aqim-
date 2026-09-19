@@ -39,9 +39,16 @@ export default function manifest(): ManifestWithSW {
     // triggering real immersive-mode side effects.
     display: "standalone",
     display_override: ["standalone"],
-    // Mobile-first, but not orientation-locked — the app also has a real
-    // desktop/tablet layout.
-    orientation: "any",
+    // No `orientation` field, deliberately — it isn't a neutral "no
+    // preference." Per the manifest spec, declaring one (even "any") is an
+    // explicit request to unlock rotation and always follow the raw
+    // sensor; for an installed/standalone app, Android applies that at the
+    // app's own window, which can override the user's system-wide
+    // auto-rotate toggle for this app specifically — rotating with them
+    // even though they turned rotation off. Omitting it makes no request
+    // at all, so the installed app simply inherits whatever the OS is
+    // already doing, like any normal app. The layout is responsive on its
+    // own (CSS, not orientation locking) for whenever the OS does rotate.
     prefer_related_applications: false,
     background_color: "#f3eee3",
     // Brand status bar everywhere — EXCEPT the Quran page, which swaps
