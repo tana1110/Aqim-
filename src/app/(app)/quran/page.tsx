@@ -256,53 +256,6 @@ export default function QuranPage() {
     };
   }, []);
 
-  // LANDSCAPE is short on height (unlike portrait), so the surah/progress/
-  // listen header there is tap-to-reveal instead of always on screen — it
-  // starts hidden on entering landscape, opens on tap (as an overlay, not
-  // pushing the text down), and auto-hides again after 2s idle, same
-  // pattern the old full-chrome toggle used. Rotating back to portrait
-  // always shows it again — that's the "normal" persistent header.
-  const [mobileLandscape, setMobileLandscape] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const check = () => {
-      const isDesktopViewport =
-        window.innerWidth >= 768 && window.innerHeight >= 600;
-      setMobileLandscape(
-        !isDesktopViewport && window.innerWidth > window.innerHeight,
-      );
-    };
-    check();
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
-
-  // Reset on every orientation flip, computed during render rather than in
-  // an effect (React's own recipe for "adjust state when a prop/derived
-  // value changes" without an extra render pass).
-  const [headerOpen, setHeaderOpen] = useState(true);
-  const [prevMobileLandscape, setPrevMobileLandscape] = useState(mobileLandscape);
-  if (mobileLandscape !== prevMobileLandscape) {
-    setPrevMobileLandscape(mobileLandscape);
-    setHeaderOpen(!mobileLandscape);
-  }
-
-  useEffect(() => {
-    if (!mobileLandscape || !headerOpen) return;
-    let timer: ReturnType<typeof setTimeout>;
-    const arm = () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => setHeaderOpen(false), 2000);
-    };
-    arm();
-    const events = ["pointerdown", "pointerup", "scroll", "keydown"];
-    for (const ev of events) window.addEventListener(ev, arm);
-    return () => {
-      clearTimeout(timer);
-      for (const ev of events) window.removeEventListener(ev, arm);
-    };
-  }, [mobileLandscape, headerOpen]);
-
   useEffect(() => {
     const bg =
       getComputedStyle(document.documentElement)
@@ -766,20 +719,9 @@ export default function QuranPage() {
           </span>
         </div>
 
-        {/* reading pane */}
+        {/* reading pane — the header stays sticky (always visible) in
+            both orientations. */}
         <div className="relative flex-1 min-w-0 h-full overflow-hidden">
-          {/* LANDSCAPE: the header overlays on top instead of taking
-              permanent space — there isn't much height to spare, and
-              hiding it by default is what makes the page actually feel
-              full-screen there. PORTRAIT: plenty of height, so it just
-              stays put (sticky, scrolls away with the rest, no tap
-              needed) — rendered inside the scroll container below instead. */}
-          {mobileLandscape && headerOpen && (
-            <div className="absolute top-0 inset-x-0 z-20 animate-rise">
-              {readerHeader}
-            </div>
-          )}
-
           {/* Keyed on the page number so a turn remounts this wrapper fresh
               — that's what makes the CSS animation on it replay every
               turn. It only wraps (doesn't itself scroll), so the flip
@@ -788,16 +730,9 @@ export default function QuranPage() {
           <div key={"m-" + data.page} className={`h-full ${turnAnim}`}>
             <div
               {...swipeFull}
-              onClick={() => {
-                if (!mobileLandscape) return;
-                setHeaderOpen((o) => !o);
-                enterImmersive(); // this tap is a real gesture — a good moment to retry fullscreen
-              }}
               className="h-full overflow-y-auto overflow-x-hidden select-none no-scrollbar"
             >
-              {!mobileLandscape && (
-                <div className="sticky top-0 z-10">{readerHeader}</div>
-              )}
+              <div className="sticky top-0 z-10">{readerHeader}</div>
 
               <div className="px-4 pb-10 pt-3">{renderGroups(true)}</div>
             </div>
