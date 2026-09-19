@@ -1,4 +1,12 @@
-// Aqim service worker — notifications, installability, and OFFLINE app.
+// Service worker source, served by src/app/sw.js/route.ts rather than as a
+// plain /public/sw.js file — a route handler can prepend a per-deploy build
+// id, which is what makes a browser actually notice a new deploy exists.
+// (A browser decides there's a service-worker update solely by diffing this
+// script's OWN bytes; a deploy that doesn't happen to touch this file's
+// literal text — like a change confined to a page component — would
+// otherwise be invisible to that check, and UpdateBanner.tsx, which polls
+// for exactly that, would never have anything to show.)
+export const SW_SCRIPT = `// Aqim service worker — notifications, installability, and OFFLINE app.
 //
 // Three layers of caching:
 //  - SHELL_CACHE: the pages themselves (navigations) — network-first, so
@@ -181,3 +189,4 @@ self.addEventListener("notificationclick", (event) => {
     }),
   );
 });
+`;
