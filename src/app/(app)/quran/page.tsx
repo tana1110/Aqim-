@@ -234,9 +234,9 @@ export default function QuranPage() {
   const [navOpen, setNavOpen] = useState(false);
 
   // On phones the Quran IS the page: a full-bleed, continuously scrollable
-  // reader (icon rail down the side, sticky header, flowing text) — reading
-  // is fullscreen (status bar hidden) the whole time, no tap-to-reveal
-  // chrome to manage.
+  // reader (icon rail down the side, flowing text) — reading is fullscreen
+  // (status bar hidden) the whole time, no tap-to-reveal chrome to manage
+  // in PORTRAIT, where there's plenty of height for a persistent header.
   useEffect(() => {
     if (typeof window === "undefined" || window.innerWidth >= 768) return;
     // The native bridge (unlike the browser Fullscreen API) needs no user
@@ -250,6 +250,53 @@ export default function QuranPage() {
       exitImmersive();
     };
   }, []);
+
+  // LANDSCAPE is short on height (unlike portrait), so the surah/progress/
+  // listen header there is tap-to-reveal instead of always on screen — it
+  // starts hidden on entering landscape, opens on tap (as an overlay, not
+  // pushing the text down), and auto-hides again after 2s idle, same
+  // pattern the old full-chrome toggle used. Rotating back to portrait
+  // always shows it again — that's the "normal" persistent header.
+  const [mobileLandscape, setMobileLandscape] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const check = () => {
+      const isDesktopViewport =
+        window.innerWidth >= 768 && window.innerHeight >= 600;
+      setMobileLandscape(
+        !isDesktopViewport && window.innerWidth > window.innerHeight,
+      );
+    };
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  // Reset on every orientation flip, computed during render rather than in
+  // an effect (React's own recipe for "adjust state when a prop/derived
+  // value changes" without an extra render pass).
+  const [headerOpen, setHeaderOpen] = useState(true);
+  const [prevMobileLandscape, setPrevMobileLandscape] = useState(mobileLandscape);
+  if (mobileLandscape !== prevMobileLandscape) {
+    setPrevMobileLandscape(mobileLandscape);
+    setHeaderOpen(!mobileLandscape);
+  }
+
+  useEffect(() => {
+    if (!mobileLandscape || !headerOpen) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const arm = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => setHeaderOpen(false), 2000);
+    };
+    arm();
+    const events = ["pointerdown", "pointerup", "scroll", "keydown"];
+    for (const ev of events) window.addEventListener(ev, arm);
+    return () => {
+      clearTimeout(timer);
+      for (const ev of events) window.removeEventListener(ev, arm);
+    };
+  }, [mobileLandscape, headerOpen]);
 
   useEffect(() => {
     const bg =
@@ -614,6 +661,32 @@ export default function QuranPage() {
       </div>
   );
 
+  // Mobile reading header: surah name, juz/page, progress, listen controls.
+  // Sticky (in-flow) in portrait, an overlay (absolutely positioned) in
+  // landscape — same content either way.
+  const readerHeader = (
+    <div
+      className="bg-background/95 backdrop-blur border-b border-border px-4 pb-2.5 space-y-2"
+      style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)" }}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-bold text-primary truncate">
+          {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
+        </span>
+        <span className="shrink-0 text-xs text-muted tabular-nums">
+          {t("setup.juz")} {digits(data.juz)} · {t("quran.page")} {digits(data.page)} / {digits(604)}
+        </span>
+      </div>
+      <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-secondary transition-all duration-300"
+          style={{ width: (progress * 100) + "%" }}
+        />
+      </div>
+      {controlsRow}
+    </div>
+  );
+
   return (
     <>
       {/* MOBILE: a continuous, scrollable reader — a slim icon rail down
@@ -669,33 +742,35 @@ export default function QuranPage() {
         </div>
 
         {/* reading pane */}
-        <div
-          {...swipeFull}
-          key={"m-" + data.page}
-          className="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden select-none no-scrollbar"
-        >
-          <div
-            className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 pb-2.5 space-y-2"
-            style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)" }}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-bold text-primary truncate">
-                {main ? surahName(lang, main.nameArabic, main.nameTranslit) : ""}
-              </span>
-              <span className="shrink-0 text-xs text-muted tabular-nums">
-                {t("setup.juz")} {digits(data.juz)} · {t("quran.page")} {digits(data.page)} / {digits(604)}
-              </span>
+        <div className="relative flex-1 min-w-0 h-full overflow-hidden">
+          {/* LANDSCAPE: the header overlays on top instead of taking
+              permanent space — there isn't much height to spare, and
+              hiding it by default is what makes the page actually feel
+              full-screen there. PORTRAIT: plenty of height, so it just
+              stays put (sticky, scrolls away with the rest, no tap
+              needed) — rendered inside the scroll container below instead. */}
+          {mobileLandscape && headerOpen && (
+            <div className="absolute top-0 inset-x-0 z-20 animate-rise">
+              {readerHeader}
             </div>
-            <div className="h-1 rounded-full bg-surface-2 overflow-hidden">
-              <div
-                className="h-full rounded-full bg-secondary transition-all duration-300"
-                style={{ width: (progress * 100) + "%" }}
-              />
-            </div>
-            {controlsRow}
-          </div>
+          )}
 
-          <div className="px-4 pb-10 pt-3">{renderGroups(true)}</div>
+          <div
+            {...swipeFull}
+            key={"m-" + data.page}
+            onClick={() => {
+              if (!mobileLandscape) return;
+              setHeaderOpen((o) => !o);
+              enterImmersive(); // this tap is a real gesture — a good moment to retry fullscreen
+            }}
+            className="h-full overflow-y-auto overflow-x-hidden select-none no-scrollbar"
+          >
+            {!mobileLandscape && (
+              <div className="sticky top-0 z-10">{readerHeader}</div>
+            )}
+
+            <div className="px-4 pb-10 pt-3">{renderGroups(true)}</div>
+          </div>
         </div>
       </div>
 
