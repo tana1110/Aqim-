@@ -144,7 +144,7 @@ async function seedHadith() {
         update: { value: HADITH_VERSION },
       });
     },
-    { timeout: 120_000 },
+    { timeout: 120_000, maxWait: 60_000 },
   );
   console.log(`Seeded ${await prisma.hadithText.count()} hadiths.`);
 }
@@ -377,7 +377,7 @@ async function main() {
         update: { value: SEED_VERSION },
       });
     },
-    { timeout: 300_000 },
+    { timeout: 300_000, maxWait: 60_000 },
   );
 
   const adhkarCount = await prisma.adhkarText.count();
