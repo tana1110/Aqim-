@@ -115,26 +115,37 @@ async function seedHadith() {
   const data = JSON.parse(readFileSync("data/hadith.json", "utf8")) as {
     hadiths: { c: string; n: number; b: number | null; t: string }[];
   };
-  await prisma.hadithText.deleteMany();
   const label = (c: string) =>
     c === "bukhari" ? "صحيح البخاري" : "صحيح مسلم";
-  for (let i = 0; i < data.hadiths.length; i += 500) {
-    await prisma.hadithText.createMany({
-      data: data.hadiths.slice(i, i + 500).map((h) => ({
-        collection: h.c,
-        number: h.n,
-        book: h.b,
-        text: h.t,
-        source: label(h.c),
-      })),
-      skipDuplicates: true,
-    });
-  }
-  await prisma.meta.upsert({
-    where: { key: "hadithVersion" },
-    create: { key: "hadithVersion", value: HADITH_VERSION },
-    update: { value: HADITH_VERSION },
-  });
+  // Delete-then-reinsert, atomically: this runs against the SAME live
+  // database real traffic is being served from (there's exactly one, not
+  // one per deploy) — without a transaction, any request landing between
+  // the delete and the last insert sees a partial/empty table. Inside a
+  // transaction, other connections see either the old rows or the new
+  // ones, in full, and nothing in between, however long this takes.
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.hadithText.deleteMany();
+      for (let i = 0; i < data.hadiths.length; i += 500) {
+        await tx.hadithText.createMany({
+          data: data.hadiths.slice(i, i + 500).map((h) => ({
+            collection: h.c,
+            number: h.n,
+            book: h.b,
+            text: h.t,
+            source: label(h.c),
+          })),
+          skipDuplicates: true,
+        });
+      }
+      await tx.meta.upsert({
+        where: { key: "hadithVersion" },
+        create: { key: "hadithVersion", value: HADITH_VERSION },
+        update: { value: HADITH_VERSION },
+      });
+    },
+    { timeout: 120_000 },
+  );
   console.log(`Seeded ${await prisma.hadithText.count()} hadiths.`);
 }
 
@@ -256,65 +267,9 @@ async function main() {
   const tafsirBySurah = new Map(tafsir.map((s) => [s.number, s]));
   const translationBySurah = new Map(translation.map((s) => [s.number, s]));
 
-  // Clear existing reference data for idempotent re-seeding.
-  await prisma.translationText.deleteMany();
-  await prisma.tafsirText.deleteMany();
-  await prisma.quranText.deleteMany();
-  await prisma.surah.deleteMany();
-
-  for (const s of text) {
-    await prisma.surah.create({
-      data: {
-        number: s.number,
-        nameArabic: s.name,
-        nameEnglish: s.englishNameTranslation,
-        nameTranslit: s.englishName,
-        revelationType: s.revelationType,
-        ayahCount: s.ayahs.length,
-      },
-    });
-
-    await prisma.quranText.createMany({
-      data: s.ayahs.map((a) => ({
-        surahNumber: s.number,
-        ayahNumber: a.numberInSurah,
-        arabicText: a.text,
-        juzNumber: a.juz,
-        pageNumber: a.page,
-      })),
-    });
-
-    const tsurah = tafsirBySurah.get(s.number);
-    if (tsurah) {
-      await prisma.tafsirText.createMany({
-        data: tsurah.ayahs.map((a) => ({
-          surahNumber: s.number,
-          ayahNumber: a.numberInSurah,
-          tafsirSource: TAFSIR_SOURCE_LABEL,
-          sourceUrl: TAFSIR_SOURCE_URL,
-          // summary = a condensation (first 1-2 sentences) of the EXISTING
-          // tafsir text. No new interpretation is composed. Full text kept intact.
-          summaryText: condense(a.text),
-          fullText: a.text,
-        })),
-      });
-    }
-
-    const trsurah = translationBySurah.get(s.number);
-    if (trsurah) {
-      await prisma.translationText.createMany({
-        data: trsurah.ayahs.map((a) => ({
-          surahNumber: s.number,
-          ayahNumber: a.numberInSurah,
-          source: TRANSLATION_SOURCE_LABEL,
-          text: a.text, // verbatim English translation of the meaning
-        })),
-      });
-    }
-    if (s.number % 20 === 0) console.log(`  ...surah ${s.number}/114`);
-  }
-
-  // --- Adhkar (Hisn al-Muslim) from the vendored verified dataset ----------
+  // Adhkar data (read + integrity check) up front — before the transaction,
+  // same reasoning as fetching the Quran editions up front: only DB writes
+  // belong inside it, not file I/O or validation.
   const { readFileSync } = await import("node:fs");
   const hisn = JSON.parse(readFileSync("data/hisn.json", "utf8")) as Record<
     string,
@@ -332,29 +287,101 @@ async function main() {
     );
     process.exit(1);
   }
-  await prisma.adhkarText.deleteMany();
-  for (let ci = 0; ci < chapters.length; ci++) {
-    const title = chapters[ci];
-    await prisma.adhkarText.createMany({
-      data: hisn[title].Adhkar.map((a, i) => ({
-        chapterIndex: ci + 1,
-        chapter: title,
-        position: i + 1,
-        text: a.Text,
-        count: Math.max(1, a.Count || 1),
-        reference: a.Reference || null,
-        source: ADHKAR_SOURCE_LABEL,
-      })),
-    });
-  }
+
+  // Clear-then-reinsert, atomically, for the SAME reason as seedHadith()
+  // above: this runs against the one live database real traffic is being
+  // served from. Every write below uses `tx`, not `prisma`, so none of it
+  // is visible to another connection until the whole thing commits —
+  // readers see the complete old data or the complete new data, never a
+  // page mid-delete. A long timeout because this legitimately takes a
+  // while (114 surahs × several tables), not because it's expected to hang.
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.translationText.deleteMany();
+      await tx.tafsirText.deleteMany();
+      await tx.quranText.deleteMany();
+      await tx.surah.deleteMany();
+
+      for (const s of text) {
+        await tx.surah.create({
+          data: {
+            number: s.number,
+            nameArabic: s.name,
+            nameEnglish: s.englishNameTranslation,
+            nameTranslit: s.englishName,
+            revelationType: s.revelationType,
+            ayahCount: s.ayahs.length,
+          },
+        });
+
+        await tx.quranText.createMany({
+          data: s.ayahs.map((a) => ({
+            surahNumber: s.number,
+            ayahNumber: a.numberInSurah,
+            arabicText: a.text,
+            juzNumber: a.juz,
+            pageNumber: a.page,
+          })),
+        });
+
+        const tsurah = tafsirBySurah.get(s.number);
+        if (tsurah) {
+          await tx.tafsirText.createMany({
+            data: tsurah.ayahs.map((a) => ({
+              surahNumber: s.number,
+              ayahNumber: a.numberInSurah,
+              tafsirSource: TAFSIR_SOURCE_LABEL,
+              sourceUrl: TAFSIR_SOURCE_URL,
+              // summary = a condensation (first 1-2 sentences) of the
+              // EXISTING tafsir text. No new interpretation is composed.
+              // Full text kept intact.
+              summaryText: condense(a.text),
+              fullText: a.text,
+            })),
+          });
+        }
+
+        const trsurah = translationBySurah.get(s.number);
+        if (trsurah) {
+          await tx.translationText.createMany({
+            data: trsurah.ayahs.map((a) => ({
+              surahNumber: s.number,
+              ayahNumber: a.numberInSurah,
+              source: TRANSLATION_SOURCE_LABEL,
+              text: a.text, // verbatim English translation of the meaning
+            })),
+          });
+        }
+        if (s.number % 20 === 0) console.log(`  ...surah ${s.number}/114`);
+      }
+
+      await tx.adhkarText.deleteMany();
+      for (let ci = 0; ci < chapters.length; ci++) {
+        const title = chapters[ci];
+        await tx.adhkarText.createMany({
+          data: hisn[title].Adhkar.map((a, i) => ({
+            chapterIndex: ci + 1,
+            chapter: title,
+            position: i + 1,
+            text: a.Text,
+            count: Math.max(1, a.Count || 1),
+            reference: a.Reference || null,
+            source: ADHKAR_SOURCE_LABEL,
+          })),
+        });
+      }
+
+      await tx.meta.upsert({
+        where: { key: "seedVersion" },
+        create: { key: "seedVersion", value: SEED_VERSION },
+        update: { value: SEED_VERSION },
+      });
+    },
+    { timeout: 300_000 },
+  );
+
   const adhkarCount = await prisma.adhkarText.count();
   console.log(`Seeded ${adhkarCount} adhkar across ${chapters.length} chapters.`);
-
-  await prisma.meta.upsert({
-    where: { key: "seedVersion" },
-    create: { key: "seedVersion", value: SEED_VERSION },
-    update: { value: SEED_VERSION },
-  });
 
   const surahCount = await prisma.surah.count();
   const ayahCount = await prisma.quranText.count();
