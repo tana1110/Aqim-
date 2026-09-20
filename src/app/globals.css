@@ -315,9 +315,29 @@ body {
     0 0 0 4px var(--color-accent);
 }
 
-/* Suggestion cards (PassageCard): justified, multi-ayah-per-line Mushaf
-   feel, roomier than a dense printed page — these are short excerpts read
-   standalone, not a full page. */
+/* Full-page Quran fit: text scales with the container's font-size (set in
+   px by the fit-to-screen solver), overriding the fixed clamp() sizes. */
+.fit-quran .quran-text {
+  font-size: 1em !important;
+  line-height: 1.68 !important; /* dense like a printed mushaf */
+  word-spacing: 0 !important;
+  text-align: justify !important;
+  text-align-last: center; /* mushaf pages center their closing line */
+}
+.fit-quran .bismillah-line {
+  font-size: 0.85em !important;
+  line-height: 1.55 !important;
+}
+.fit-quran .ayah-mark {
+  font-size: 0.72em; /* the ۝-number medallion stays legible when fitted */
+}
+
+/* Suggestion cards (PassageCard): same justified, multi-ayah-per-line
+   Mushaf feel as .fit-quran, but roomier — these are short excerpts read
+   standalone, not a full page, so the ultra-dense 1.68 line-height read as
+   cramped and let the last ayah's mark crowd the meaning box right below
+   it. A touch more breathing room, still nowhere near the old spread-out
+   one-verse-per-block style. */
 .passage-dense .quran-text {
   font-size: 1em;
   line-height: 1.95;
@@ -331,6 +351,20 @@ body {
 }
 .passage-dense .ayah-mark {
   font-size: 0.68em;
+}
+
+/* Exact (QCF) lines: a uniform hair of inter-word space — some V2 word
+   glyphs sit flush against their neighbor; sacred text must never read as
+   joined words. The width solver measures margins, so lines still fill. */
+.exact-line > span {
+  margin-inline: 0.024em;
+}
+/* Center when it fits; never clip the top when it (transiently) overflows. */
+.fit-center {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  justify-content: safe center;
 }
 
 /* Floating bottom pill nav — solid deep navy in light mode; in dark mode a
@@ -437,65 +471,6 @@ html[dir="rtl"] .animate-drawer {
 }
 .animate-page {
   animation: pageFade 0.22s ease both;
-}
-
-/* A page-turn swipe/tap gets a real "paper turning" flip instead of the
-   plain fade above — a 3D rotation around the spine edge (the incoming
-   page settling flat), with a brightness dip standing in for the shadow
-   a turning page catches. In an Arabic (RTL) book the next page comes
-   from the left, the previous page from the right (matches the existing
-   swipe/tap-zone convention elsewhere on this page), so each direction
-   hinges on the opposite edge. Reserved for actual page turns — jumping
-   to an arbitrary page (search, surah/juz picker) still uses the plain
-   fade above, since "flipping" many pages at once doesn't read as one. */
-@keyframes pageTurnNext {
-  0% {
-    transform: perspective(1400px) rotateY(-100deg);
-    transform-origin: left center;
-    opacity: 0.55;
-    filter: brightness(0.65);
-  }
-  /* An explicit midpoint keeps the rotation visibly in motion for most of
-     the duration — a single ease-out 0%→100% span front-loads nearly all
-     of the turn into its first ~60ms, which reads as a snap, not a turn. */
-  50% {
-    transform: perspective(1400px) rotateY(-38deg);
-    transform-origin: left center;
-    opacity: 0.85;
-    filter: brightness(0.82);
-  }
-  100% {
-    transform: perspective(1400px) rotateY(0deg);
-    transform-origin: left center;
-    opacity: 1;
-    filter: brightness(1);
-  }
-}
-@keyframes pageTurnPrev {
-  0% {
-    transform: perspective(1400px) rotateY(100deg);
-    transform-origin: right center;
-    opacity: 0.55;
-    filter: brightness(0.65);
-  }
-  50% {
-    transform: perspective(1400px) rotateY(38deg);
-    transform-origin: right center;
-    opacity: 0.85;
-    filter: brightness(0.82);
-  }
-  100% {
-    transform: perspective(1400px) rotateY(0deg);
-    transform-origin: right center;
-    opacity: 1;
-    filter: brightness(1);
-  }
-}
-.animate-page-turn-next {
-  animation: pageTurnNext 0.5s ease-in-out both;
-}
-.animate-page-turn-prev {
-  animation: pageTurnPrev 0.5s ease-in-out both;
 }
 
 @keyframes rise {
