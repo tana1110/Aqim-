@@ -948,23 +948,32 @@ export default function QuranPage() {
             if (showCoach) dismissCoach();
             setChrome((c) => !c);
           }}
-          className="h-full px-4 fit-center overflow-y-auto overflow-x-hidden select-none no-scrollbar"
+          className="h-full px-4 fit-center overflow-hidden select-none"
           style={{
             paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)",
             paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
           }}
         >
-          {exact ? (
-            renderExact()
-          ) : (
-            <div
-              ref={fitRef}
-              className="fit-quran"
-              style={{ fontSize: fitSize + "px" }}
-            >
-              {renderGroups(true)}
-            </div>
-          )}
+          {/* Scrolling lives here, one level in, so the tap-to-reveal-chrome
+              area above stays non-scrolling — a scrollable element eats a
+              tap as soon as a touch moves even slightly, which is what
+              made tapping stop opening/closing the header. This still
+              scrolls when the exact page is taller than the screen
+              (landscape), it just no longer breaks the tap gesture in the
+              normal portrait case where nothing needs to scroll at all. */}
+          <div className="h-full w-full overflow-y-auto overflow-x-hidden no-scrollbar">
+            {exact ? (
+              renderExact()
+            ) : (
+              <div
+                ref={fitRef}
+                className="fit-quran"
+                style={{ fontSize: fitSize + "px" }}
+              >
+                {renderGroups(true)}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* edge taps: left = next (Arabic book order), right = previous */}
