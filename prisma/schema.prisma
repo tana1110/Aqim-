@@ -1,13 +1,16 @@
-// Aqim — Prisma schema (PostgreSQL)
+// Aqim — Prisma schema (Cloudflare D1 / SQLite)
 // Quranic text and tafsir are seeded once from a trusted source (Tanzil via
 // api.alquran.cloud) and stored locally. They are NEVER generated at runtime.
 
 generator client {
-  provider = "prisma-client-js"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  runtime      = "cloudflare"
+  moduleFormat = "esm"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
 }
 
 // ---------------------------------------------------------------------------

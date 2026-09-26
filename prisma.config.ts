@@ -1,25 +1,16 @@
 import path from "node:path";
 import { defineConfig } from "prisma/config";
 
-// Prisma 7 no longer auto-loads .env. Load it here (Node 24 built-in).
-try {
-  process.loadEnvFile();
-} catch {
-  // .env may not exist yet; env vars can also come from the shell.
-}
-
+// The app talks to Cloudflare D1 at runtime through the driver adapter
+// (see src/lib/prisma.ts), so the CLI only needs the schema to generate the
+// client and diff migrations. The local SQLite file is just a scratch target
+// for any CLI command that insists on a connection.
 export default defineConfig({
   schema: path.join("prisma", "schema.prisma"),
   migrations: {
-    path: path.join("prisma", "migrations"),
-    seed: "tsx prisma/seed.ts",
+    path: path.join("migrations"),
   },
   datasource: {
-    // Migrations need a DIRECT (non-pooled) connection. Prefer an explicit
-    // DIRECT_URL, then Neon's unpooled URL (injected by the Vercel integration),
-    // then fall back to DATABASE_URL for local dev.
-    url: (process.env.DIRECT_URL ??
-      process.env.DATABASE_URL_UNPOOLED ??
-      process.env.DATABASE_URL) as string,
+    url: "file:./prisma/local.db",
   },
 });

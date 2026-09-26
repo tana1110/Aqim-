@@ -1,0 +1,23 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "aqim",
+	"main": ".open-next/worker.js",
+	"account_id": "23c4ed86016680e63c6c038a14a9806b",
+	"compatibility_date": "2026-09-20",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": ".open-next/assets",
+		"binding": "ASSETS"
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "aqim",
+			"database_id": "93199874-3eb4-410e-9435-6ce897acaa94",
+			"migrations_dir": "migrations"
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
+}

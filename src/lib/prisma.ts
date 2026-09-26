@@ -1,20 +1,27 @@
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { PrismaD1 } from "@prisma/adapter-d1";
+import { PrismaClient } from "@/generated/prisma/client";
 
-// Prisma 7 requires a driver adapter at runtime.
-function createClient() {
-  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
-  return new PrismaClient({
-    adapter,
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
+// The D1 binding only exists inside a request on Cloudflare, so the client
+// can't be built at import time. `prisma` stays a plain import for every
+// call site; each property access resolves the client for the current
+// request's D1 binding (cached per binding, so it's built once per isolate).
+const clients = new WeakMap<object, PrismaClient>();
+
+function client(): PrismaClient {
+  const db = getCloudflareContext().env.DB;
+  let c = clients.get(db);
+  if (!c) {
+    c = new PrismaClient({ adapter: new PrismaD1(db) });
+    clients.set(db, c);
+  }
+  return c;
 }
 
-// Reuse a single PrismaClient across hot reloads in development.
-const globalForPrisma = globalThis as unknown as {
-  prisma: ReturnType<typeof createClient> | undefined;
-};
-
-export const prisma = globalForPrisma.prisma ?? createClient();
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const c = client();
+    const value = Reflect.get(c, prop, c);
+    return typeof value === "function" ? value.bind(c) : value;
+  },
+});

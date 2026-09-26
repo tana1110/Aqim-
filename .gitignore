@@ -45,3 +45,9 @@ dev-server.log
 
 .vercel
 scratch/
+src/generated/
+prisma/local.db*
+.open-next/
+.wrangler/
+.dev.vars
+seed/
