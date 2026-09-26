@@ -238,8 +238,13 @@ export default function AccountPage() {
   // Android app the native side runs Android's own Google sign-in and hands
   // the token back through these callbacks.
   const [nativeGoogle, setNativeGoogle] = useState(false);
+  // Any version of the Android app. Older versions have no native sign-in,
+  // and Google's web button can't work inside the app — it opens Chrome
+  // instead — so in that case no Google button is shown at all.
+  const [inApp, setInApp] = useState(false);
   useEffect(() => {
     setNativeGoogle(!!window.AndroidApp?.googleSignIn);
+    setInApp(!!window.AndroidApp);
   }, []);
   useEffect(() => {
     if (!nativeGoogle) return;
@@ -265,7 +270,7 @@ export default function AccountPage() {
 
   // Google Identity Services button (only when configured + signed out).
   useEffect(() => {
-    if (!googleClientId || account || !loaded || nativeGoogle) return;
+    if (!googleClientId || account || !loaded || inApp) return;
     const render = () => {
       const g = window.google?.accounts?.id;
       if (!g || !googleRef.current) return;
@@ -275,8 +280,16 @@ export default function AccountPage() {
           void signInWithGoogleCredential(resp.credential);
         },
       });
+      // Google only offers preset styles; pill + the preset closest to the
+      // current palette is as near to the app's own buttons as it allows.
+      const theme = document.documentElement.getAttribute("data-theme");
+      const dark =
+        theme === "dark" ||
+        (theme !== "light" &&
+          window.matchMedia("(prefers-color-scheme: dark)").matches);
       g.renderButton(googleRef.current, {
-        theme: "outline",
+        theme: dark ? "filled_black" : "outline",
+        shape: "pill",
         size: "large",
         width: 320,
         locale: lang === "ar" ? "ar" : "en",
@@ -292,7 +305,7 @@ export default function AccountPage() {
     script.onload = render;
     document.head.appendChild(script);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [googleClientId, account, loaded, lang, next]);
+  }, [googleClientId, account, loaded, lang, next, inApp]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -687,7 +700,8 @@ export default function AccountPage() {
               </button>
             </div>
           ) : (
-            googleClientId && (
+            googleClientId &&
+            !inApp && (
               <div className="pt-1 flex justify-center" ref={googleRef} />
             )
           )}
