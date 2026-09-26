@@ -17,6 +17,10 @@
 			"migrations_dir": "migrations"
 		}
 	],
+	"vars": {
+		// Public (not a secret) — the audience Google ID tokens must match.
+		"GOOGLE_CLIENT_ID": "1026939878719-t3oh48mj2rbp9bbp3leb5mo5a4jftt78.apps.googleusercontent.com"
+	},
 	"observability": {
 		"enabled": true
 	}

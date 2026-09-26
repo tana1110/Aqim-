@@ -10,7 +10,11 @@ declare global {
       setImmersive?: (on: boolean) => void;
       updateWidgets?: (json: string) => void;
       scheduleLocalReminders?: (json: string) => void;
+      googleSignIn?: () => void;
     };
+    // Called back by the native app once Android's Google sign-in finishes.
+    __aqimGoogleCredential?: (idToken: string) => void;
+    __aqimGoogleError?: (code: string) => void;
   }
 }
 
