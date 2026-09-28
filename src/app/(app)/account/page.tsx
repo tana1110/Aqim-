@@ -699,9 +699,12 @@ export default function AccountPage() {
                 {t("account.google")}
               </button>
             </div>
+          ) : inApp ? (
+            <p className="pt-1 text-center text-xs text-muted">
+              {t("account.googleUpdate")}
+            </p>
           ) : (
-            googleClientId &&
-            !inApp && (
+            googleClientId && (
               <div className="pt-1 flex justify-center" ref={googleRef} />
             )
           )}
