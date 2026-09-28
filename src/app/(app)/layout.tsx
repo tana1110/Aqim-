@@ -89,7 +89,18 @@ export default function AppLayout({
       {/* Desktop: side navigation (all sections); mobile: floating pill nav */}
       <main className="flex-1 w-full mx-auto max-w-6xl px-4 desktop:px-8 pb-28 desktop:pb-12 pt-2 desktop:flex desktop:gap-8 desktop:items-start">
         <SideNav />
-        <div className="flex-1 min-w-0">{children}</div>
+        <div className="flex-1 min-w-0">
+          {children}
+          {/* Google's OAuth review requires the home page to link to the
+              privacy policy — kept quiet, at the very bottom. */}
+          {pathname === "/home" && (
+            <footer className="mt-10 text-center text-xs text-muted">
+              <Link href="/privacy" className="hover:text-foreground underline">
+                Privacy Policy · سياسة الخصوصية
+              </Link>
+            </footer>
+          )}
+        </div>
       </main>
 
       <BottomTabs />
