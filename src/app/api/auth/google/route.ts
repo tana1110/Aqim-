@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/user";
-import { createSession, mergeDeviceIntoAccount } from "@/lib/auth";
+import { createSession, firstName, mergeDeviceIntoAccount } from "@/lib/auth";
 
 // Google sign-in: the client sends the Google Identity Services ID token;
 // we verify it against Google's tokeninfo endpoint (audience must match).
@@ -26,6 +26,8 @@ export async function POST(request: Request) {
     sub?: string;
     email?: string;
     email_verified?: string;
+    given_name?: string;
+    name?: string;
   };
   if (info.aud !== clientId || !info.sub) {
     return Response.json({ error: "bad_token" }, { status: 401 });
@@ -33,6 +35,7 @@ export async function POST(request: Request) {
 
   const email =
     info.email_verified === "true" ? (info.email ?? null)?.toLowerCase() : null;
+  const displayName = firstName(info.given_name ?? info.name) ?? "You";
 
   // Find the account by Google id, then by verified email, else create/upgrade.
   let user = await prisma.user.findUnique({ where: { googleSub: info.sub } });
@@ -47,17 +50,19 @@ export async function POST(request: Request) {
   }
 
   const device = await getCurrentUser();
+  let isNewAccount = false;
   if (!user) {
+    isNewAccount = true;
     if (!device.email && !device.googleSub) {
       user = await prisma.user.update({
         where: { id: device.id },
-        data: { googleSub: info.sub, email: email ?? undefined },
+        data: { googleSub: info.sub, email: email ?? undefined, name: displayName },
       });
     } else {
       user = await prisma.user.create({
         data: {
           uid: `acct-${crypto.randomUUID()}`,
-          name: "You",
+          name: displayName,
           googleSub: info.sub,
           email: email ?? undefined,
           settings: { create: {} },
@@ -69,5 +74,10 @@ export async function POST(request: Request) {
   }
 
   await createSession(user.id);
-  return Response.json({ ok: true, email: user.email });
+  return Response.json({
+    ok: true,
+    email: user.email,
+    name: user.name,
+    isNewAccount,
+  });
 }

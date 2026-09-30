@@ -6,6 +6,7 @@ import { UserRound, LogOut, Eye, EyeOff, Pencil, Check } from "lucide-react";
 import { PageLoader } from "@/components/Brand";
 import { useLang } from "@/components/LanguageProvider";
 import { clearPageCaches } from "@/lib/cache";
+import { announceWelcome } from "@/components/WelcomeToast";
 
 // Optional account — the app works fully without one; signing in only makes
 // the user's history/memorization follow them across devices.
@@ -215,6 +216,10 @@ export default function AccountPage() {
   async function signInWithGoogleCredential(credential: string) {
     setBusy(true);
     setError(null);
+    // Logged (forwarded to logcat as "AqimWeb" inside the Android app) so a
+    // failure here is diagnosable from a connected phone instead of just
+    // showing the generic error with no detail.
+    console.log("[google] signInWithGoogleCredential called, token length", credential.length);
     try {
       const r = await fetch("/api/auth/google", {
         method: "POST",
@@ -222,12 +227,15 @@ export default function AccountPage() {
         body: JSON.stringify({ credential }),
       });
       const d = await r.json();
+      console.log("[google] /api/auth/google ->", r.status, JSON.stringify(d));
       if (!r.ok) throw new Error(d.error);
       clearPageCaches(); // the visible data belongs to the account now
       router.refresh();
       await refreshAccount();
+      if (d.isNewAccount) announceWelcome(d.name || "You");
       if (next) router.push(next);
-    } catch {
+    } catch (err) {
+      console.log("[google] sign-in failed:", err instanceof Error ? err.message : String(err));
       setError(t("account.err.generic"));
     } finally {
       setBusy(false);
@@ -248,10 +256,13 @@ export default function AccountPage() {
   }, []);
   useEffect(() => {
     if (!nativeGoogle) return;
+    console.log("[google] registering native callbacks");
     window.__aqimGoogleCredential = (token: string) => {
+      console.log("[google] __aqimGoogleCredential invoked from native");
       void signInWithGoogleCredential(token);
     };
     window.__aqimGoogleError = (code: string) => {
+      console.log("[google] __aqimGoogleError invoked from native:", code);
       setBusy(false);
       if (code !== "cancelled") setError(t("account.err.generic"));
     };
@@ -327,6 +338,7 @@ export default function AccountPage() {
       clearPageCaches(); // the visible data belongs to the account now
       router.refresh();
       await refreshAccount();
+      if (d.isNewAccount) announceWelcome(d.name || "You");
       if (next) router.push(next);
     } catch {
       setError(t("account.err.generic"));

@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/user";
-import { createSession, validEmail } from "@/lib/auth";
+import { createSession, firstName, validEmail } from "@/lib/auth";
 
 // Create an email/password account. If the current device user is still
 // anonymous, it is UPGRADED in place — all existing data stays attached.
@@ -28,18 +28,19 @@ export async function POST(request: Request) {
 
   const passwordHash = await bcrypt.hash(password, 10);
   const device = await getCurrentUser();
+  const displayName = firstName(name) ?? "You";
 
   let user;
   if (!device.email && !device.googleSub) {
     user = await prisma.user.update({
       where: { id: device.id },
-      data: { email, passwordHash, ...(name ? { name } : {}) },
+      data: { email, passwordHash, ...(name ? { name: displayName } : {}) },
     });
   } else {
     user = await prisma.user.create({
       data: {
         uid: `acct-${crypto.randomUUID()}`,
-        name: name || "You",
+        name: displayName,
         email,
         passwordHash,
         settings: { create: {} },
@@ -47,5 +48,10 @@ export async function POST(request: Request) {
     });
   }
   await createSession(user.id);
-  return Response.json({ ok: true, email: user.email });
+  return Response.json({
+    ok: true,
+    email: user.email,
+    name: user.name,
+    isNewAccount: true,
+  });
 }

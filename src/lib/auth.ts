@@ -73,3 +73,11 @@ export async function mergeDeviceIntoAccount(
 export function validEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+// New accounts are named after the user's first name only (they can change
+// it any time from Settings/Account) — friendlier than a full legal name or
+// the generic "You" placeholder.
+export function firstName(full: string | null | undefined): string | null {
+  const first = (full ?? "").trim().split(/\s+/)[0];
+  return first ? first.slice(0, 30) : null;
+}

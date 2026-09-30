@@ -12,6 +12,7 @@ import { ReminderScheduler } from "@/components/ReminderScheduler";
 import { AdhanPlayer } from "@/components/AdhanPlayer";
 import { SyncClient } from "@/components/SyncClient";
 import { BackExitGuard } from "@/components/BackExitGuard";
+import { WelcomeToast } from "@/components/WelcomeToast";
 import { WidgetSync } from "@/components/WidgetSync";
 import { UpdateBanner } from "@/components/UpdateBanner";
 
@@ -55,6 +56,7 @@ export default function AppLayout({
       <AdhanPlayer />
       <SyncClient />
       <BackExitGuard />
+      <WelcomeToast />
       <WidgetSync />
       <UpdateBanner />
       <NavDrawer open={navOpen} onClose={() => setNavOpen(false)} />
