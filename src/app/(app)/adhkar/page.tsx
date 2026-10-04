@@ -399,7 +399,7 @@ function ChapterView({
         {toast && (
           <div
             className="fixed inset-x-0 z-50 px-4 animate-rise"
-            style={{ top: "calc(var(--safe-top) + 64px)" }}
+            style={{ top: "calc(var(--safe-top) + 74px)" }}
           >
             <div className="mx-auto w-fit flex items-center gap-2 rounded-full bg-secondary text-white px-5 py-2.5 text-sm font-bold shadow-lg">
               <Check size={16} strokeWidth={3} />
@@ -507,20 +507,20 @@ function SnapDeck({
   useEffect(() => setMounted(true), []);
 
   const deck = (
-    <div className="fixed inset-0 z-[999] bg-[#1C2830]" dir="rtl">
+    <div className="fixed inset-0 z-[999] bg-background" dir="rtl">
       {/* Header: close + chapter title */}
       <div
         className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pb-2"
-        style={{ paddingTop: "calc(var(--safe-top) + 10px)" }}
+        style={{ paddingTop: "calc(var(--safe-top) + 20px)" }}
       >
         <button
           onClick={onBack}
           aria-label={t("adhkar.back")}
-          className="w-9 h-9 rounded-full grid place-items-center text-[#F3EEE3]/90 hover:bg-white/10 transition"
+          className="w-9 h-9 rounded-full grid place-items-center text-foreground/90 hover:bg-foreground/10 transition"
         >
           <X size={20} />
         </button>
-        <span className="text-[13px] font-bold text-[#F3EEE3]/90 truncate max-w-[60%]">
+        <span className="text-[13px] font-bold text-foreground/90 truncate max-w-[60%]">
           {title}
         </span>
         <span className="w-9" aria-hidden />
@@ -612,10 +612,10 @@ function DhikrFullScreen({
           to sit at a fixed absolute position with no space reserved for it. */}
       <div
         className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center gap-3 py-4"
-        style={{ paddingTop: "calc(var(--safe-top) + 56px)" }}
+        style={{ paddingTop: "calc(var(--safe-top) + 66px)" }}
       >
         <p
-          className="font-quran text-[26px] leading-[2.1] text-[#F3EEE3]"
+          className="font-quran text-[26px] leading-[2.1] text-foreground"
           dir="rtl"
         >
           {d.text}
@@ -623,7 +623,7 @@ function DhikrFullScreen({
 
         {refOpen && d.reference && (
           <p
-            className="font-ui text-xs text-[#F3EEE3]/70 leading-relaxed max-w-sm"
+            className="font-ui text-xs text-foreground/70 leading-relaxed max-w-sm"
             dir="rtl"
             onClick={(e) => {
               e.stopPropagation();
@@ -646,20 +646,20 @@ function DhikrFullScreen({
               e.stopPropagation();
               setRefOpen(true);
             }}
-            className="font-ui text-[11px] text-[#F3EEE3]/60 underline decoration-dotted truncate max-w-full"
+            className="font-ui text-[11px] text-foreground/60 underline decoration-dotted truncate max-w-full"
           >
             {d.reference}
           </span>
         )}
         <div className="flex items-center gap-3">
           {d.count > 1 && (
-            <span className="font-ui text-[11px] text-[#F3EEE3]/70">
+            <span className="font-ui text-[11px] text-foreground/70">
               {t("adhkar.reps")}: ×{d.count}
             </span>
           )}
           <span
             className={`min-w-11 h-8 px-2.5 rounded-full flex items-center justify-center gap-1 text-sm font-bold tabular-nums ${
-              done ? "bg-[#C9A671] text-[#1C2830]" : "bg-white/15 text-[#F3EEE3]"
+              done ? "bg-accent text-white" : "bg-foreground/15 text-foreground"
             }`}
           >
             {done && <Check size={14} />}
@@ -670,7 +670,7 @@ function DhikrFullScreen({
               role="button"
               aria-label={t("adhkar.reset")}
               onClick={reset}
-              className="w-8 h-8 rounded-full grid place-items-center text-[#F3EEE3]/70 hover:bg-white/10 transition"
+              className="w-8 h-8 rounded-full grid place-items-center text-foreground/70 hover:bg-foreground/10 transition"
             >
               <RotateCcw size={15} />
             </span>
