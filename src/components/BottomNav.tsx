@@ -236,7 +236,10 @@ export function NavDrawer({
             {t("account.title")}
           </Link>
           {[
-            ...TABS,
+            // Only what ISN'T already one tap away in the bottom bar
+            // (Home/Quran/Adhkar/History/Settings) belongs here — a menu
+            // that just repeats the tab bar is dead weight, not a menu.
+            ...TABS.filter((x) => x.href === "/setup"),
             // Qibla/Tasbih only ever had a desktop entry point (SideNav) —
             // mobile had no way to reach Qibla at all. Tasbih already has a
             // home-page tile, but belongs here too for discoverability.
