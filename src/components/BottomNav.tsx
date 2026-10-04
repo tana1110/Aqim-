@@ -198,7 +198,10 @@ export function NavDrawer({
             : "start-0 border-e border-border animate-drawer"
         }`}
       >
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div
+          className="flex items-center justify-between px-4 pb-4 border-b border-border"
+          style={{ paddingTop: "calc(var(--safe-top) + 20px)" }}
+        >
           <span className="flex items-center gap-2">
             <Logo variant={2} size={30} />
             <span className="text-[10px] tracking-widest text-muted mt-1">
@@ -213,7 +216,10 @@ export function NavDrawer({
             <X size={18} />
           </button>
         </div>
-        <nav className="p-3 space-y-1">
+        <nav
+          className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1"
+          style={{ paddingBottom: "calc(var(--safe-bottom) + 0.75rem)" }}
+        >
           {/* Account — first and set apart, so it's the easiest thing to
               reach from the menu, not buried inside Settings. */}
           <Link

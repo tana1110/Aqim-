@@ -1263,7 +1263,10 @@ function MushafNavigator({
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-8">
+        <div
+          className="flex-1 overflow-y-auto px-4"
+          style={{ paddingBottom: "calc(var(--safe-bottom) + 2rem)" }}
+        >
           {tab === "surah" && (
             <>
               <div className="relative mb-2">

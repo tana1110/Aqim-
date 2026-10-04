@@ -1219,7 +1219,10 @@ function WidgetSheet({
   return (
     <div className="fixed inset-0 z-50">
       <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-      <div className="absolute inset-x-0 bottom-0 bg-surface rounded-t-3xl shadow-lg p-5 pb-8 animate-rise">
+      <div
+        className="absolute inset-x-0 bottom-0 bg-surface rounded-t-3xl shadow-lg p-5 animate-rise"
+        style={{ paddingBottom: "calc(var(--safe-bottom) + 2rem)" }}
+      >
         <div className="flex items-center justify-between mb-1">
           <span className="text-base font-extrabold">{t("widgets.title")}</span>
           <button

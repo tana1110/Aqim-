@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
         text: i.text,
         count: i.count,
         reference: i.reference,
+        source: i.source,
       })),
     });
   }

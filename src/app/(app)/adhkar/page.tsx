@@ -57,6 +57,30 @@ interface Dhikr {
   text: string;
   count: number;
   reference: string | null;
+  source: string;
+}
+
+// Quran-sourced cards (Ayat al-Kursi, the three Quls, etc.) are stored with
+// this exact source label and a specific text convention: an optional
+// Bismillah on its own first line (never merged into ayah 1 — see
+// src/lib/quranDisplay.ts#getBismillahDisplay, the same convention the
+// Quran reading page itself uses), then the ayah text with "۝" + an
+// Eastern Arabic numeral after each ayah, e.g. "...أَحَدٌ ۝١ ...الصَّمَدُ ۝٢".
+// Rendered like the Quran page/PassageCard (mushaf font, ayah medallions),
+// never as a plain paragraph.
+const QURAN_SOURCE = "القرآن الكريم";
+const AYAH_MARK_RE = /(۝[٠-٩]+)/g;
+
+function renderQuranBody(text: string) {
+  return text.split(AYAH_MARK_RE).map((part, i) =>
+    /^۝[٠-٩]+$/.test(part) ? (
+      <span key={i} className="ayah-mark text-accent">
+        {part}
+      </span>
+    ) : (
+      <span key={i}>{part}</span>
+    ),
+  );
 }
 
 const strip = (s: string) => s.normalize("NFC").replace(/\p{M}/gu, "");
@@ -614,12 +638,32 @@ function DhikrFullScreen({
         className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center gap-3 py-4"
         style={{ paddingTop: "calc(var(--safe-top) + 66px)" }}
       >
-        <p
-          className="font-quran text-[26px] leading-[2.1] text-foreground"
-          dir="rtl"
-        >
-          {d.text}
-        </p>
+        {d.source === QURAN_SOURCE ? (
+          (() => {
+            const nl = d.text.indexOf("\n");
+            const bismillahLine = nl >= 0 ? d.text.slice(0, nl) : null;
+            const body = nl >= 0 ? d.text.slice(nl + 1).trim() : d.text;
+            return (
+              <div className="passage-dense w-full">
+                {bismillahLine && (
+                  <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
+                    {bismillahLine}
+                  </p>
+                )}
+                <p className="quran-text" dir="rtl">
+                  {renderQuranBody(body)}
+                </p>
+              </div>
+            );
+          })()
+        ) : (
+          <p
+            className="font-quran text-[26px] leading-[2.1] text-foreground"
+            dir="rtl"
+          >
+            {d.text}
+          </p>
+        )}
 
         {refOpen && d.reference && (
           <p
@@ -721,9 +765,29 @@ function DhikrCard({
         done ? "border-secondary/50 bg-secondary-soft/40" : ""
       }`}
     >
-      <p className="font-quran text-xl leading-[2] " dir="rtl">
-        {d.text}
-      </p>
+      {d.source === QURAN_SOURCE ? (
+        (() => {
+          const nl = d.text.indexOf("\n");
+          const bismillahLine = nl >= 0 ? d.text.slice(0, nl) : null;
+          const body = nl >= 0 ? d.text.slice(nl + 1).trim() : d.text;
+          return (
+            <div className="passage-dense">
+              {bismillahLine && (
+                <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
+                  {bismillahLine}
+                </p>
+              )}
+              <p className="quran-text" dir="rtl">
+                {renderQuranBody(body)}
+              </p>
+            </div>
+          );
+        })()
+      ) : (
+        <p className="font-quran text-xl leading-[2] " dir="rtl">
+          {d.text}
+        </p>
+      )}
 
       {/* Reference / reward — tap to read it in full (no more "…") */}
       {refOpen && d.reference && (
