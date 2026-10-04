@@ -11,6 +11,10 @@ declare global {
       updateWidgets?: (json: string) => void;
       scheduleLocalReminders?: (json: string) => void;
       googleSignIn?: () => void;
+      // Ends the native Activity outright — used only by BackExitGuard's
+      // second back-press at the home route, once it has decided (via its
+      // own toast/re-arm timing) that this press really means "leave".
+      exitApp?: () => void;
     };
     // Called back by the native app once Android's Google sign-in finishes.
     __aqimGoogleCredential?: (idToken: string) => void;

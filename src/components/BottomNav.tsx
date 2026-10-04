@@ -63,7 +63,7 @@ export function BottomTabs({ force = false }: { force?: boolean }) {
       className={`desktop:hidden fixed bottom-3 inset-x-3 z-30 transition-transform duration-300 ${
         hidden ? "translate-y-[140%]" : ""
       }`}
-      style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      style={{ paddingBottom: "var(--safe-bottom)" }}
     >
       <div data-tour="nav" className="mx-auto max-w-md flex items-center justify-between rounded-full nav-pill shadow-lg px-3 py-2">
         {tabs.map(({ href, key, Icon }) => {

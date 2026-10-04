@@ -150,7 +150,7 @@ export function Welcome() {
   return (
     <div className="fixed inset-0 z-40 bg-background flex flex-col">
       {/* Top bar: language + skip */}
-      <div className="flex items-center justify-between p-4 pt-5">
+      <div className="flex items-center justify-between px-4 pb-4 pt-[calc(var(--safe-top)+20px)]">
         <LanguageToggle />
         <button
           onClick={() => finish()}
@@ -191,7 +191,7 @@ export function Welcome() {
       </div>
 
       {/* Dots + action */}
-      <div className="p-6 pb-10 flex flex-col items-center gap-6">
+      <div className="p-6 pb-[calc(var(--safe-bottom)+2.5rem)] flex flex-col items-center gap-6">
         <div className="flex gap-2">
           {slides.map((_, i) => (
             <span

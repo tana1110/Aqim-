@@ -408,7 +408,7 @@ export default function SetupPage() {
       {/* Save bar — the page's one call to action. Appears the moment
           anything is selected and stays stuck under the header. */}
       {(isDirty || selectedCount > 0) && (
-        <div className="sticky top-[64px] z-10 animate-rise">
+        <div className="sticky top-[calc(64px+var(--safe-top)+20px)] z-10 animate-rise">
           <div className="card flex items-center justify-between gap-3 p-2.5 ps-4 shadow-lg">
             <span className="text-sm font-medium">
               {t("setup.selMix", {

@@ -379,19 +379,48 @@ body {
   }
 }
 
-/* Safe-area helpers for the app-like bottom nav. */
+/* ---------------------------------------------------------------------------
+   Safe-area spacing — SINGLE SOURCE OF TRUTH.
+   The Android WebView shell reports safe-area-inset-top as 0 (it doesn't
+   surface the real status-bar inset the way a browser tab does — see
+   MainActivity's own native padding for how the status bar itself is kept
+   clear of content), so every top-spacing rule floors at 32px regardless,
+   then adds 20px of breathing room above the header content. Every screen
+   MUST use these variables/classes rather than writing env(safe-area-inset-*)
+   directly — that was the old per-page pattern and the actual bug: each
+   in-app top bar and the shared app header used a different one-off
+   env()-based value that all silently collapsed to near-zero in the app.
+--------------------------------------------------------------------------- */
+:root {
+  --safe-top: max(env(safe-area-inset-top, 0px), 32px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* BottomTabs' own rendered height (see .h-nav) plus clearance, so the
+     last item on any scrolling screen clears the floating nav. */
+  --nav-clearance: calc(4.25rem + var(--safe-bottom) + 1rem);
+}
+/* The 32px floor exists for the phone status bar specifically — desktop/
+   tablet layouts (same breakpoint as the `desktop` custom-variant) have no
+   such bar and shouldn't carry the extra header height. */
+@media (min-width: 768px) and (min-height: 600px) {
+  :root {
+    --safe-top: env(safe-area-inset-top, 0px);
+  }
+}
 .pb-safe {
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+  padding-bottom: calc(var(--safe-bottom) + 0.5rem);
 }
 .h-nav {
-  height: calc(4.25rem + env(safe-area-inset-bottom, 0px));
+  height: calc(4.25rem + var(--safe-bottom));
 }
-.pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
-}
-.pt-safe-1 {
-  padding-top: calc(env(safe-area-inset-top, 0px) + 0.25rem);
-}
+/* Usage: every top bar (the shared app header, home's greeting, the Quran
+   reading chrome, adhkar's full-screen view, …) sets
+   `padding-top: calc(var(--safe-top) + <own extra>)` — either via a
+   Tailwind arbitrary value (`pt-[calc(var(--safe-top)+20px)]`) or, for the
+   screens that already use inline styles, directly in that style object.
+   Bottom content padding (so the last item clears the floating bottom nav)
+   uses `pb-[var(--nav-clearance)]` the same way. Nothing computes the
+   env()/fallback math itself — --safe-top/--safe-bottom/--nav-clearance
+   above are the only place that lives. */
 
 /* Hide scrollbars on horizontal chip rows (still scrollable). */
 .no-scrollbar {

@@ -389,7 +389,7 @@ const ar: Dict = {
   "welcome.s5.title": "سجلّك يتبعك أينما كنت",
   "tour.skip": "تخطّي الجولة",
   "install.title": "ثبّت «أقِم» على جهازك",
-  "app.backToExit": "اضغط رجوع مرة أخرى للخروج",
+  "app.backToExit": "رجوع مرة أخرى للخروج",
   "quran.tab.find": "بحث",
   "quran.findPh": "ابحث عن كلمة أو آية…",
   "quran.findEmpty": "لا نتائج مطابقة",

@@ -50,7 +50,7 @@ export function UpdateBanner() {
   return (
     <div
       className="fixed inset-x-0 z-[60] px-4 flex justify-center animate-rise"
-      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 92px)" }}
+      style={{ bottom: "calc(var(--safe-bottom) + 92px)" }}
     >
       <button
         onClick={() => window.location.reload()}

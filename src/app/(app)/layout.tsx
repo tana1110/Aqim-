@@ -62,7 +62,7 @@ export default function AppLayout({
       <NavDrawer open={navOpen} onClose={() => setNavOpen(false)} />
 
       <header
-        className={`sticky top-0 z-20 bg-background border-b border-border pt-safe ${
+        className={`sticky top-0 z-20 bg-background border-b border-border pt-[calc(var(--safe-top)+20px)] ${
           isHome ? "hidden desktop:block" : ""
         }`}
       >
@@ -89,20 +89,9 @@ export default function AppLayout({
       </header>
 
       {/* Desktop: side navigation (all sections); mobile: floating pill nav */}
-      <main className="flex-1 w-full mx-auto max-w-6xl px-4 desktop:px-8 pb-28 desktop:pb-12 pt-2 desktop:flex desktop:gap-8 desktop:items-start">
+      <main className="flex-1 w-full mx-auto max-w-6xl px-4 desktop:px-8 pb-[var(--nav-clearance)] desktop:pb-12 pt-2 desktop:flex desktop:gap-8 desktop:items-start">
         <SideNav />
-        <div className="flex-1 min-w-0">
-          {children}
-          {/* Google's OAuth review requires the home page to link to the
-              privacy policy — kept quiet, at the very bottom. */}
-          {pathname === "/home" && (
-            <footer className="mt-10 text-center text-xs text-muted">
-              <Link href="/privacy" className="hover:text-foreground underline">
-                Privacy Policy · سياسة الخصوصية
-              </Link>
-            </footer>
-          )}
-        </div>
+        <div className="flex-1 min-w-0">{children}</div>
       </main>
 
       <BottomTabs />

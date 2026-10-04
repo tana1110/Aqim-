@@ -399,7 +399,7 @@ function ChapterView({
         {toast && (
           <div
             className="fixed inset-x-0 z-50 px-4 animate-rise"
-            style={{ top: "calc(env(safe-area-inset-top, 0px) + 64px)" }}
+            style={{ top: "calc(var(--safe-top) + 64px)" }}
           >
             <div className="mx-auto w-fit flex items-center gap-2 rounded-full bg-secondary text-white px-5 py-2.5 text-sm font-bold shadow-lg">
               <Check size={16} strokeWidth={3} />
@@ -511,7 +511,7 @@ function SnapDeck({
       {/* Header: close + chapter title */}
       <div
         className="absolute inset-x-0 top-0 z-10 flex items-center justify-between px-4 pb-2"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)" }}
+        style={{ paddingTop: "calc(var(--safe-top) + 10px)" }}
       >
         <button
           onClick={onBack}
@@ -612,7 +612,7 @@ function DhikrFullScreen({
           to sit at a fixed absolute position with no space reserved for it. */}
       <div
         className="flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center gap-3 py-4"
-        style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 56px)" }}
+        style={{ paddingTop: "calc(var(--safe-top) + 56px)" }}
       >
         <p
           className="font-quran text-[26px] leading-[2.1] text-[#F3EEE3]"
@@ -637,7 +637,7 @@ function DhikrFullScreen({
 
       <div
         className="shrink-0 flex flex-col items-center gap-2.5 px-6"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
+        style={{ paddingBottom: "calc(var(--safe-bottom) + 28px)" }}
       >
         {d.reference && !refOpen && (
           <span

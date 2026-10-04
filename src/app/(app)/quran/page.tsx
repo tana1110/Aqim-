@@ -950,8 +950,8 @@ export default function QuranPage() {
           }}
           className="h-full px-4 fit-center overflow-hidden select-none"
           style={{
-            paddingTop: "calc(env(safe-area-inset-top, 0px) + 10px)",
-            paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)",
+            paddingTop: "calc(var(--safe-top) + 10px)",
+            paddingBottom: "calc(var(--safe-bottom) + 10px)",
           }}
         >
           {/* Scrolling lives here, one level in, so the tap-to-reveal-chrome
@@ -999,7 +999,7 @@ export default function QuranPage() {
         {showCoach && !chrome && (
           <div
             className="absolute inset-x-0 z-20 mx-auto w-fit rounded-full bg-primary text-white px-4 py-2 text-xs font-bold shadow-lg animate-rise pointer-events-none"
-            style={{ top: "calc(env(safe-area-inset-top, 0px) + 14px)" }}
+            style={{ top: "calc(var(--safe-top) + 14px)" }}
           >
             {t("quran.tapForBars")}
           </div>
@@ -1010,7 +1010,7 @@ export default function QuranPage() {
         {!chrome && (
           <div
             className="absolute inset-x-0 z-10 text-center text-[11px] font-bold text-accent/80 tabular-nums pointer-events-none"
-            style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4px)" }}
+            style={{ bottom: "calc(var(--safe-bottom) + 4px)" }}
           >
             {digits(data.page)}
           </div>
@@ -1020,7 +1020,7 @@ export default function QuranPage() {
           <>
             <div
               className="absolute top-0 inset-x-0 z-20 bg-background/95 backdrop-blur border-b border-border px-4 pb-3 space-y-2.5 animate-rise"
-              style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
+              style={{ paddingTop: "calc(var(--safe-top) + 12px)" }}
             >
               <div className="flex items-center justify-between gap-3">
                 <button

@@ -16,18 +16,34 @@ export function BackExitGuard() {
   useEffect(() => {
     if (pathname !== "/home") return;
     // A guard entry sits on top of the history stack while we're at home.
-    window.history.pushState({ aqimGuard: true }, "");
+    // The "#guard" is load-bearing, not decorative: the Android WebView
+    // shell's canGoBack() silently returns false for a pushState entry
+    // that shares the exact URL of the entry before it (confirmed via
+    // copyBackForwardList() on-device — historySize was 2, currentIndex
+    // was 1, canGoBack() still false), even though plain browser History
+    // API back navigation works fine there. A distinct hash fragment is
+    // enough to make WebView treat it as a real, navigable entry; it's
+    // never sent to the server and Next's router ignores hash-only changes.
+    window.history.pushState({ aqimGuard: true }, "", "#guard");
     const onPop = () => {
       const now = Date.now();
       if (now - armedAt.current < 2000) {
-        // deliberate double-press: let the browser continue leaving
-        window.history.back();
+        // Deliberate second press: in the native app, end the Activity
+        // directly — WebView history has nothing "before" this page to
+        // fall back on, so leaving it to the browser would just strand the
+        // user on a blank history state. Outside the app (a normal
+        // browser/PWA tab), let it continue leaving as usual.
+        if (window.AndroidApp?.exitApp) {
+          window.AndroidApp.exitApp();
+        } else {
+          window.history.back();
+        }
         return;
       }
       armedAt.current = now;
       setToast(true);
       setTimeout(() => setToast(false), 2000);
-      window.history.pushState({ aqimGuard: true }, "");
+      window.history.pushState({ aqimGuard: true }, "", "#guard");
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
