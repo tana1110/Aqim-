@@ -106,7 +106,7 @@ export async function buildSuggestion(
     settings,
     req.exclude ?? [],
     req.focus ?? null,
-    req.lengthPref ?? "medium",
+    req.lengthPref ?? "short",
   );
 
   // Map each suggest slot to one selected passage (in order).

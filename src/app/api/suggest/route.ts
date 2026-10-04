@@ -47,7 +47,7 @@ export async function POST(request: Request) {
       body.lengthPref as "short",
     )
       ? (body.lengthPref as "short" | "medium" | "long")
-      : "medium",
+      : "short",
   };
 
   const plan = await buildSuggestion(user.id, req);

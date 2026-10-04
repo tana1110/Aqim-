@@ -29,6 +29,12 @@ import {
   saveAdhanPref,
   type AdhanPref,
 } from "@/lib/adhan";
+import {
+  WIDGET_KEYS,
+  loadWidgets,
+  saveWidgets,
+  type WidgetKey,
+} from "@/lib/widgets";
 
 // Font-size steps (root scale). Constrained so every screen stays intact;
 // the slider snaps to exactly these — never an arbitrary in-between value.
@@ -42,8 +48,14 @@ const FONT_STEPS = [
 export default function SettingsPage() {
   const { t, lang } = useLang();
   const [fontScale, setFontScale] = useState("1");
-  const [passLen, setPassLen] = useState("medium");
+  const [passLen, setPassLen] = useState("short");
   const [theme, setTheme] = useState<ThemePref>("dark");
+  const [widgets, setWidgets] = useState<Record<WidgetKey, boolean>>({
+    tasks: true,
+    misbaha: true,
+    daily: true,
+    review: true,
+  });
   const [adhanPref, setAdhanPref] = useState<AdhanPref>({
     enabled: false,
     voice: ADHAN_VOICES[0].key,
@@ -56,11 +68,12 @@ export default function SettingsPage() {
   useEffect(() => {
     try {
       setFontScale(localStorage.getItem("aqim-font-scale") || "1");
-      setPassLen(localStorage.getItem("aqim-passage-len") || "medium");
+      setPassLen(localStorage.getItem("aqim-passage-len") || "short");
     } catch {}
     setTheme(loadTheme());
     setAdhanPref(loadAdhanPref());
     setCfg(loadReminderConfig());
+    setWidgets(loadWidgets());
   }, []);
 
   function toggleAdhan() {
@@ -205,6 +218,16 @@ export default function SettingsPage() {
         <Row label={t("settings.language")}>
           <LanguageToggle />
         </Row>
+      </Section>
+
+      {/* ---- Customize home: everything that shapes what the home page
+          looks like and reads like, in one place — appearance, text size,
+          how much of a passage gets suggested at once, and which tiles
+          show at all. Previously scattered (theme lived up here, font
+          size/passage length were buried under "More settings", and the
+          home-tile picker only existed as a button on the home page
+          itself) — consolidated per the founder's request. */}
+      <Section title={t("widgets.title")}>
         <div className="p-4">
           <div className="flex items-center justify-between gap-4">
             <span className="text-sm font-medium">
@@ -229,6 +252,101 @@ export default function SettingsPage() {
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+
+        {/* Font size — a stepped slider like the phone's own display
+            settings; snaps to the four safe sizes. */}
+        <div className="p-4 space-y-3">
+          <span className="text-sm font-medium">{t("settings.fontSize")}</span>
+          <input
+            type="range"
+            min={0}
+            max={FONT_STEPS.length - 1}
+            step={1}
+            value={fontIdx}
+            onChange={(e) => applyFont(FONT_STEPS[+e.target.value].value)}
+            aria-label={t("settings.fontSize")}
+            className="font-slider w-full"
+            style={
+              {
+                "--p": `${(fontIdx / (FONT_STEPS.length - 1)) * 100}%`,
+              } as React.CSSProperties
+            }
+          />
+          <div className="flex justify-between text-[10px] font-bold">
+            {FONT_STEPS.map((s, i) => (
+              <button
+                key={s.value}
+                onClick={() => applyFont(s.value)}
+                className={i === fontIdx ? "text-primary" : "text-muted"}
+              >
+                {t(s.key)}
+              </button>
+            ))}
+          </div>
+          {/* Live preview — updates while dragging */}
+          <p
+            className="rounded-xl bg-surface-2 p-3 text-muted leading-relaxed"
+            style={{ fontSize: `calc(0.875rem * ${fontScale})` }}
+          >
+            {t("settings.fontPreview")}
+          </p>
+        </div>
+
+        {/* Suggested passage length */}
+        <div className="p-4">
+          <div className="flex items-center justify-between gap-4">
+            <span className="text-sm font-medium">
+              {t("settings.passageLen")}
+            </span>
+            <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
+              {(["short", "medium", "long"] as const).map((v) => (
+                <button
+                  key={v}
+                  onClick={() => applyPassLen(v)}
+                  aria-pressed={passLen === v}
+                  className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap ${
+                    passLen === v
+                      ? "bg-primary text-white"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {t(`len.${v}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <p className="text-[11px] text-muted mt-1.5">
+            {t("settings.lenHint")}
+          </p>
+        </div>
+
+        {/* Home tiles — which widgets show at all (daily task, tasbih,
+            ayah of the day, review). Moved here from a standalone button
+            on the home page itself. */}
+        <div className="p-4">
+          <div className="text-sm font-medium mb-1">{t("widgets.title")}</div>
+          <p className="text-xs text-muted mb-3">{t("widgets.hint")}</p>
+          <div className="space-y-1">
+            {WIDGET_KEYS.map((k) => (
+              <label
+                key={k}
+                className="flex items-center justify-between gap-3 rounded-2xl px-3 py-3 hover:bg-surface-2 cursor-pointer"
+              >
+                <span className="text-sm font-medium">{t(`widget.${k}`)}</span>
+                <input
+                  type="checkbox"
+                  checked={widgets[k]}
+                  onChange={() => {
+                    const next = { ...widgets, [k]: !widgets[k] };
+                    setWidgets(next);
+                    saveWidgets(next);
+                  }}
+                  className="accent-[var(--color-primary)] w-5 h-5"
+                />
+              </label>
+            ))}
           </div>
         </div>
       </Section>
@@ -439,74 +557,8 @@ export default function SettingsPage() {
         <div className="space-y-6">
           {/* ---- Reading & display ---- */}
           <Section title={t("settings.sec.reading")}>
-            {/* Font size — a stepped slider like the phone's own display
-                settings; snaps to the four safe sizes. */}
-            <div className="p-4 space-y-3">
-              <span className="text-sm font-medium">{t("settings.fontSize")}</span>
-              <input
-                type="range"
-                min={0}
-                max={FONT_STEPS.length - 1}
-                step={1}
-                value={fontIdx}
-                onChange={(e) => applyFont(FONT_STEPS[+e.target.value].value)}
-                aria-label={t("settings.fontSize")}
-                className="font-slider w-full"
-                style={
-                  {
-                    "--p": `${(fontIdx / (FONT_STEPS.length - 1)) * 100}%`,
-                  } as React.CSSProperties
-                }
-              />
-              <div className="flex justify-between text-[10px] font-bold">
-                {FONT_STEPS.map((s, i) => (
-                  <button
-                    key={s.value}
-                    onClick={() => applyFont(s.value)}
-                    className={i === fontIdx ? "text-primary" : "text-muted"}
-                  >
-                    {t(s.key)}
-                  </button>
-                ))}
-              </div>
-              {/* Live preview — updates while dragging */}
-              <p
-                className="rounded-xl bg-surface-2 p-3 text-muted leading-relaxed"
-                style={{ fontSize: `calc(0.875rem * ${fontScale})` }}
-              >
-                {t("settings.fontPreview")}
-              </p>
-            </div>
-
-            {/* Suggested passage length */}
-            <div className="p-4">
-              <div className="flex items-center justify-between gap-4">
-                <span className="text-sm font-medium">
-                  {t("settings.passageLen")}
-                </span>
-                <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
-                  {(["short", "medium", "long"] as const).map((v) => (
-                    <button
-                      key={v}
-                      onClick={() => applyPassLen(v)}
-                      aria-pressed={passLen === v}
-                      className={`px-2.5 py-1 rounded-md transition-colors whitespace-nowrap ${
-                        passLen === v
-                          ? "bg-primary text-white"
-                          : "text-muted hover:text-foreground"
-                      }`}
-                    >
-                      {t(`len.${v}`)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <p className="text-[11px] text-muted mt-1.5">
-                {t("settings.lenHint")}
-              </p>
-            </div>
-
-            {/* Offline Quran — download all 604 pages into the local cache */}
+            {/* Font size and passage length moved up into "Customize home"
+                — this section is just the offline download now. */}
             <OfflineRow />
           </Section>
 

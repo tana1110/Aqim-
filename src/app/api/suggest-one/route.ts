@@ -49,7 +49,7 @@ export async function POST(request: Request) {
     focus,
     (["short", "medium", "long"] as const).includes(body.lengthPref as "short")
       ? (body.lengthPref as "short" | "medium" | "long")
-      : "medium",
+      : "short",
   );
 
   const passage = result.passages[0];

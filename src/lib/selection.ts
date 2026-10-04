@@ -60,7 +60,7 @@ async function buildCandidates(
   userId: number,
   mode: Mode,
   settings: SelectionSettings,
-  lengthPref: LengthPref = "medium",
+  lengthPref: LengthPref = "short",
 ): Promise<Candidate[]> {
   const [memorization, surahs] = await Promise.all([
     prisma.memorization.findMany({ where: { userId } }),
@@ -168,7 +168,7 @@ export async function selectPassages(
   settings: SelectionSettings,
   exclude: Passage[] = [],
   focus: FocusSpec | null = null,
-  lengthPref: LengthPref = "medium",
+  lengthPref: LengthPref = "short",
 ): Promise<SelectionResult> {
   let candidates = await buildCandidates(userId, mode, settings, lengthPref);
   if (candidates.length === 0) {

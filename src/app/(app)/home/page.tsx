@@ -12,8 +12,6 @@ import {
   Flame,
   Shield,
   Menu,
-  Plus,
-  X,
 } from "lucide-react";
 import { Logo, LogoLoader } from "@/components/Logo";
 import { HomeTour } from "@/components/HomeTour";
@@ -41,12 +39,7 @@ import {
   loadStreakCache,
   type StreakStatus,
 } from "@/lib/streak";
-import {
-  WIDGET_KEYS,
-  loadWidgets,
-  saveWidgets,
-  type WidgetKey,
-} from "@/lib/widgets";
+import { loadWidgets, type WidgetKey } from "@/lib/widgets";
 import {
   computeTimes,
   loadReminderConfig,
@@ -157,7 +150,6 @@ export default function HomePage() {
     daily: true,
     review: true,
   });
-  const [customize, setCustomize] = useState(false);
   useLayoutEffect(() => {
     const read = () => setWidgets(loadWidgets());
     read();
@@ -385,7 +377,7 @@ export default function HomePage() {
       ["short", "medium", "long"] as const
     ).includes(storedLengthPref as LengthPref)
       ? (storedLengthPref as LengthPref)
-      : "medium";
+      : "short";
     const req: SuggestionRequest = {
       mode,
       prayer,
@@ -669,28 +661,6 @@ export default function HomePage() {
 
         {/* Review — the user picks what to review (drives Focus mode) */}
         {widgets.review && status?.hasMemorization && <ReviewPicker />}
-
-        {/* Each person shapes their own home page — a real, visible button,
-            not a faint text link: with most widgets off by default, this
-            is now the only way to bring any of them back, so it has to be
-            impossible to miss. */}
-        <button
-          onClick={() => setCustomize(true)}
-          className="w-full flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border py-3.5 text-sm font-bold text-muted hover:text-primary hover:border-primary/40 transition"
-        >
-          <Plus size={16} />
-          {t("widgets.title")}
-        </button>
-        {customize && (
-          <WidgetSheet
-            current={widgets}
-            onChange={(w) => {
-              setWidgets(w);
-              saveWidgets(w);
-            }}
-            onClose={() => setCustomize(false)}
-          />
-        )}
       </div>
 
       <HomeTour />
@@ -1205,59 +1175,6 @@ function DailyCard({
   ) : null;
 }
 
-// Bottom sheet: check the widgets you want on your home page.
-function WidgetSheet({
-  current,
-  onChange,
-  onClose,
-}: {
-  current: Record<WidgetKey, boolean>;
-  onChange: (w: Record<WidgetKey, boolean>) => void;
-  onClose: () => void;
-}) {
-  const { t } = useLang();
-  return (
-    <div className="fixed inset-0 z-50">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} aria-hidden />
-      <div
-        className="absolute inset-x-0 bottom-0 bg-surface rounded-t-3xl shadow-lg p-5 animate-rise"
-        style={{ paddingBottom: "calc(var(--safe-bottom) + 2rem)" }}
-      >
-        <div className="flex items-center justify-between mb-1">
-          <span className="text-base font-extrabold">{t("widgets.title")}</span>
-          <button
-            onClick={onClose}
-            aria-label="close"
-            className="w-9 h-9 grid place-items-center rounded-lg text-muted hover:text-foreground"
-          >
-            <X size={18} />
-          </button>
-        </div>
-        <p className="text-xs text-muted mb-4">{t("widgets.hint")}</p>
-        <div className="space-y-1">
-          {WIDGET_KEYS.map((k) => (
-            <label
-              key={k}
-              className="flex items-center justify-between gap-3 rounded-2xl px-3 py-3 hover:bg-surface-2 cursor-pointer"
-            >
-              <span className="text-sm font-medium">{t(`widget.${k}`)}</span>
-              <input
-                type="checkbox"
-                checked={current[k]}
-                onChange={() => onChange({ ...current, [k]: !current[k] })}
-                className="accent-[var(--color-primary)] w-5 h-5"
-              />
-            </label>
-          ))}
-        </div>
-        <button onClick={onClose} className="btn-cta w-full py-3 text-sm mt-4">
-          {t("common.done")}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function Stepper({
   value,
   onChange,
@@ -1450,7 +1367,7 @@ function SlotView({
           mode,
           exclude,
           focus: focusPayload(),
-          lengthPref: localStorage.getItem("aqim-passage-len") || "medium",
+          lengthPref: localStorage.getItem("aqim-passage-len") || "short",
         }),
       });
       const data = await res.json();
