@@ -14,7 +14,6 @@ import {
   Menu,
 } from "lucide-react";
 import { Logo, LogoLoader } from "@/components/Logo";
-import { HomeTour } from "@/components/HomeTour";
 import { InstallPrompt } from "@/components/InstallPrompt";
 import { PageLoader } from "@/components/Brand";
 import { ContentCard } from "@/components/ContentCard";
@@ -134,6 +133,14 @@ export default function HomePage() {
       .then((r) => r.json())
       .then(setExtras)
       .catch(() => {});
+  }, []);
+  // Right after the first-launch journey: a one-time "tap here" tip under
+  // «أقِم», gone after the first real suggestion.
+  const [startTip, setStartTip] = useState(false);
+  useEffect(() => {
+    try {
+      setStartTip(localStorage.getItem("aqim-start-tip") === "1");
+    } catch {}
   }, []);
   // Passage length is asked once; afterwards it's a Settings-only control.
   const [lenChosen, setLenChosen] = useState(true);
@@ -369,6 +376,12 @@ export default function HomePage() {
   }, [plan]);
 
   async function aqim() {
+    if (startTip) {
+      setStartTip(false);
+      try {
+        localStorage.setItem("aqim-start-tip", "0");
+      } catch {}
+    }
     const seq = suggestSeq.current;
     setLoading(true);
     setError(null);
@@ -638,6 +651,18 @@ export default function HomePage() {
               )}
             </button>
 
+            {startTip && !plan && !loading && (
+              <div className="onb-float flex flex-col items-center -mt-1">
+                <span
+                  aria-hidden
+                  className="w-0 h-0 border-x-[7px] border-x-transparent border-b-[7px] border-b-foreground"
+                />
+                <span className="rounded-full bg-foreground text-background px-4 py-2 text-[13px] font-extrabold">
+                  {t("onb.tapHere")}
+                </span>
+              </div>
+            )}
+
             {error && (
               <div className="text-sm text-foreground bg-surface text-center rounded-2xl p-3 shadow-sm">
                 {error}
@@ -663,7 +688,6 @@ export default function HomePage() {
         {widgets.review && status?.hasMemorization && <ReviewPicker />}
       </div>
 
-      <HomeTour />
 
       {/* Results column */}
       <div ref={resultsRef} className="mt-6 lg:mt-0 scroll-mt-20">

@@ -569,7 +569,7 @@ export default function SettingsPage() {
                 onClick={() => {
                   try {
                     localStorage.removeItem("aqim-onboarded");
-                    localStorage.removeItem("aqim-tour-done");
+                    localStorage.setItem("aqim-onb-replay", "1");
                   } catch {}
                   window.location.href = "/home";
                 }}

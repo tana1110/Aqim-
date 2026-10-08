@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Search } from "lucide-react";
+import { Check, ChevronLeft, Search } from "lucide-react";
+import type { LengthPref } from "@/lib/passage";
 import { PageLoader } from "@/components/Brand";
 import { Logo } from "@/components/Logo";
 import { useLang } from "@/components/LanguageProvider";
@@ -101,6 +102,18 @@ export default function SetupPage() {
   // Saved partial ranges that the surah/juz pickers can't represent — kept
   // untouched on every save so re-saving never silently deletes them.
   const [extras, setExtras] = useState<JuzSegment[]>([]);
+  // First-launch journey (/setup?onboarding=1): step 1 = this picker
+  // (opening on the juz tab), step 2 = ayah length, then home.
+  const [onb, setOnb] = useState(false);
+  const [phase, setPhase] = useState<"pick" | "length">("pick");
+  useLayoutEffect(() => {
+    try {
+      if (new URLSearchParams(window.location.search).get("onboarding") === "1") {
+        setOnb(true);
+        setTab("juz");
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     async function load() {
@@ -269,6 +282,59 @@ export default function SetupPage() {
     }
   }
 
+  // Onboarding step 1 → 2: same save as above (same data, same API), minus
+  // the ceremony — the journey simply moves on to the length question.
+  async function saveAndContinue() {
+    setSaving(true);
+    setSaveError(false);
+    try {
+      const built = buildRanges();
+      const ranges = [
+        ...built,
+        ...extras.filter(
+          (e) => !coveredBy(built, e.surahNumber, e.fromAyah, e.toAyah),
+        ),
+      ];
+      const res = await fetch("/api/memorization", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ranges }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      saveMemorization(ranges);
+      setSavedKey(selectionKey(selectedSurahs, selectedJuz));
+      // Keeps Next's history state so back lands softly on step 1.
+      window.history.pushState(
+        { ...window.history.state, aqimOnbLength: true },
+        "",
+        "#length",
+      );
+      setPhase("length");
+    } catch {
+      setSaveError(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Hardware back on step 2 returns to step 1.
+  useEffect(() => {
+    if (!onb || phase !== "length") return;
+    const onPop = () => setPhase("pick");
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [onb, phase]);
+
+  // Writes the same setting Settings uses. Skipping keeps the app default
+  // (short); the home page then points at «أقِم» once.
+  function chooseLength(v: LengthPref | null) {
+    try {
+      localStorage.setItem("aqim-passage-len", v ?? "short");
+      localStorage.setItem("aqim-start-tip", "1");
+    } catch {}
+    router.replace("/home");
+  }
+
   const selectedCount = selectedSurahs.size + selectedJuz.size;
   const isDirty = selectionKey(selectedSurahs, selectedJuz) !== savedKey;
 
@@ -281,12 +347,206 @@ export default function SetupPage() {
   }, [isDirty]);
 
 
-  if (loading) return <Loading />;
+  if (loading)
+    return onb ? (
+      <div className="fixed inset-0 z-40 bg-background grid place-items-center">
+        <Loading />
+      </div>
+    ) : (
+      <Loading />
+    );
 
   if (!seeded) {
     return (
       <div className="card p-6 text-center text-sm text-muted mt-6">
         {t("setup.notSeeded")}
+      </div>
+    );
+  }
+
+  const surahBlock = (
+    <>
+      {/* Instant search — no scrolling through 114 cards */}
+      <div className="relative">
+        <Search
+          size={16}
+          className="absolute start-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("setup.search")}
+          className="w-full rounded-xl border border-border bg-surface ps-9 pe-3 py-2.5 text-sm"
+        />
+      </div>
+      <SurahGrid
+        surahs={surahs.filter((s) => {
+          const q = query.trim().toLowerCase();
+          if (!q) return true;
+          return (
+            s.nameArabic.replace(/[ً-ْٰ]/g, "").includes(q) ||
+            s.nameArabic.includes(q) ||
+            s.nameTranslit.toLowerCase().includes(q) ||
+            s.nameEnglish.toLowerCase().includes(q) ||
+            String(s.number) === q
+          );
+        })}
+        emptyText={t("setup.noResults")}
+        lang={lang}
+        selected={selectedSurahs}
+        toggle={toggleSurah}
+        ayahsLabel={t("setup.ayahs")}
+      />
+    </>
+  );
+
+  const juzGrid = (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5">
+      {juzList.map((j) => {
+        const on = selectedJuz.has(j.juz) || coveredJuz.has(j.juz);
+        const first = j.segments[0];
+        const last = j.segments[j.segments.length - 1];
+        const nameOf = (n?: number) => {
+          const meta = n ? surahs.find((x) => x.number === n) : null;
+          return meta
+            ? surahName(lang as "ar" | "en", meta.nameArabic, meta.nameTranslit)
+            : "";
+        };
+        const span =
+          first && last
+            ? first.surahNumber === last.surahNumber
+              ? nameOf(first.surahNumber)
+              : `${nameOf(first.surahNumber)} — ${nameOf(last.surahNumber)}`
+            : "";
+        return (
+          <button
+            key={j.juz}
+            onClick={() => toggleJuz(j.juz)}
+            className={`text-start rounded-2xl border p-3 transition active:scale-[0.97] ${
+              on
+                ? "border-transparent bg-primary text-white shadow-md"
+                : "border-border bg-surface hover:border-primary/30"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-0.5">
+              <span className="text-sm font-bold">
+                {t("setup.juz")} {j.juz}
+              </span>
+              <span
+                className={`w-5 h-5 rounded-full grid place-items-center ${
+                  on ? "bg-white/20" : "bg-surface-2"
+                }`}
+              >
+                {on && <Check size={12} strokeWidth={3} />}
+              </span>
+            </div>
+            <div
+              className={`text-[11px] leading-snug truncate ${
+                on ? "text-white/75" : "text-muted"
+              }`}
+            >
+              {span}
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  if (onb) {
+    const num = (x: number) => (lang === "ar" ? x.toLocaleString("ar-EG") : String(x));
+    return (
+      <div className="onb-root fixed inset-0 z-40 bg-background text-foreground flex flex-col">
+        <div className="shrink-0 px-6 pt-[calc(var(--safe-top)+20px)]">
+          <div className="flex items-center justify-between min-h-6">
+            <p className="text-xs font-bold text-muted">
+              {t("onb.step", { n: num(phase === "pick" ? 1 : 2) })}
+            </p>
+            {phase === "length" && (
+              <button
+                type="button"
+                onClick={() => chooseLength(null)}
+                className="min-h-11 -my-3 px-2 text-sm text-muted hover:text-foreground"
+              >
+                {t("onb.skip")}
+              </button>
+            )}
+          </div>
+          <div className="mt-2.5 h-1 rounded-full bg-border overflow-hidden">
+            <div
+              className="h-full rounded-full bg-accent transition-[width] duration-500 ease-out"
+              style={{ width: phase === "pick" ? "50%" : "100%" }}
+            />
+          </div>
+          <h1 className="mt-6 text-[1.625rem] font-extrabold leading-normal">
+            {phase === "pick" ? t("onb.setup.title") : t("home.lenAsk")}
+          </h1>
+        </div>
+
+        {phase === "pick" ? (
+          <>
+            <div className="shrink-0 px-5 pt-4">
+              <div className="flex gap-1 p-1 rounded-full bg-surface">
+                {(["surah", "juz"] as const).map((tb) => (
+                  <button
+                    key={tb}
+                    type="button"
+                    onClick={() => setTab(tb)}
+                    className={`flex-1 h-10 rounded-full text-sm font-bold transition ${
+                      tab === tb ? "bg-primary text-white" : "text-muted"
+                    }`}
+                  >
+                    {tb === "surah" ? t("setup.bySurah") : t("setup.byJuz")}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 pt-3 pb-6 space-y-3">
+              {tab === "surah" ? surahBlock : juzGrid}
+            </div>
+            <div className="shrink-0 border-t border-border bg-background px-6 pt-3.5 pb-[calc(var(--safe-bottom)+24px)]">
+              {saveError && (
+                <p role="alert" className="mb-3 text-sm text-accent bg-accent-soft rounded-xl p-3">
+                  {t("setup.saveFailed")}
+                </p>
+              )}
+              <div className="max-w-md mx-auto flex items-center gap-3.5">
+                {selectedCount > 0 && (
+                  <span className="text-[0.8125rem] text-muted whitespace-nowrap">
+                    {t("setup.selMix", { s: selectedSurahs.size, j: effectiveJuzCount })}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={saveAndContinue}
+                  disabled={selectedCount === 0 || saving}
+                  className="onb-btn-gold flex-1 h-14 text-[1.0625rem] flex items-center justify-center gap-2"
+                >
+                  {saving ? t("setup.saving") : t("onb.next")}
+                  {!saving && <ChevronLeft size={18} className="ltr:rotate-180" />}
+                </button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div key="length" className="onb-fwd flex-1 min-h-0 overflow-y-auto px-5 pt-7 pb-8">
+            <div className="max-w-md mx-auto flex flex-col gap-3">
+              {(["short", "medium", "long"] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => chooseLength(v)}
+                  className="h-[92px] rounded-3xl bg-surface px-[22px] flex items-center gap-4 text-start active:scale-[0.98] transition hover:bg-surface-2"
+                >
+                  <LengthGlyph len={v} />
+                  <span className="flex-1 text-[1.1875rem] font-extrabold">{t(`len.${v}`)}</span>
+                  <ChevronLeft size={18} className="text-muted ltr:rotate-180" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -466,95 +726,9 @@ export default function SetupPage() {
         })}
       </div>
 
-      {tab === "surah" && (
-        <>
-          {/* Instant search — no scrolling through 114 cards */}
-          <div className="relative">
-            <Search
-              size={16}
-              className="absolute start-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-            />
-            <input
-              type="search"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("setup.search")}
-              className="w-full rounded-xl border border-border bg-surface ps-9 pe-3 py-2.5 text-sm"
-            />
-          </div>
-          <SurahGrid
-            surahs={surahs.filter((s) => {
-              const q = query.trim().toLowerCase();
-              if (!q) return true;
-              return (
-                s.nameArabic.replace(/[ً-ْٰ]/g, "").includes(q) ||
-                s.nameArabic.includes(q) ||
-                s.nameTranslit.toLowerCase().includes(q) ||
-                s.nameEnglish.toLowerCase().includes(q) ||
-                String(s.number) === q
-              );
-            })}
-            emptyText={t("setup.noResults")}
-            lang={lang}
-            selected={selectedSurahs}
-            toggle={toggleSurah}
-            ayahsLabel={t("setup.ayahs")}
-          />
-        </>
-      )}
+      {tab === "surah" && surahBlock}
 
-      {tab === "juz" && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2.5">
-          {juzList.map((j) => {
-            const on = selectedJuz.has(j.juz) || coveredJuz.has(j.juz);
-            const first = j.segments[0];
-            const last = j.segments[j.segments.length - 1];
-            const nameOf = (n?: number) => {
-              const meta = n ? surahs.find((x) => x.number === n) : null;
-              return meta
-                ? surahName(lang as "ar" | "en", meta.nameArabic, meta.nameTranslit)
-                : "";
-            };
-            const span =
-              first && last
-                ? first.surahNumber === last.surahNumber
-                  ? nameOf(first.surahNumber)
-                  : `${nameOf(first.surahNumber)} — ${nameOf(last.surahNumber)}`
-                : "";
-            return (
-              <button
-                key={j.juz}
-                onClick={() => toggleJuz(j.juz)}
-                className={`text-start rounded-2xl border p-3 transition active:scale-[0.97] ${
-                  on
-                    ? "border-transparent bg-primary text-white shadow-md"
-                    : "border-border bg-surface hover:border-primary/30"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-sm font-bold">
-                    {t("setup.juz")} {j.juz}
-                  </span>
-                  <span
-                    className={`w-5 h-5 rounded-full grid place-items-center ${
-                      on ? "bg-white/20" : "bg-surface-2"
-                    }`}
-                  >
-                    {on && <Check size={12} strokeWidth={3} />}
-                  </span>
-                </div>
-                <div
-                  className={`text-[11px] leading-snug truncate ${
-                    on ? "text-white/75" : "text-muted"
-                  }`}
-                >
-                  {span}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {tab === "juz" && juzGrid}
 
     </div>
   );
@@ -617,6 +791,23 @@ function SurahGrid({
         );
       })}
     </div>
+  );
+}
+
+// Short / medium / long, drawn as lines of text.
+function LengthGlyph({ len }: { len: LengthPref }) {
+  const widths =
+    len === "short" ? [100, 55] : len === "medium" ? [100, 100, 100, 50] : [100, 100, 100, 100, 100, 40];
+  return (
+    <span className={`w-11 shrink-0 flex flex-col ${len === "long" ? "gap-1" : "gap-[5px]"}`} aria-hidden>
+      {widths.map((w, i) => (
+        <span
+          key={i}
+          className={`${len === "long" ? "h-1" : "h-[5px]"} rounded-full bg-accent`}
+          style={{ width: `${w}%` }}
+        />
+      ))}
+    </span>
   );
 }
 

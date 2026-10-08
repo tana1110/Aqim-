@@ -7,7 +7,7 @@ import { Menu } from "lucide-react";
 import { BottomTabs, NavDrawer, SideNav } from "@/components/BottomNav";
 import { Logo } from "@/components/Logo";
 import { SplashScreen } from "@/components/SplashScreen";
-import { Welcome } from "@/components/Welcome";
+import { Onboarding } from "@/components/onboarding/Onboarding";
 import { ReminderScheduler } from "@/components/ReminderScheduler";
 import { AdhanPlayer } from "@/components/AdhanPlayer";
 import { SyncClient } from "@/components/SyncClient";
@@ -51,7 +51,7 @@ export default function AppLayout({
   return (
     <div className="min-h-dvh flex flex-col">
       <SplashScreen />
-      <Welcome />
+      <Onboarding />
       <ReminderScheduler />
       <AdhanPlayer />
       <SyncClient />

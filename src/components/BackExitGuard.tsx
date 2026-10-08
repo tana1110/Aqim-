@@ -24,7 +24,6 @@ export function BackExitGuard() {
     // API back navigation works fine there. A distinct hash fragment is
     // enough to make WebView treat it as a real, navigable entry; it's
     // never sent to the server and Next's router ignores hash-only changes.
-    window.history.pushState({ aqimGuard: true }, "", "#guard");
     const onPop = () => {
       const now = Date.now();
       if (now - armedAt.current < 2000) {
@@ -45,8 +44,24 @@ export function BackExitGuard() {
       setTimeout(() => setToast(false), 2000);
       window.history.pushState({ aqimGuard: true }, "", "#guard");
     };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
+    let armed = false;
+    const arm = () => {
+      if (armed) return;
+      armed = true;
+      window.history.pushState({ aqimGuard: true }, "", "#guard");
+      window.addEventListener("popstate", onPop);
+    };
+    // First-launch onboarding owns the back button while it's on screen;
+    // the guard arms once it's done.
+    if (document.documentElement.hasAttribute("data-welcome")) {
+      window.addEventListener("aqim-onboarded", arm);
+    } else {
+      arm();
+    }
+    return () => {
+      window.removeEventListener("aqim-onboarded", arm);
+      window.removeEventListener("popstate", onPop);
+    };
   }, [pathname]);
 
   if (!toast) return null;

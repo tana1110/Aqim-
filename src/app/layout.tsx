@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Amiri, Amiri_Quran, Cairo, Inter } from "next/font/google";
 import { LanguageProvider } from "@/components/LanguageProvider";
 import "./globals.css";
+import "./onboarding.css";
 
 // Headers (Arabic): Amiri — classical, manuscript-like.
 const amiri = Amiri({
@@ -22,7 +23,7 @@ const amiriQuran = Amiri_Quran({
 // UI text / buttons / settings (Arabic): Cairo — clean, modern, readable small.
 const cairo = Cairo({
   variable: "--font-cairo",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   subsets: ["arabic", "latin"],
   display: "swap",
 });

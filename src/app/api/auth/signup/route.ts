@@ -10,10 +10,14 @@ export async function POST(request: Request) {
     email?: string;
     password?: string;
     name?: string;
+    username?: string;
   };
   const email = (body.email ?? "").trim().toLowerCase();
   const password = body.password ?? "";
   const name = (body.name ?? "").trim().slice(0, 60);
+  // Onboarding sign-up sends a username: kept exactly as typed (it's what
+  // the greeting and home header show), not shortened to a first name.
+  const username = (body.username ?? "").trim().replace(/\s+/g, " ").slice(0, 30);
 
   if (!validEmail(email)) {
     return Response.json({ error: "bad_email" }, { status: 400 });
@@ -28,13 +32,17 @@ export async function POST(request: Request) {
 
   const passwordHash = await bcrypt.hash(password, 10);
   const device = await getCurrentUser();
-  const displayName = firstName(name) ?? "You";
+  const displayName = username || firstName(name) || "You";
 
   let user;
   if (!device.email && !device.googleSub) {
     user = await prisma.user.update({
       where: { id: device.id },
-      data: { email, passwordHash, ...(name ? { name: displayName } : {}) },
+      data: {
+        email,
+        passwordHash,
+        ...(username || name ? { name: displayName } : {}),
+      },
     });
   } else {
     user = await prisma.user.create({

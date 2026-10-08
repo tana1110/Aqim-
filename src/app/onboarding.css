@@ -1,0 +1,284 @@
+/* First-launch onboarding — motion + a few theme-derived tones.
+   One easing family: ease-out for entrances, ease-in-out for moves.
+   Every animated element's BASE style is its final state, so
+   prefers-reduced-motion (animation: none) simply shows the end result. */
+
+.onb-root {
+  --onb-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --onb-move: cubic-bezier(0.65, 0, 0.35, 1);
+  --onb-skel: color-mix(in oklab, var(--color-foreground) 16%, var(--color-surface));
+  --onb-line: color-mix(in oklab, var(--color-foreground) 26%, var(--color-surface));
+  --onb-meaning: color-mix(in oklab, var(--color-secondary) 24%, var(--color-surface));
+  --onb-ink: #1c2830;
+}
+
+.onb-btn-gold {
+  background: var(--color-accent);
+  color: var(--onb-ink);
+  border-radius: 9999px;
+  font-weight: 800;
+  transition: filter 0.12s ease, transform 0.1s ease;
+}
+.onb-btn-gold:active { transform: scale(0.98); }
+.onb-btn-gold:disabled { opacity: 0.45; }
+
+/* ---- screen transitions: forward slides in ~40px (from the left in
+   Arabic, from the right in English); back reverses it ---- */
+[dir="rtl"] .onb-fwd, [dir="ltr"] .onb-back { --onb-dx: -40px; }
+[dir="ltr"] .onb-fwd, [dir="rtl"] .onb-back { --onb-dx: 40px; }
+.onb-fwd, .onb-back { animation: onb-slide 0.45s var(--onb-ease) both; }
+@keyframes onb-slide {
+  from { opacity: 0; transform: translateX(var(--onb-dx)); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---- logo: descent into sujood (dot travels DOWN the arc) ----
+   --k scales the whole 2.3s sequence (welcome uses 1.2s). */
+.onb-logo { --k: 1; }
+.onb-logo-fast { --k: 0.522; }
+.onb-l-ground {
+  stroke-dasharray: 36 60;
+  animation: onb-ground calc(0.5s * var(--k)) var(--onb-ease) both;
+}
+@keyframes onb-ground { from { stroke-dashoffset: 36; } to { stroke-dashoffset: 0; } }
+.onb-l-arc {
+  stroke-dasharray: 36.64 60;
+  animation: onb-arc calc(1.2s * var(--k)) linear calc(0.7s * var(--k)) both;
+}
+/* Arc length revealed in step with the dot's eased position (sampled from
+   the curve's own equation, not a straight line). */
+@keyframes onb-arc {
+  0% { stroke-dashoffset: 36.64; opacity: 0; }
+  0.01% { opacity: 1; }
+  8.333% { stroke-dashoffset: 36.57; }
+  16.667% { stroke-dashoffset: 36.11; }
+  25% { stroke-dashoffset: 34.86; }
+  33.333% { stroke-dashoffset: 32.4; }
+  41.667% { stroke-dashoffset: 28.15; }
+  50% { stroke-dashoffset: 21.19; }
+  58.333% { stroke-dashoffset: 13.17; }
+  66.667% { stroke-dashoffset: 7.06; }
+  75% { stroke-dashoffset: 3.07; }
+  83.333% { stroke-dashoffset: 0.92; }
+  91.667% { stroke-dashoffset: 0.13; }
+  100% { stroke-dashoffset: 0; opacity: 1; }
+}
+.onb-l-dot {
+  transform: translate(20px, 45px);
+  animation:
+    onb-fade-in calc(0.2s * var(--k)) linear calc(0.5s * var(--k)) both,
+    onb-dot calc(1.2s * var(--k)) linear calc(0.7s * var(--k)) both;
+}
+@keyframes onb-fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes onb-dot {
+  0% { transform: translate(47px, 23px); }
+  8.333% { transform: translate(46.94px, 23.01px); }
+  16.667% { transform: translate(46.48px, 23.08px); }
+  25% { transform: translate(45.25px, 23.32px); }
+  33.333% { transform: translate(42.87px, 23.99px); }
+  41.667% { transform: translate(38.98px, 25.66px); }
+  50% { transform: translate(33.25px, 29.5px); }
+  58.333% { transform: translate(27.61px, 34.93px); }
+  66.667% { transform: translate(23.87px, 39.47px); }
+  75% { transform: translate(21.63px, 42.57px); }
+  83.333% { transform: translate(20.48px, 44.27px); }
+  91.667% { transform: translate(20.06px, 44.91px); }
+  100% { transform: translate(20px, 45px); }
+}
+.onb-l-land {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: onb-land calc(0.4s * var(--k)) ease-in-out calc(1.9s * var(--k)) both;
+}
+@keyframes onb-land { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.18); } }
+
+/* ---- opening sequence (one-shot) ---- */
+.onb-in { animation: onb-in 0.6s var(--onb-ease) both; }
+@keyframes onb-in {
+  from { opacity: 0; filter: blur(4px); transform: translateY(10px); }
+  to { opacity: 1; filter: none; transform: none; }
+}
+.onb-word {
+  display: inline-block;
+  animation: onb-word 0.7s var(--onb-ease) both;
+}
+@keyframes onb-word {
+  from { opacity: 0; filter: blur(5px); transform: translateY(5px); }
+  to { opacity: 1; filter: none; transform: none; }
+}
+/* Tap anywhere on the opening: jump straight to the finished screen. */
+.onb-skip, .onb-skip * {
+  animation-delay: 0s !important;
+  animation-duration: 1ms !important;
+}
+.onb-frame-star { background: var(--color-background); }
+.onb-open-logo { width: 100px; height: 100px; }
+@media (max-height: 700px) {
+  .onb-open-logo { width: 72px; height: 72px; }
+  .onb-open-gap { gap: 0.15rem !important; }
+}
+
+/* ---- explainer 1: juz rows slide in, checks fill one by one (6s loop) ---- */
+.onb-e1-row { animation: onb-e1-row 6s var(--onb-ease) infinite both; }
+@keyframes onb-e1-row {
+  0% { opacity: 0; transform: translateX(-16px); }
+  10%, 88% { opacity: 1; transform: none; }
+  96%, 100% { opacity: 0; transform: none; }
+}
+[dir="ltr"] .onb-e1-row { animation-name: onb-e1-row-ltr; }
+@keyframes onb-e1-row-ltr {
+  0% { opacity: 0; transform: translateX(16px); }
+  10%, 88% { opacity: 1; transform: none; }
+  96%, 100% { opacity: 0; transform: none; }
+}
+.onb-e1-box {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  animation: onb-e1-box 6s ease-out infinite both;
+}
+@keyframes onb-e1-box {
+  0%, 30% { background: transparent; border-color: var(--onb-line); }
+  36%, 90% { background: var(--color-accent); border-color: var(--color-accent); }
+  97%, 100% { background: transparent; border-color: var(--onb-line); }
+}
+.onb-e1-tick { animation: onb-e1-tick 6s var(--onb-ease) infinite both; }
+@keyframes onb-e1-tick {
+  0%, 31% { transform: scale(0); }
+  38%, 90% { transform: scale(1); }
+  97%, 100% { transform: scale(0); }
+}
+
+/* ---- explainer 2: the real home card → tap → ayat for each rak'ah (7s) ---- */
+.onb-x-hero { animation: onb-x-hero 7s var(--onb-ease) infinite both; }
+@keyframes onb-x-hero {
+  0% { opacity: 0; transform: translateY(10px); }
+  6%, 50% { opacity: 1; transform: none; }
+  58%, 100% { opacity: 0; transform: translateY(-28px); }
+}
+.onb-x-halo { opacity: 0; animation: onb-x-halo 7s ease-out infinite both; }
+@keyframes onb-x-halo {
+  0%, 10% { opacity: 0; transform: scale(1); }
+  10.01% { opacity: 0.7; transform: scale(1); }
+  24% { opacity: 0; transform: scale(1.04, 1.4); }
+  24.01% { opacity: 0.7; transform: scale(1); }
+  38%, 100% { opacity: 0; transform: scale(1.04, 1.4); }
+}
+.onb-x-btn { animation: onb-x-btn 7s ease-in-out infinite both; }
+@keyframes onb-x-btn {
+  0%, 40% { transform: scale(1); }
+  42% { transform: scale(0.96); }
+  45%, 100% { transform: scale(1); }
+}
+.onb-x-rip { opacity: 0; animation: onb-x-rip 7s ease-out infinite both; }
+@keyframes onb-x-rip {
+  0%, 41% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+  42% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.4); }
+  52%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(7); }
+}
+.onb-x-res0, .onb-x-res1, .onb-x-res2 { opacity: 0; }
+.onb-x-res0 { animation: onb-x-res0 7s var(--onb-ease) infinite both; }
+@keyframes onb-x-res0 {
+  0%, 52% { opacity: 0; transform: translateY(20px); }
+  59%, 93% { opacity: 1; transform: none; }
+  98%, 100% { opacity: 0; }
+}
+.onb-x-res1 { animation: onb-x-res1 7s var(--onb-ease) infinite both; }
+@keyframes onb-x-res1 {
+  0%, 55% { opacity: 0; transform: translateY(28px); }
+  63%, 93% { opacity: 1; transform: none; }
+  98%, 100% { opacity: 0; }
+}
+.onb-x-res2 { animation: onb-x-res2 7s var(--onb-ease) infinite both; }
+@keyframes onb-x-res2 {
+  0%, 61% { opacity: 0; transform: translateY(28px); }
+  69%, 93% { opacity: 1; transform: none; }
+  98%, 100% { opacity: 0; }
+}
+.onb-x-l1, .onb-x-l2 { transform-origin: right center; }
+[dir="ltr"] .onb-x-l1, [dir="ltr"] .onb-x-l2,
+[dir="ltr"] .onb-w-bar, [dir="ltr"] .onb-grow { transform-origin: left center; }
+.onb-x-l1 { animation: onb-x-l1 7s var(--onb-ease) infinite both; }
+@keyframes onb-x-l1 { 0%, 61% { transform: scaleX(0); } 71%, 100% { transform: scaleX(1); } }
+.onb-x-l2 { animation: onb-x-l2 7s var(--onb-ease) infinite both; }
+@keyframes onb-x-l2 { 0%, 67% { transform: scaleX(0); } 77%, 100% { transform: scaleX(1); } }
+/* countdown seconds roll like the real ticking clock */
+.onb-d-ones { display: block; animation: onb-roll 10s steps(10) infinite; }
+.onb-d-tens { display: block; animation: onb-roll 60s steps(6) infinite; }
+@keyframes onb-roll { from { transform: translateY(0); } to { transform: translateY(-100%); } }
+
+/* ---- explainer 3: one feature at a time (10s loop) ---- */
+.onb-sp1 { animation: onb-sp1 10s ease-in-out infinite both; }
+@keyframes onb-sp1 { 0% { opacity: 0; } 4% { opacity: 0.62; } 6%, 22% { opacity: 1; } 25%, 94% { opacity: 0.62; } 98%, 100% { opacity: 0; } }
+.onb-sp2 { animation: onb-sp2 10s ease-in-out infinite both; }
+@keyframes onb-sp2 { 0% { opacity: 0; } 4%, 23% { opacity: 0.62; } 26%, 40% { opacity: 1; } 43%, 94% { opacity: 0.62; } 98%, 100% { opacity: 0; } }
+.onb-sp3 { animation: onb-sp3 10s ease-in-out infinite both; }
+@keyframes onb-sp3 { 0% { opacity: 0; } 4%, 41% { opacity: 0.62; } 44%, 58% { opacity: 1; } 61%, 94% { opacity: 0.62; } 98%, 100% { opacity: 0; } }
+.onb-sp4 { animation: onb-sp4 10s ease-in-out infinite both; }
+@keyframes onb-sp4 { 0% { opacity: 0; } 4%, 59% { opacity: 0.62; } 62%, 76% { opacity: 1; } 79%, 94% { opacity: 0.62; } 98%, 100% { opacity: 0; } }
+.onb-sp5 { animation: onb-sp5 10s ease-in-out infinite both; }
+@keyframes onb-sp5 { 0% { opacity: 0; } 4%, 77% { opacity: 0.62; } 80%, 94% { opacity: 1; } 98%, 100% { opacity: 0; } }
+
+.onb-wd { background: var(--color-accent); }
+.onb-wd0 { animation: onb-wd0 10s ease-out infinite both; }
+.onb-wd1 { animation: onb-wd1 10s ease-out infinite both; }
+.onb-wd2 { animation: onb-wd2 10s ease-out infinite both; }
+.onb-wd3 { animation: onb-wd3 10s ease-out infinite both; }
+.onb-wd4 { animation: onb-wd4 10s ease-out infinite both; }
+@keyframes onb-wd0 { 0%, 7% { background: var(--color-border); } 8.5%, 94% { background: var(--color-accent); } 98%, 100% { background: var(--color-border); } }
+@keyframes onb-wd1 { 0%, 9% { background: var(--color-border); } 10.5%, 94% { background: var(--color-accent); } 98%, 100% { background: var(--color-border); } }
+@keyframes onb-wd2 { 0%, 11% { background: var(--color-border); } 12.5%, 94% { background: var(--color-accent); } 98%, 100% { background: var(--color-border); } }
+@keyframes onb-wd3 { 0%, 13% { background: var(--color-border); } 14.5%, 94% { background: var(--color-accent); } 98%, 100% { background: var(--color-border); } }
+@keyframes onb-wd4 { 0%, 15% { background: var(--color-border); } 16.5%, 94% { background: var(--color-accent); } 98%, 100% { background: var(--color-border); } }
+.onb-w-bar { transform-origin: right center; animation: onb-w-bar 10s var(--onb-ease) infinite both; }
+@keyframes onb-w-bar { 0%, 8% { transform: scaleX(0); } 20%, 100% { transform: scaleX(1); } }
+.onb-a-strip { transform: translateY(-75%); animation: onb-a-strip 10s var(--onb-move) infinite both; }
+@keyframes onb-a-strip {
+  0%, 27% { transform: translateY(0); }
+  29%, 32% { transform: translateY(-25%); }
+  34%, 37% { transform: translateY(-50%); }
+  39%, 94% { transform: translateY(-75%); }
+  98%, 100% { transform: translateY(0); }
+}
+.onb-m-strip { transform: translateY(-66.667%); animation: onb-m-strip 10s var(--onb-move) infinite both; }
+@keyframes onb-m-strip {
+  0%, 46% { transform: translateY(0); }
+  48%, 51% { transform: translateY(-33.333%); }
+  53%, 94% { transform: translateY(-66.667%); }
+  98%, 100% { transform: translateY(0); }
+}
+.onb-m-tap { opacity: 0; animation: onb-m-tap 10s ease-out infinite both; }
+@keyframes onb-m-tap {
+  0%, 45.9% { opacity: 0; transform: scale(0.6); }
+  46% { opacity: 0.5; transform: scale(0.6); }
+  50% { opacity: 0; transform: scale(1.5); }
+  50.9% { opacity: 0; transform: scale(0.6); }
+  51% { opacity: 0.5; transform: scale(0.6); }
+  55%, 100% { opacity: 0; transform: scale(1.5); }
+}
+.onb-q-needle { transform-origin: 50% 50%; animation: onb-q-needle 10s var(--onb-ease) infinite both; }
+@keyframes onb-q-needle {
+  0%, 62% { transform: rotate(-80deg); }
+  69% { transform: rotate(14deg); }
+  72.5% { transform: rotate(-6deg); }
+  76%, 94% { transform: rotate(0); }
+  98%, 100% { transform: rotate(-80deg); }
+}
+.onb-q-kaaba { animation: onb-q-kaaba 10s ease-out infinite both; }
+@keyframes onb-q-kaaba { 0%, 74% { opacity: 0.45; } 77%, 94% { opacity: 1; } 98%, 100% { opacity: 0.45; } }
+.onb-r-pin { animation: onb-r-pin 10s var(--onb-ease) infinite both; }
+@keyframes onb-r-pin { 0%, 79% { opacity: 1; transform: none; } 80.5% { opacity: 0.5; transform: scale(0.94); } 83%, 100% { opacity: 1; transform: none; } }
+.onb-r-text { animation: onb-r-text 10s var(--onb-ease) infinite both; }
+@keyframes onb-r-text { 0%, 80% { opacity: 1; transform: none; } 81% { opacity: 0; transform: translateY(6px); } 85%, 100% { opacity: 1; transform: none; } }
+
+/* ---- setup: welcome greeting progress + home "tap here" tip ---- */
+.onb-grow { transform-origin: right center; animation: onb-grow 3s linear 1.6s both; }
+@keyframes onb-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.onb-float { animation: onb-float 2.4s ease-in-out infinite alternate; }
+@keyframes onb-float { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .onb-root *, .onb-root, .onb-float {
+    animation: none !important;
+    transition: none !important;
+  }
+}
