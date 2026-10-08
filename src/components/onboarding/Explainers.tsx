@@ -221,7 +221,7 @@ export function Ex2Art() {
 // 3 · everything else, one feature at a time.
 export const EX3_H = 436;
 export function Ex3Art() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const num = useNum();
   return (
     <div className="flex flex-col gap-3">
@@ -271,7 +271,9 @@ export function Ex3Art() {
         </div>
 
         <div className="onb-sp3 h-[150px] rounded-[26px] bg-accent-soft p-4 flex flex-col justify-between">
-          <span className="font-heading text-[15px] text-accent">{t("onb.ex3.subhan")}</span>
+          <span className={`${lang === "ar" ? "font-heading" : "font-semibold"} text-[15px] text-accent`}>
+            {t("onb.ex3.subhan")}
+          </span>
           <span className="relative self-center w-[60px] h-11 grid place-items-center">
             <span className="onb-m-tap absolute left-1/2 top-1/2 -ml-7 -mt-7 w-14 h-14 rounded-full border-2 border-accent" />
             <span className="h-11 overflow-hidden block">

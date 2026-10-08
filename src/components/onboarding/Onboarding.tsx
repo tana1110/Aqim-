@@ -281,7 +281,10 @@ function Divider() {
 // anywhere jumps to the finished screen.
 function Opening({ instant, onPick }: { instant: boolean; onPick: (l: Lang) => void }) {
   const { t } = useLang();
-  const [skipped, setSkipped] = useState(instant);
+  // Reduced motion shows the finished screen at once, so the buttons must work at once too.
+  const [skipped, setSkipped] = useState(
+    () => instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  );
   const [buttonsLive, setButtonsLive] = useState(instant);
   const [ayah, setAyah] = useState<{ words: string[]; at: number } | null>(null);
   const start = useRef(0);
@@ -321,16 +324,16 @@ function Opening({ instant, onPick }: { instant: boolean; onPick: (l: Lang) => v
       className={`absolute inset-0 flex flex-col ${skipped ? "onb-skip" : ""}`}
     >
       <Frame />
-      <div className="relative flex-1 min-h-0 overflow-y-auto flex flex-col items-center text-center px-10 pt-[calc(var(--safe-top)+52px)]">
+      <div className="relative flex-1 min-h-0 overflow-y-auto flex flex-col items-center text-center px-10 pt-[calc(var(--safe-top)+min(52px,3vh))]">
         <LogoDescent className="onb-open-logo shrink-0" />
-        <p className="onb-in mt-3 font-heading font-bold text-[2.75rem] leading-[1.2]" style={{ animationDelay: "2.2s" }}>
+        <p className="onb-in mt-3 font-heading font-bold text-[min(2.75rem,7vh)] leading-[1.2]" style={{ animationDelay: "2.2s" }}>
           أقِم
         </p>
         {ayah && (
           <p
             dir="rtl"
             lang="ar"
-            className="mt-7 font-quran text-[1.375rem] leading-[2.15] max-w-[300px] [text-wrap:balance]"
+            className="mt-[min(1.75rem,3vh)] font-quran text-[min(1.375rem,3.3vh)] leading-[2.15] max-w-[300px] [text-wrap:balance]"
           >
             {ayah.words.map((w, i) => (
               <span key={i}>
@@ -350,7 +353,7 @@ function Opening({ instant, onPick }: { instant: boolean; onPick: (l: Lang) => v
           <div className="mt-5">
             <Divider />
           </div>
-          <p dir="rtl" lang="ar" className="mt-4 font-heading font-bold text-[1.5625rem] leading-normal text-accent">
+          <p dir="rtl" lang="ar" className="mt-4 font-heading font-bold text-[min(1.5625rem,3.8vh)] leading-normal text-accent">
             صلِّ بخشوع، لا بعادة
           </p>
           <p dir="ltr" lang="en" className="text-[0.8125rem] text-muted font-[family-name:var(--font-inter)]">
@@ -360,7 +363,7 @@ function Opening({ instant, onPick }: { instant: boolean; onPick: (l: Lang) => v
       </div>
 
       <div
-        className="onb-in relative shrink-0 px-10 pt-5 pb-[calc(var(--safe-bottom)+52px)] flex flex-col items-center gap-3.5"
+        className="onb-in relative shrink-0 px-10 pt-5 pb-[calc(var(--safe-bottom)+min(52px,5vh))] flex flex-col items-center gap-3.5"
         style={{ animationDelay: "4.9s" }}
       >
         <p className="text-xs text-muted flex items-center gap-2">
