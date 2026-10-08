@@ -21,7 +21,7 @@ const FLAG = "aqim-onboarded";
 const REPLAY = "aqim-onb-replay";
 export const ONBOARDING_SETUP = "/setup?onboarding=1";
 
-type Step = "open" | "ex1" | "ex2" | "ex3" | "auth" | "greet";
+type Step = "intro" | "open" | "ex1" | "ex2" | "ex3" | "auth" | "greet";
 const PREV: Partial<Record<Step, Step>> = {
   ex1: "open",
   ex2: "ex1",
@@ -34,14 +34,16 @@ export function Onboarding() {
   const router = useRouter();
   const pathname = usePathname();
   const [visible, setVisible] = useState(false);
-  const [ready, setReady] = useState(false);
-  const [step, setStep] = useState<Step>("open");
-  const [motion, setMotion] = useState<"fwd" | "back">("fwd");
+  const [step, setStep] = useState<Step>("intro");
+  const [motion, setMotion] = useState<"fwd" | "back" | "fade">("fwd");
+  const [words, setWords] = useState<string[] | null>(null);
+  const auth = useRef<"pending" | "none" | "signed">("pending");
+  const replayRef = useRef(false);
   const [signedIn, setSignedIn] = useState(false);
   const [greetName, setGreetName] = useState("");
   const [leavingTo, setLeavingTo] = useState<string | null>(null);
   const [exitToast, setExitToast] = useState(false);
-  const stepRef = useRef<Step>("open");
+  const stepRef = useRef<Step>("intro");
   const armedAt = useRef(0);
 
   useLayoutEffect(() => {
@@ -54,34 +56,50 @@ export function Onboarding() {
       return;
     }
     setVisible(true);
-    let replay = false;
     try {
-      replay = !!localStorage.getItem(REPLAY);
+      replayRef.current = !!localStorage.getItem(REPLAY);
     } catch {}
-    // A reinstall / new device that's already signed in goes straight home
-    // (unless the intro was replayed on purpose from Settings). Wait briefly
-    // for the answer so the opening never starts and then vanishes.
-    let settled = false;
-    const show = () => {
-      if (settled) return;
-      settled = true;
-      setReady(true);
-    };
-    const timer = setTimeout(show, 800);
+    // Both load while the logo plays: whether this device is already signed
+    // in (then the app opens straight after the logo), and the verse.
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((d) => {
-        if (!d?.account) return show();
-        setSignedIn(true);
-        if (replay || settled) return show();
-        settled = true;
-        clearTimeout(timer);
-        finish();
+        auth.current = d?.account ? "signed" : "none";
+        if (d?.account) setSignedIn(true);
       })
-      .catch(show);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .catch(() => (auth.current = "none"));
+    // Al-Isra 17:78 from the verified Quran text — never typed by hand.
+    fetch("/api/slogan-ayah")
+      .then((r) => r.json())
+      .then((d: { arabic?: string | null }) => {
+        if (!d.arabic) return;
+        const list: string[] = [];
+        for (const tok of cleanAyah(d.arabic).split(/\s+/)) {
+          // A waqf mark travels with the word before it.
+          if (!/\p{L}/u.test(tok) && list.length) list[list.length - 1] += " " + tok;
+          else if (tok) list.push(tok);
+        }
+        setWords(list);
+      })
+      .catch(() => {});
   }, []);
+
+  // After the logo: a signed-in device goes straight to the app (unless the
+  // intro was replayed on purpose); everyone else continues to the verse.
+  function afterIntro() {
+    const decide = () => {
+      if (auth.current === "signed" && !replayRef.current) finish();
+      else go("open", "fade");
+    };
+    if (auth.current !== "pending") return decide();
+    const started = Date.now();
+    const id = setInterval(() => {
+      if (auth.current !== "pending" || Date.now() - started > 1500) {
+        clearInterval(id);
+        decide();
+      }
+    }, 100);
+  }
 
   function hide() {
     document.documentElement.removeAttribute("data-welcome");
@@ -113,7 +131,7 @@ export function Onboarding() {
     }
   }, [pathname, leavingTo]);
 
-  function go(next: Step, dir: "fwd" | "back" = "fwd") {
+  function go(next: Step, dir: "fwd" | "back" | "fade" = "fwd") {
     stepRef.current = next;
     setMotion(dir);
     setStep(next);
@@ -127,7 +145,7 @@ export function Onboarding() {
   // Hardware back: explainers step back; on the opening, the app-wide
   // "press back again to exit" rule applies.
   useEffect(() => {
-    if (!visible || !ready) return;
+    if (!visible) return;
     // Carry Next's own history state: on a popstate into an entry it didn't
     // create, the App Router does a full reload (blank screen mid-journey).
     const push = () =>
@@ -152,11 +170,11 @@ export function Onboarding() {
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
-  }, [visible, ready]);
+  }, [visible]);
 
   if (!visible) return null;
 
-  const enter = motion === "fwd" ? "onb-fwd" : "onb-back";
+  const enter = motion === "fwd" ? "onb-fwd" : motion === "back" ? "onb-back" : "onb-fade";
 
   return (
     <div
@@ -164,10 +182,12 @@ export function Onboarding() {
         lang === "en" ? "font-[family-name:var(--font-inter)]" : ""
       }`}
     >
-      {ready && (
-        <div key={step} className={`absolute inset-0 ${step === "open" ? "" : enter}`}>
+      {(
+        <div key={step} className={`absolute inset-0 ${step === "intro" ? "" : enter}`}>
+          {step === "intro" && <Intro onDone={afterIntro} />}
           {step === "open" && (
             <Opening
+              words={words}
               instant={motion === "back"}
               onPick={(l) => {
                 setLang(l);
@@ -276,40 +296,67 @@ function Divider() {
   );
 }
 
-// 1 · Opening + language. Logo descends (0–2.3s), wordmark, then Al-Isra 78
-// appears word by word, then the slogan, then the language choice. A tap
-// anywhere jumps to the finished screen.
-function Opening({ instant, onPick }: { instant: boolean; onPick: (l: Lang) => void }) {
+// 1a · The brand moment, and the first-launch "loading" screen at once: the
+// logo descends into sujood and the name appears; meanwhile the verse and
+// the account check load. Moves on by itself (a tap moves on sooner).
+function Intro({ onDone }: { onDone: () => void }) {
+  const done = useRef(false);
+  const next = () => {
+    if (done.current) return;
+    done.current = true;
+    onDone();
+  };
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const id = setTimeout(next, reduce ? 900 : 2900);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return (
+    <div onClick={next} className="absolute inset-0 flex flex-col items-center justify-center text-center">
+      <Frame />
+      <LogoDescent className="w-[min(132px,22vh)] h-[min(132px,22vh)]" />
+      <p
+        className="onb-in mt-4 font-heading font-bold text-[min(3.25rem,8vh)] leading-[1.2]"
+        style={{ animationDelay: "1.9s" }}
+      >
+        أقِم
+      </p>
+    </div>
+  );
+}
+
+// 1b · Al-Isra 78 appears word by word, then the slogan, then the language
+// choice. A tap anywhere shows the finished screen at once.
+function Opening({
+  words,
+  instant,
+  onPick,
+}: {
+  words: string[] | null;
+  instant: boolean;
+  onPick: (l: Lang) => void;
+}) {
   const { t } = useLang();
   // Reduced motion shows the finished screen at once, so the buttons must work at once too.
   const [skipped, setSkipped] = useState(
     () => instant || window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   );
   const [buttonsLive, setButtonsLive] = useState(instant);
-  const [ayah, setAyah] = useState<{ words: string[]; at: number } | null>(null);
-  const start = useRef(0);
+  const mountedAt = useRef(0);
+  const wordsAt = useRef<number | null>(null);
 
   useEffect(() => {
-    start.current = Date.now();
-    // Al-Isra 17:78 from the verified Quran text — never typed by hand.
-    fetch("/api/slogan-ayah")
-      .then((r) => r.json())
-      .then((d: { arabic?: string | null }) => {
-        if (!d.arabic) return;
-        const words: string[] = [];
-        for (const tok of cleanAyah(d.arabic).split(/\s+/)) {
-          // A waqf mark travels with the word before it.
-          if (!/\p{L}/u.test(tok) && words.length) words[words.length - 1] += " " + tok;
-          else if (tok) words.push(tok);
-        }
-        setAyah({ words, at: (Date.now() - start.current) / 1000 });
-      })
-      .catch(() => {});
+    mountedAt.current = Date.now();
   }, []);
+  // If the verse arrives after this screen opened, its reveal starts then.
+  if (words && wordsAt.current === null && mountedAt.current) {
+    wordsAt.current = (Date.now() - mountedAt.current) / 1000;
+  }
 
   useEffect(() => {
     if (skipped) return;
-    const id = setTimeout(() => setButtonsLive(true), 5100);
+    const id = setTimeout(() => setButtonsLive(true), 1700);
     return () => clearTimeout(id);
   }, [skipped]);
 
@@ -317,6 +364,7 @@ function Opening({ instant, onPick }: { instant: boolean; onPick: (l: Lang) => v
   const pick = (l: Lang) => {
     if (buttonsLive || skipped) onPick(l);
   };
+  const late = wordsAt.current ?? 0;
 
   return (
     <div
@@ -324,36 +372,29 @@ function Opening({ instant, onPick }: { instant: boolean; onPick: (l: Lang) => v
       className={`absolute inset-0 flex flex-col ${skipped ? "onb-skip" : ""}`}
     >
       <Frame />
-      <div className="relative flex-1 min-h-0 overflow-y-auto flex flex-col items-center text-center px-10 pt-[calc(var(--safe-top)+min(52px,3vh))]">
-        <LogoDescent className="onb-open-logo shrink-0" />
-        <p className="onb-in mt-3 font-heading font-bold text-[min(2.75rem,7vh)] leading-[1.2]" style={{ animationDelay: "2.2s" }}>
-          أقِم
-        </p>
-        {ayah && (
+      <div className="relative flex-1 min-h-0 overflow-y-auto flex flex-col items-center justify-center text-center px-10 pt-[calc(var(--safe-top)+24px)]">
+        {words && (
           <p
             dir="rtl"
             lang="ar"
-            className="mt-[min(1.75rem,3vh)] font-quran text-[min(1.375rem,3.3vh)] leading-[2.15] max-w-[300px] [text-wrap:balance]"
+            className="font-quran text-[min(1.5rem,3.5vh)] leading-[2.15] max-w-[310px] [text-wrap:balance]"
           >
-            {ayah.words.map((w, i) => (
+            {words.map((w, i) => (
               <span key={i}>
-                <span
-                  className="onb-word"
-                  style={{ animationDelay: `${Math.max(0, 2.6 + 0.1 * i - ayah.at)}s` }}
-                >
+                <span className="onb-word" style={{ animationDelay: `${Math.max(0, 0.15 + 0.06 * i - late)}s` }}>
                   {w}
                 </span>
-                {i < ayah.words.length - 1 ? " " : ""}
+                {i < words.length - 1 ? " " : ""}
               </span>
             ))}
           </p>
         )}
-        <div className="onb-in onb-open-gap flex flex-col items-center gap-1" style={{ animationDelay: "4.5s" }}>
+        <div className="onb-in flex flex-col items-center" style={{ animationDelay: "1.1s" }}>
           <p className="mt-1.5 text-xs text-muted">{t("onb.ref")}</p>
-          <div className="mt-5">
+          <div className="mt-[min(1.5rem,3vh)]">
             <Divider />
           </div>
-          <p dir="rtl" lang="ar" className="mt-4 font-heading font-bold text-[min(1.5625rem,3.8vh)] leading-normal text-accent">
+          <p dir="rtl" lang="ar" className="mt-[min(1.25rem,2.5vh)] font-heading font-bold text-[min(1.75rem,4vh)] leading-normal text-accent">
             صلِّ بخشوع، لا بعادة
           </p>
           <p dir="ltr" lang="en" className="text-[0.8125rem] text-muted font-[family-name:var(--font-inter)]">
@@ -364,7 +405,7 @@ function Opening({ instant, onPick }: { instant: boolean; onPick: (l: Lang) => v
 
       <div
         className="onb-in relative shrink-0 px-10 pt-5 pb-[calc(var(--safe-bottom)+min(52px,5vh))] flex flex-col items-center gap-3.5"
-        style={{ animationDelay: "4.9s" }}
+        style={{ animationDelay: "1.4s" }}
       >
         <p className="text-xs text-muted flex items-center gap-2">
           <span lang="ar">اختر اللغة</span>
@@ -469,14 +510,96 @@ function AuthScreen({
   onSignedUp: (name: string) => void;
   onLoggedIn: () => Promise<void>;
 }) {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const [mode, setMode] = useState<"signup" | "login">("signup");
+  // Google: native sign-in inside the Android app (Google blocks its web
+  // button in WebViews), the web button everywhere else — same server
+  // endpoint as the Account page.
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const googleRef = useRef<HTMLDivElement>(null);
+  const [nativeGoogle, setNativeGoogle] = useState(false);
+  const [inApp, setInApp] = useState(false);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  async function withGoogle(credential: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/auth/google", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ credential }),
+      });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      clearPageCaches();
+      if (d.isNewAccount) onSignedUp(d.name || "");
+      else await onLoggedIn();
+    } catch {
+      setError(t("account.err.generic"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    setNativeGoogle(!!window.AndroidApp?.googleSignIn);
+    setInApp(!!window.AndroidApp);
+  }, []);
+
+  useEffect(() => {
+    if (!nativeGoogle) return;
+    window.__aqimGoogleCredential = (token: string) => void withGoogle(token);
+    window.__aqimGoogleError = (code: string) => {
+      setBusy(false);
+      if (code !== "cancelled") setError(t("account.err.generic"));
+    };
+    return () => {
+      delete window.__aqimGoogleCredential;
+      delete window.__aqimGoogleError;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nativeGoogle]);
+
+  useEffect(() => {
+    if (!googleClientId || window.AndroidApp) return;
+    const render = () => {
+      const g = window.google?.accounts?.id;
+      if (!g || !googleRef.current) return;
+      g.initialize({
+        client_id: googleClientId,
+        callback: (resp: { credential: string }) => void withGoogle(resp.credential),
+      });
+      const theme = document.documentElement.getAttribute("data-theme");
+      const dark =
+        theme === "dark" ||
+        (theme !== "light" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+      googleRef.current.innerHTML = "";
+      g.renderButton(googleRef.current, {
+        theme: dark ? "filled_black" : "outline",
+        shape: "pill",
+        size: "large",
+        width: 320,
+        text: "continue_with",
+        locale: lang === "ar" ? "ar" : "en",
+      });
+    };
+    if (window.google?.accounts?.id) {
+      render();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.onload = render;
+    document.head.appendChild(script);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [googleClientId, lang, mode]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -603,6 +726,36 @@ function AuthScreen({
             </button>
           </form>
 
+          {(nativeGoogle || (!inApp && googleClientId)) && (
+            <div className="mt-5 flex flex-col items-center gap-4">
+              <div className="w-full flex items-center gap-3 text-xs text-muted" aria-hidden>
+                <span className="flex-1 h-px bg-border" />
+                {t("onb.or")}
+                <span className="flex-1 h-px bg-border" />
+              </div>
+              {nativeGoogle ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => {
+                    setBusy(true);
+                    setError(null);
+                    window.AndroidApp?.googleSignIn?.();
+                  }}
+                  className="w-full h-14 rounded-full bg-surface flex items-center justify-center gap-2.5 font-bold active:scale-[0.98] transition disabled:opacity-60"
+                >
+                  <GoogleMark />
+                  {t("account.google")}
+                </button>
+              ) : (
+                <div ref={googleRef} className="min-h-11 flex justify-center" />
+              )}
+            </div>
+          )}
+          {inApp && !nativeGoogle && (
+            <p className="mt-4 text-center text-xs text-muted">{t("account.googleUpdate")}</p>
+          )}
+
           <p className="mt-4 text-center text-sm text-muted">
             {mode === "signup" ? t("onb.haveAccount") : t("onb.noAccount")}{" "}
             <button
@@ -619,6 +772,19 @@ function AuthScreen({
         </div>
       </div>
     </div>
+  );
+}
+
+// Google's four-colour "G" for the native-app button (the web one is
+// drawn by Google's own script).
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden>
+      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z" />
+      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z" />
+      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z" />
+      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 38.2 44 33 44 24c0-1.3-.1-2.4-.4-3.5z" />
+    </svg>
   );
 }
 

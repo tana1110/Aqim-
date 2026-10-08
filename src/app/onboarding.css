@@ -12,6 +12,10 @@
   --onb-ink: #1c2830;
 }
 
+/* First launch: the onboarding's own opening is the brand moment, so the
+   regular boot splash (server-rendered) never flashes before it. */
+html[data-welcome="1"] .boot-splash { display: none; }
+
 .onb-btn-gold {
   background: var(--color-accent);
   color: var(--onb-ink);
@@ -27,6 +31,7 @@
 [dir="rtl"] .onb-fwd, [dir="ltr"] .onb-back { --onb-dx: -40px; }
 [dir="ltr"] .onb-fwd, [dir="rtl"] .onb-back { --onb-dx: 40px; }
 .onb-fwd, .onb-back { animation: onb-slide 0.45s var(--onb-ease) both; }
+.onb-fade { animation: onb-fade-in 0.5s var(--onb-ease) both; }
 @keyframes onb-slide {
   from { opacity: 0; transform: translateX(var(--onb-dx)); }
   to { opacity: 1; transform: none; }
@@ -118,120 +123,142 @@
   .onb-open-gap { gap: 0.15rem !important; }
 }
 
-/* ---- explainer 1: juz rows slide in, checks fill one by one (6s loop) ---- */
-.onb-e1-row { animation: onb-e1-row 6s var(--onb-ease) infinite both; }
+/* ---- explainer 1: a hand taps juz 28, 29, 30 (4s loop) ---- */
+.onb-e1-row { animation: onb-e1-row 4s var(--onb-ease) infinite both; }
 @keyframes onb-e1-row {
   0% { opacity: 0; transform: translateX(-16px); }
-  10%, 88% { opacity: 1; transform: none; }
-  96%, 100% { opacity: 0; transform: none; }
+  8%, 92% { opacity: 1; transform: none; }
+  98%, 100% { opacity: 0; transform: none; }
 }
 [dir="ltr"] .onb-e1-row { animation-name: onb-e1-row-ltr; }
 @keyframes onb-e1-row-ltr {
   0% { opacity: 0; transform: translateX(16px); }
-  10%, 88% { opacity: 1; transform: none; }
-  96%, 100% { opacity: 0; transform: none; }
+  8%, 92% { opacity: 1; transform: none; }
+  98%, 100% { opacity: 0; transform: none; }
 }
-.onb-e1-box {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
-  animation: onb-e1-box 6s ease-out infinite both;
+.onb-e1-box { background: var(--color-accent); border-color: var(--color-accent); }
+.onb-e1-b1 { animation: onb-e1-b1 4s ease-out infinite both; }
+.onb-e1-b2 { animation: onb-e1-b2 4s ease-out infinite both; }
+.onb-e1-b3 { animation: onb-e1-b3 4s ease-out infinite both; }
+@keyframes onb-e1-b1 { 0%, 19% { background: transparent; border-color: var(--onb-line); } 20.5%, 92% { background: var(--color-accent); border-color: var(--color-accent); } 97%, 100% { background: transparent; border-color: var(--onb-line); } }
+@keyframes onb-e1-b2 { 0%, 35% { background: transparent; border-color: var(--onb-line); } 36.5%, 92% { background: var(--color-accent); border-color: var(--color-accent); } 97%, 100% { background: transparent; border-color: var(--onb-line); } }
+@keyframes onb-e1-b3 { 0%, 51% { background: transparent; border-color: var(--onb-line); } 52.5%, 92% { background: var(--color-accent); border-color: var(--color-accent); } 97%, 100% { background: transparent; border-color: var(--onb-line); } }
+.onb-e1-t1 { animation: onb-e1-t1 4s var(--onb-ease) infinite both; }
+.onb-e1-t2 { animation: onb-e1-t2 4s var(--onb-ease) infinite both; }
+.onb-e1-t3 { animation: onb-e1-t3 4s var(--onb-ease) infinite both; }
+@keyframes onb-e1-t1 { 0%, 19.5% { transform: scale(0); } 23%, 92% { transform: scale(1); } 97%, 100% { transform: scale(0); } }
+@keyframes onb-e1-t2 { 0%, 35.5% { transform: scale(0); } 39%, 92% { transform: scale(1); } 97%, 100% { transform: scale(0); } }
+@keyframes onb-e1-t3 { 0%, 51.5% { transform: scale(0); } 55%, 92% { transform: scale(1); } 97%, 100% { transform: scale(0); } }
+
+/* The demo hand: shows these screens are a demonstration, not a task. */
+.onb-hand {
+  position: absolute;
+  opacity: 0;
+  transform-origin: 13px 2px;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
+  pointer-events: none;
 }
-@keyframes onb-e1-box {
-  0%, 30% { background: transparent; border-color: var(--onb-line); }
-  36%, 90% { background: var(--color-accent); border-color: var(--color-accent); }
-  97%, 100% { background: transparent; border-color: var(--onb-line); }
-}
-.onb-e1-tick { animation: onb-e1-tick 6s var(--onb-ease) infinite both; }
-@keyframes onb-e1-tick {
-  0%, 31% { transform: scale(0); }
-  38%, 90% { transform: scale(1); }
-  97%, 100% { transform: scale(0); }
+.onb-e1-hand { left: 20px; top: 59px; animation: onb-e1-hand 4s var(--onb-ease) infinite both; }
+[dir="ltr"] .onb-e1-hand { left: 304px; }
+@keyframes onb-e1-hand {
+  0%, 8% { opacity: 0; transform: translate(26px, 64px); }
+  16% { opacity: 1; transform: translate(0, 0); }
+  19% { transform: translate(0, 0) scale(0.84); }
+  22% { transform: translate(0, 0) scale(1); }
+  32% { transform: translate(0, 84px); }
+  35% { transform: translate(0, 84px) scale(0.84); }
+  38% { transform: translate(0, 84px) scale(1); }
+  48% { transform: translate(0, 168px); }
+  51% { transform: translate(0, 168px) scale(0.84); }
+  54% { transform: translate(0, 168px) scale(1); }
+  62% { opacity: 1; transform: translate(0, 168px); }
+  70%, 100% { opacity: 0; transform: translate(26px, 200px); }
 }
 
-/* ---- explainer 2: the real home card → tap → ayat for each rak'ah (7s) ---- */
-.onb-x-hero { animation: onb-x-hero 7s var(--onb-ease) infinite both; }
+/* ---- explainer 2: the hand taps «أقِم» → ayat for each rak'ah (4.6s) ---- */
+.onb-x-hero { animation: onb-x-hero 4.6s var(--onb-ease) infinite both; }
 @keyframes onb-x-hero {
   0% { opacity: 0; transform: translateY(10px); }
-  6%, 50% { opacity: 1; transform: none; }
-  58%, 100% { opacity: 0; transform: translateY(-28px); }
+  4%, 30% { opacity: 1; transform: none; }
+  38%, 100% { opacity: 0; transform: translateY(-28px); }
 }
-.onb-x-halo { opacity: 0; animation: onb-x-halo 7s ease-out infinite both; }
-@keyframes onb-x-halo {
-  0%, 10% { opacity: 0; transform: scale(1); }
-  10.01% { opacity: 0.7; transform: scale(1); }
-  24% { opacity: 0; transform: scale(1.04, 1.4); }
-  24.01% { opacity: 0.7; transform: scale(1); }
-  38%, 100% { opacity: 0; transform: scale(1.04, 1.4); }
+.onb-x-hand { left: 162px; top: 296px; animation: onb-x-hand 4.6s var(--onb-ease) infinite both; }
+@keyframes onb-x-hand {
+  0%, 5% { opacity: 0; transform: translate(34px, 70px); }
+  16% { opacity: 1; transform: translate(0, 0); }
+  20% { transform: translate(0, 0) scale(0.84); }
+  24% { opacity: 1; transform: translate(0, 0) scale(1); }
+  32%, 100% { opacity: 0; transform: translate(22px, 44px); }
 }
-.onb-x-btn { animation: onb-x-btn 7s ease-in-out infinite both; }
+.onb-x-btn { animation: onb-x-btn 4.6s ease-in-out infinite both; }
 @keyframes onb-x-btn {
-  0%, 40% { transform: scale(1); }
-  42% { transform: scale(0.96); }
-  45%, 100% { transform: scale(1); }
+  0%, 19% { transform: scale(1); }
+  21% { transform: scale(0.96); }
+  24%, 100% { transform: scale(1); }
 }
-.onb-x-rip { opacity: 0; animation: onb-x-rip 7s ease-out infinite both; }
+.onb-x-rip { opacity: 0; animation: onb-x-rip 4.6s ease-out infinite both; }
 @keyframes onb-x-rip {
-  0%, 41% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
-  42% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.4); }
-  52%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(7); }
+  0%, 20% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+  21% { opacity: 0.5; transform: translate(-50%, -50%) scale(0.4); }
+  31%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(7); }
 }
 .onb-x-res0, .onb-x-res1, .onb-x-res2 { opacity: 0; }
-.onb-x-res0 { animation: onb-x-res0 7s var(--onb-ease) infinite both; }
+.onb-x-res0 { animation: onb-x-res0 4.6s var(--onb-ease) infinite both; }
 @keyframes onb-x-res0 {
-  0%, 52% { opacity: 0; transform: translateY(20px); }
-  59%, 93% { opacity: 1; transform: none; }
+  0%, 34% { opacity: 0; transform: translateY(20px); }
+  41%, 93% { opacity: 1; transform: none; }
   98%, 100% { opacity: 0; }
 }
-.onb-x-res1 { animation: onb-x-res1 7s var(--onb-ease) infinite both; }
+.onb-x-res1 { animation: onb-x-res1 4.6s var(--onb-ease) infinite both; }
 @keyframes onb-x-res1 {
-  0%, 55% { opacity: 0; transform: translateY(28px); }
-  63%, 93% { opacity: 1; transform: none; }
+  0%, 36% { opacity: 0; transform: translateY(28px); }
+  45%, 93% { opacity: 1; transform: none; }
   98%, 100% { opacity: 0; }
 }
-.onb-x-res2 { animation: onb-x-res2 7s var(--onb-ease) infinite both; }
+.onb-x-res2 { animation: onb-x-res2 4.6s var(--onb-ease) infinite both; }
 @keyframes onb-x-res2 {
-  0%, 61% { opacity: 0; transform: translateY(28px); }
-  69%, 93% { opacity: 1; transform: none; }
+  0%, 42% { opacity: 0; transform: translateY(28px); }
+  51%, 93% { opacity: 1; transform: none; }
   98%, 100% { opacity: 0; }
 }
 .onb-x-l1, .onb-x-l2 { transform-origin: right center; }
 [dir="ltr"] .onb-x-l1, [dir="ltr"] .onb-x-l2,
 [dir="ltr"] .onb-w-bar, [dir="ltr"] .onb-grow { transform-origin: left center; }
-.onb-x-l1 { animation: onb-x-l1 7s var(--onb-ease) infinite both; }
-@keyframes onb-x-l1 { 0%, 61% { transform: scaleX(0); } 71%, 100% { transform: scaleX(1); } }
-.onb-x-l2 { animation: onb-x-l2 7s var(--onb-ease) infinite both; }
-@keyframes onb-x-l2 { 0%, 67% { transform: scaleX(0); } 77%, 100% { transform: scaleX(1); } }
+.onb-x-l1 { animation: onb-x-l1 4.6s var(--onb-ease) infinite both; }
+@keyframes onb-x-l1 { 0%, 42% { transform: scaleX(0); } 54%, 100% { transform: scaleX(1); } }
+.onb-x-l2 { animation: onb-x-l2 4.6s var(--onb-ease) infinite both; }
+@keyframes onb-x-l2 { 0%, 48% { transform: scaleX(0); } 60%, 100% { transform: scaleX(1); } }
 /* countdown seconds roll like the real ticking clock */
 .onb-d-ones { display: block; animation: onb-roll 10s steps(10) infinite; }
 .onb-d-tens { display: block; animation: onb-roll 60s steps(6) infinite; }
 @keyframes onb-roll { from { transform: translateY(0); } to { transform: translateY(-100%); } }
 
-/* ---- explainer 3: one feature at a time (10s loop) ---- */
-.onb-sp1 { animation: onb-sp1 10s ease-in-out infinite both; }
+/* ---- explainer 3: one feature at a time (6s loop) ---- */
+.onb-sp1 { animation: onb-sp1 6s ease-in-out infinite both; }
 @keyframes onb-sp1 { 0% { opacity: 0; } 4% { opacity: 0.62; } 6%, 22% { opacity: 1; } 25%, 94% { opacity: 0.62; } 98%, 100% { opacity: 0; } }
-.onb-sp2 { animation: onb-sp2 10s ease-in-out infinite both; }
+.onb-sp2 { animation: onb-sp2 6s ease-in-out infinite both; }
 @keyframes onb-sp2 { 0% { opacity: 0; } 4%, 23% { opacity: 0.62; } 26%, 40% { opacity: 1; } 43%, 94% { opacity: 0.62; } 98%, 100% { opacity: 0; } }
-.onb-sp3 { animation: onb-sp3 10s ease-in-out infinite both; }
+.onb-sp3 { animation: onb-sp3 6s ease-in-out infinite both; }
 @keyframes onb-sp3 { 0% { opacity: 0; } 4%, 41% { opacity: 0.62; } 44%, 58% { opacity: 1; } 61%, 94% { opacity: 0.62; } 98%, 100% { opacity: 0; } }
-.onb-sp4 { animation: onb-sp4 10s ease-in-out infinite both; }
+.onb-sp4 { animation: onb-sp4 6s ease-in-out infinite both; }
 @keyframes onb-sp4 { 0% { opacity: 0; } 4%, 59% { opacity: 0.62; } 62%, 76% { opacity: 1; } 79%, 94% { opacity: 0.62; } 98%, 100% { opacity: 0; } }
-.onb-sp5 { animation: onb-sp5 10s ease-in-out infinite both; }
+.onb-sp5 { animation: onb-sp5 6s ease-in-out infinite both; }
 @keyframes onb-sp5 { 0% { opacity: 0; } 4%, 77% { opacity: 0.62; } 80%, 94% { opacity: 1; } 98%, 100% { opacity: 0; } }
 
 .onb-wd { background: var(--color-accent); }
-.onb-wd0 { animation: onb-wd0 10s ease-out infinite both; }
-.onb-wd1 { animation: onb-wd1 10s ease-out infinite both; }
-.onb-wd2 { animation: onb-wd2 10s ease-out infinite both; }
-.onb-wd3 { animation: onb-wd3 10s ease-out infinite both; }
-.onb-wd4 { animation: onb-wd4 10s ease-out infinite both; }
+.onb-wd0 { animation: onb-wd0 6s ease-out infinite both; }
+.onb-wd1 { animation: onb-wd1 6s ease-out infinite both; }
+.onb-wd2 { animation: onb-wd2 6s ease-out infinite both; }
+.onb-wd3 { animation: onb-wd3 6s ease-out infinite both; }
+.onb-wd4 { animation: onb-wd4 6s ease-out infinite both; }
 @keyframes onb-wd0 { 0%, 7% { background: var(--color-border); } 8.5%, 94% { background: var(--color-accent); } 98%, 100% { background: var(--color-border); } }
 @keyframes onb-wd1 { 0%, 9% { background: var(--color-border); } 10.5%, 94% { background: var(--color-accent); } 98%, 100% { background: var(--color-border); } }
 @keyframes onb-wd2 { 0%, 11% { background: var(--color-border); } 12.5%, 94% { background: var(--color-accent); } 98%, 100% { background: var(--color-border); } }
 @keyframes onb-wd3 { 0%, 13% { background: var(--color-border); } 14.5%, 94% { background: var(--color-accent); } 98%, 100% { background: var(--color-border); } }
 @keyframes onb-wd4 { 0%, 15% { background: var(--color-border); } 16.5%, 94% { background: var(--color-accent); } 98%, 100% { background: var(--color-border); } }
-.onb-w-bar { transform-origin: right center; animation: onb-w-bar 10s var(--onb-ease) infinite both; }
+.onb-w-bar { transform-origin: right center; animation: onb-w-bar 6s var(--onb-ease) infinite both; }
 @keyframes onb-w-bar { 0%, 8% { transform: scaleX(0); } 20%, 100% { transform: scaleX(1); } }
-.onb-a-strip { transform: translateY(-75%); animation: onb-a-strip 10s var(--onb-move) infinite both; }
+.onb-a-strip { transform: translateY(-75%); animation: onb-a-strip 6s var(--onb-move) infinite both; }
 @keyframes onb-a-strip {
   0%, 27% { transform: translateY(0); }
   29%, 32% { transform: translateY(-25%); }
@@ -239,14 +266,14 @@
   39%, 94% { transform: translateY(-75%); }
   98%, 100% { transform: translateY(0); }
 }
-.onb-m-strip { transform: translateY(-66.667%); animation: onb-m-strip 10s var(--onb-move) infinite both; }
+.onb-m-strip { transform: translateY(-66.667%); animation: onb-m-strip 6s var(--onb-move) infinite both; }
 @keyframes onb-m-strip {
   0%, 46% { transform: translateY(0); }
   48%, 51% { transform: translateY(-33.333%); }
   53%, 94% { transform: translateY(-66.667%); }
   98%, 100% { transform: translateY(0); }
 }
-.onb-m-tap { opacity: 0; animation: onb-m-tap 10s ease-out infinite both; }
+.onb-m-tap { opacity: 0; animation: onb-m-tap 6s ease-out infinite both; }
 @keyframes onb-m-tap {
   0%, 45.9% { opacity: 0; transform: scale(0.6); }
   46% { opacity: 0.5; transform: scale(0.6); }
@@ -255,7 +282,7 @@
   51% { opacity: 0.5; transform: scale(0.6); }
   55%, 100% { opacity: 0; transform: scale(1.5); }
 }
-.onb-q-needle { transform-origin: 50% 50%; animation: onb-q-needle 10s var(--onb-ease) infinite both; }
+.onb-q-needle { transform-origin: 50% 50%; animation: onb-q-needle 6s var(--onb-ease) infinite both; }
 @keyframes onb-q-needle {
   0%, 62% { transform: rotate(-80deg); }
   69% { transform: rotate(14deg); }
@@ -263,11 +290,11 @@
   76%, 94% { transform: rotate(0); }
   98%, 100% { transform: rotate(-80deg); }
 }
-.onb-q-kaaba { animation: onb-q-kaaba 10s ease-out infinite both; }
+.onb-q-kaaba { animation: onb-q-kaaba 6s ease-out infinite both; }
 @keyframes onb-q-kaaba { 0%, 74% { opacity: 0.45; } 77%, 94% { opacity: 1; } 98%, 100% { opacity: 0.45; } }
-.onb-r-pin { animation: onb-r-pin 10s var(--onb-ease) infinite both; }
+.onb-r-pin { animation: onb-r-pin 6s var(--onb-ease) infinite both; }
 @keyframes onb-r-pin { 0%, 79% { opacity: 1; transform: none; } 80.5% { opacity: 0.5; transform: scale(0.94); } 83%, 100% { opacity: 1; transform: none; } }
-.onb-r-text { animation: onb-r-text 10s var(--onb-ease) infinite both; }
+.onb-r-text { animation: onb-r-text 6s var(--onb-ease) infinite both; }
 @keyframes onb-r-text { 0%, 80% { opacity: 1; transform: none; } 81% { opacity: 0; transform: translateY(6px); } 85%, 100% { opacity: 1; transform: none; } }
 
 /* ---- setup: welcome greeting progress + home "tap here" tip ---- */

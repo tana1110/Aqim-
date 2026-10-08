@@ -46,5 +46,7 @@ export function SplashScreen() {
   }, []);
 
   if (!visible) return null;
-  return <BrandOverlay fading={fading} />;
+  // "boot-splash": hidden by CSS before first paint on a first run (the
+  // server can't know it's a first run, so it always renders this).
+  return <BrandOverlay fading={fading} className="boot-splash" />;
 }

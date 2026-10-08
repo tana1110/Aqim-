@@ -1,5 +1,6 @@
 "use client";
 
+import { Pointer } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 
 // Explainer illustrations — built from the app's own components (cards,
@@ -43,6 +44,15 @@ function Star({ size, children }: { size: number; children: React.ReactNode }) {
   );
 }
 
+// The demo hand — makes it obvious these screens demonstrate, not ask.
+function Hand({ className }: { className: string }) {
+  return (
+    <span className={`onb-hand ${className}`} aria-hidden>
+      <Pointer size={34} strokeWidth={1.6} fill="#f3eee3" color="#1c2830" />
+    </span>
+  );
+}
+
 function Tick({ size = 15, color = "#1c2830" }: { size?: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden>
@@ -64,12 +74,12 @@ export function Ex1Art() {
   const { t, lang } = useLang();
   const num = useNum();
   const rows = [
-    { juz: 28, name: t("onb.ex1.juz28"), count: t("onb.ex1.count28"), delay: 0 },
-    { juz: 29, name: t("onb.ex1.juz29"), count: t("onb.ex1.count29"), delay: 0.45 },
-    { juz: 30, name: t("onb.ex1.juz30"), count: t("onb.ex1.count30"), delay: 0.9 },
+    { juz: 28, name: t("onb.ex1.juz28"), count: t("onb.ex1.count28") },
+    { juz: 29, name: t("onb.ex1.juz29"), count: t("onb.ex1.count29") },
+    { juz: 30, name: t("onb.ex1.juz30"), count: t("onb.ex1.count30") },
   ];
   return (
-    <div className="h-full grid place-items-center">
+    <div className="relative h-full grid place-items-center">
       <div className="w-full rounded-[28px] bg-surface px-5 py-1.5 shadow-[0_18px_44px_rgba(0,0,0,0.22)]">
         {rows.map((r, i) => (
           <div
@@ -77,7 +87,7 @@ export function Ex1Art() {
             className={`onb-e1-row flex items-center gap-3.5 h-[84px] ${
               i < rows.length - 1 ? "border-b border-border/70" : ""
             }`}
-            style={{ animationDelay: `${i * 0.15}s` }}
+            style={{ animationDelay: `${i * 0.1}s` }}
           >
             <Star size={38}>{num(r.juz)}</Star>
             <span className="flex-1 flex flex-col">
@@ -87,16 +97,16 @@ export function Ex1Art() {
               <span className="text-[12px] text-muted">{r.count}</span>
             </span>
             <span
-              className="onb-e1-box w-[26px] h-[26px] rounded-[8px] border-[1.5px] grid place-items-center"
-              style={{ animationDelay: `${r.delay}s` }}
+              className={`onb-e1-box onb-e1-b${i + 1} w-[26px] h-[26px] rounded-[8px] border-[1.5px] grid place-items-center`}
             >
-              <span className="onb-e1-tick grid" style={{ animationDelay: `${r.delay}s` }}>
+              <span className={`onb-e1-t${i + 1} grid`}>
                 <Tick />
               </span>
             </span>
           </div>
         ))}
       </div>
+      <Hand className="onb-e1-hand" />
     </div>
   );
 }
@@ -175,13 +185,14 @@ export function Ex2Art() {
           </div>
         </div>
         <div className="relative h-[58px]">
-          <span className="onb-x-halo absolute inset-0 rounded-full border-2 border-accent" />
           <div className="onb-x-btn absolute inset-0 rounded-full bg-accent grid place-items-center overflow-hidden text-[25px] font-extrabold text-[#1c2830]">
             أقِم
             <span className="onb-x-rip absolute left-1/2 top-1/2 w-10 h-10 rounded-full bg-white" />
           </div>
         </div>
       </div>
+
+      <Hand className="onb-x-hand" />
 
       <div className="absolute inset-x-0 top-0 flex flex-col gap-3">
         <p className="onb-x-res0 mx-1 text-[13px] font-bold text-muted">{t("onb.ex2.results")}</p>
