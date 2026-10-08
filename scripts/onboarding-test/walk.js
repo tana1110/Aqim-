@@ -3,7 +3,7 @@
 const { launch, sleep } = require("./cdp");
 const [BASE, lang, w, h, scale, rm] = process.argv.slice(2);
 const tag = `${lang}-${w}x${h}-f${scale}${rm === "1" ? "-rm" : ""}`;
-const OUT = __dirname + "/walk/";
+const OUT = (process.env.SHOTS || __dirname) + "/walk/";
 require("fs").mkdirSync(OUT, { recursive: true });
 const T = lang === "ar"
   ? { lang: "العربية", next: "التالي", later: "لاحقًا", juz: "جزء 30", skip: "تخطي" }
@@ -16,7 +16,8 @@ const T = lang === "ar"
     await b.goto(BASE + "/privacy");
     await b.eval(`localStorage.setItem('aqim-font-scale', '${scale}')`);
     await b.goto(BASE + "/home");
-    await sleep(800);
+    for (let i = 0; i < 40 && !(await b.eval("!!document.querySelector('.onb-root > div > div')")); i++) await sleep(250);
+    await sleep(rm === "1" ? 300 : 6000); // let the verse load and the opening play
     if (rm !== "1") await b.eval("document.querySelector('.onb-root > div > div').click()");
     await sleep(900);
     await shot("1-open");

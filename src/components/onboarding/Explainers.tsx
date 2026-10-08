@@ -61,7 +61,7 @@ function Tick({ size = 15, color = "#1c2830" }: { size?: number; color?: string 
 // 1 · «حدّد ما تحفظه» — the last three juz, checked one after another.
 export const EX1_H = 290;
 export function Ex1Art() {
-  const { t } = useLang();
+  const { t, lang } = useLang();
   const num = useNum();
   const rows = [
     { juz: 28, name: t("onb.ex1.juz28"), count: t("onb.ex1.count28"), delay: 0 },
@@ -81,7 +81,9 @@ export function Ex1Art() {
           >
             <Star size={38}>{num(r.juz)}</Star>
             <span className="flex-1 flex flex-col">
-              <span className="font-heading font-bold text-[21px] leading-[1.4]">{r.name}</span>
+              <span className={`${lang === "ar" ? "font-heading text-[21px]" : "text-[17px]"} font-bold leading-[1.4]`}>
+                {r.name}
+              </span>
               <span className="text-[12px] text-muted">{r.count}</span>
             </span>
             <span

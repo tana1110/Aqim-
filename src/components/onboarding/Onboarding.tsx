@@ -432,7 +432,8 @@ function Explainer({
         {art}
       </FitBox>
 
-      <h1 className="shrink-0 px-7 text-[1.75rem] font-extrabold leading-normal min-h-[3em] whitespace-pre-line">
+      {/* Capped on short screens so a big font setting never squeezes the illustration away. */}
+      <h1 className="shrink-0 px-7 text-[min(1.75rem,4.4vh)] font-extrabold leading-normal min-h-[3em] whitespace-pre-line">
         {title}
       </h1>
 
@@ -569,13 +570,13 @@ function AuthScreen({
                   autoComplete={mode === "signup" ? "new-password" : "current-password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className={`${field} pe-[54px]`}
+                  className={`${field} pr-[54px]`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={t(showPassword ? "account.hidePassword" : "account.showPassword")}
-                  className="absolute end-1.5 top-1.5 w-11 h-11 grid place-items-center text-muted"
+                  className="absolute right-1.5 top-1.5 w-11 h-11 grid place-items-center text-muted"
                 >
                   {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>

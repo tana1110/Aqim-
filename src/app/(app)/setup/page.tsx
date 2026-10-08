@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, Search } from "lucide-react";
 import type { LengthPref } from "@/lib/passage";
@@ -349,9 +350,12 @@ export default function SetupPage() {
 
   if (loading)
     return onb ? (
-      <div className="fixed inset-0 z-40 bg-background grid place-items-center">
-        <Loading />
-      </div>
+      createPortal(
+        <div className="fixed inset-0 z-40 bg-background grid place-items-center">
+          <Loading />
+        </div>,
+        document.body,
+      )
     ) : (
       <Loading />
     );
@@ -456,7 +460,9 @@ export default function SetupPage() {
 
   if (onb) {
     const num = (x: number) => (lang === "ar" ? x.toLocaleString("ar-EG") : String(x));
-    return (
+    // Portalled to <body>: the page-transition wrapper around every page
+    // would otherwise trap this full-screen layer under the app bars.
+    return createPortal(
       <div className="onb-root fixed inset-0 z-40 bg-background text-foreground flex flex-col">
         <div className="shrink-0 px-6 pt-[calc(var(--safe-top)+20px)]">
           <div className="flex items-center justify-between min-h-6">
@@ -547,7 +553,8 @@ export default function SetupPage() {
             </div>
           </div>
         )}
-      </div>
+      </div>,
+      document.body,
     );
   }
 

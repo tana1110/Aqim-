@@ -1,6 +1,6 @@
 const { launch, sleep } = require("./cdp");
 const BASE = process.argv[2];
-const OUT = __dirname + "/flow/";
+const OUT = (process.env.SHOTS || __dirname) + "/flow/";
 require("fs").mkdirSync(OUT, { recursive: true });
 const EMAIL = process.argv[3];
 
