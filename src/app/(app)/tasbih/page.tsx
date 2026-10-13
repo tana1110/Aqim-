@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { RotateCcw } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import {
-  TASBIH_PHRASES,
+  TASBIH_CHIPS,
+  TASBIH_SEQUENCE,
   effectiveTarget,
   loadTasbih,
   nextPhrase,
@@ -33,7 +34,7 @@ export default function TasbihPage() {
       }
     } catch {}
     setS(st);
-    setCustomOpen(!st.sequence && !TASBIH_PHRASES.includes(st.phrase));
+    setCustomOpen(!st.sequence && !TASBIH_SEQUENCE.includes(st.phrase));
   }, []);
 
   if (!s) return null;
@@ -80,7 +81,7 @@ export default function TasbihPage() {
               setCustomOpen(false);
               apply(
                 seq
-                  ? { ...s, sequence: true, phrase: TASBIH_PHRASES.includes(s.phrase) ? s.phrase : TASBIH_PHRASES[0], target: s.target || 33, count: 0, rounds: 0 }
+                  ? { ...s, sequence: true, phrase: TASBIH_SEQUENCE.includes(s.phrase) ? s.phrase : TASBIH_SEQUENCE[0], target: s.target || 33, count: 0, rounds: 0 }
                   : { ...s, sequence: false, count: 0, rounds: 0 },
               );
             }}
@@ -100,7 +101,7 @@ export default function TasbihPage() {
           {t("tasbih.pick")}
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {TASBIH_PHRASES.map((p) => (
+          {TASBIH_CHIPS.map((p) => (
             <button
               key={p}
               onClick={() => {
@@ -133,7 +134,7 @@ export default function TasbihPage() {
         {customOpen && (
           <input
             type="text"
-            value={TASBIH_PHRASES.includes(s.phrase) ? "" : s.phrase}
+            value={TASBIH_SEQUENCE.includes(s.phrase) ? "" : s.phrase}
             onChange={(e) =>
               apply({ ...s, phrase: e.target.value, count: 0, rounds: 0 })
             }
@@ -168,7 +169,11 @@ export default function TasbihPage() {
       {/* The bead: one huge tap target */}
       <div className="flex flex-col items-center gap-4 pt-2">
         <div className="flex flex-col items-center gap-1">
-          <p key={s.phrase} className="font-quran text-2xl text-primary text-center animate-rise" dir="rtl">
+          <p
+            key={s.phrase}
+            className={`font-quran ${s.phrase.length > 40 ? "text-xl leading-loose" : "text-2xl"} text-primary text-center animate-rise max-w-sm`}
+            dir="rtl"
+          >
             {s.phrase}
           </p>
           {s.sequence && (

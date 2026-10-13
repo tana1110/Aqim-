@@ -1,3 +1,5 @@
+import { TASBIH_EXTRA, TASBIH_SALAWAT } from "@/lib/tasbihExtra";
+
 // Digital misbaha — the classic tasbih counter. The phrase list contains only
 // the universally-known dhikr formulas (as found in Hisn al-Muslim); nothing
 // is ever generated.
@@ -12,6 +14,11 @@ export const TASBIH_PHRASES = [
   "أَسْتَغْفِرُ اللَّهَ",
   "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ",
 ];
+
+// Buttons on the page: the classic formulas + الصلاة على النبي ﷺ.
+export const TASBIH_CHIPS = [...TASBIH_PHRASES, TASBIH_SALAWAT];
+// "One after another" goes through these and then the longer adhkar.
+export const TASBIH_SEQUENCE = [...TASBIH_CHIPS, ...TASBIH_EXTRA];
 
 export interface TasbihState {
   phrase: string;
@@ -54,8 +61,8 @@ export function saveTasbih(s: TasbihState) {
 // The dhikr after this one in sequence mode (wraps around; a custom phrase
 // starts the list from the top).
 export function nextPhrase(phrase: string): string {
-  const i = TASBIH_PHRASES.indexOf(phrase);
-  return TASBIH_PHRASES[(i + 1) % TASBIH_PHRASES.length];
+  const i = TASBIH_SEQUENCE.indexOf(phrase);
+  return TASBIH_SEQUENCE[(i + 1) % TASBIH_SEQUENCE.length];
 }
 
 // Sequence mode always counts to a number (33 unless 100 was chosen).
@@ -91,7 +98,7 @@ export function startSequence(s: TasbihState): TasbihState {
   const next = {
     ...s,
     sequence: true,
-    phrase: TASBIH_PHRASES[0],
+    phrase: TASBIH_SEQUENCE[0],
     target: 33,
     count: 0,
     rounds: 0,
