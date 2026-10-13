@@ -11,6 +11,7 @@ import {
   Volume2,
 } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
+import { isNativeApp } from "@/lib/nativeBridge";
 import { LanguageToggle } from "@/components/LanguageToggle";
 import { PageLoader } from "@/components/Brand";
 import {
@@ -153,6 +154,12 @@ export default function SettingsPage() {
 
   async function requestAndEnable() {
     setPrePrompt(false);
+    // Inside the Android app the OS permission is handled natively (there
+    // is no browser Notification API in the WebView).
+    if (isNativeApp()) {
+      update({ enabled: true });
+      return;
+    }
     try {
       const perm = await Notification.requestPermission();
       if (perm !== "granted") {

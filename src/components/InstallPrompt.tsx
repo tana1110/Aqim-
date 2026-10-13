@@ -4,18 +4,14 @@ import { useEffect, useState } from "react";
 import { Download } from "lucide-react";
 import { Logo } from "@/components/Logo";
 import { useLang } from "@/components/LanguageProvider";
+import { isNativeApp } from "@/lib/nativeBridge";
 
-// Gentle install card: Chrome/Android get the real one-tap install prompt
-// (the event is captured early by the app shell); iPhone/iPad get the
-// add-to-home-screen steps. Phones only; never shown once installed or
-// after being dismissed.
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: string }>;
-}
+// Install card, phone browsers only (never inside the Android app):
+// Android → the real app on Google Play; iPhone/iPad → add to Home Screen,
+// which is also what lets iOS deliver reminders at all.
 
 const DISMISS_KEY = "aqim-install-dismissed";
+export const PLAY_URL = "https://play.google.com/store/apps/details?id=app.aqimalsalat";
 
 function isStandalone(): boolean {
   return (
@@ -33,64 +29,37 @@ function isIosLike(): boolean {
   );
 }
 
+type Kind = "android" | "ios" | null;
+
+// Which install card this device should see right now (null = none). The
+// reminders card uses this too, so the two never stack.
+export function installCardKind(): Kind {
+  try {
+    if (isNativeApp() || isStandalone() || localStorage.getItem(DISMISS_KEY)) return null;
+    if (!window.matchMedia("(pointer: coarse)").matches) return null;
+    if (isIosLike()) return "ios";
+    if (/android/i.test(navigator.userAgent)) return "android";
+  } catch {}
+  return null;
+}
+
 export function InstallPrompt() {
   const { t } = useLang();
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(
-    null,
-  );
-  const [hidden, setHidden] = useState(true);
+  const [kind, setKind] = useState<Kind>(null);
 
   useEffect(() => {
-    try {
-      if (isStandalone() || localStorage.getItem(DISMISS_KEY)) return;
-      // Phones/tablets only — desktop install exists but the copy is mobile.
-      if (!window.matchMedia("(pointer: coarse)").matches) return;
-    } catch {
-      return;
-    }
-
-    const adopt = () => {
-      const bip = (window as unknown as { __aqimBip?: Event }).__aqimBip;
-      if (bip) {
-        setDeferred(bip as BeforeInstallPromptEvent);
-        setHidden(false);
-      }
-    };
-    adopt(); // the shell may have captured the event before we mounted
-    window.addEventListener("aqim-bip", adopt);
-
-    if (isIosLike()) setHidden(false); // manual add-to-home-screen steps
-
-    const onInstalled = () => {
-      setHidden(true);
-      try {
-        localStorage.setItem(DISMISS_KEY, "1");
-      } catch {}
-    };
-    window.addEventListener("appinstalled", onInstalled);
-    return () => {
-      window.removeEventListener("aqim-bip", adopt);
-      window.removeEventListener("appinstalled", onInstalled);
-    };
+    setKind(installCardKind());
   }, []);
 
   function dismiss() {
-    setHidden(true);
+    setKind(null);
     try {
       localStorage.setItem(DISMISS_KEY, "1");
     } catch {}
+    window.dispatchEvent(new Event("aqim-install-dismissed"));
   }
 
-  async function install() {
-    if (!deferred) return;
-    await deferred.prompt();
-    await deferred.userChoice.catch(() => null);
-    // The deferred event is single-use either way — retire the card.
-    dismiss();
-    setDeferred(null);
-  }
-
-  if (hidden) return null;
+  if (!kind) return null;
 
   return (
     <section className="card p-4 flex items-start gap-3 animate-rise">
@@ -98,19 +67,23 @@ export function InstallPrompt() {
         <Logo variant="icon" size={24} />
       </span>
       <div className="min-w-0 flex-1">
-        <div className="text-sm font-extrabold">{t("install.title")}</div>
+        <div className="text-sm font-extrabold">
+          {kind === "ios" ? t("install.ios.title") : t("install.title")}
+        </div>
         <p className="text-xs text-muted mt-0.5 leading-relaxed">
-          {deferred ? t("install.body") : t("install.ios.steps")}
+          {kind === "ios" ? t("install.ios.steps") : t("install.body")}
         </p>
         <div className="flex items-center gap-2 mt-2.5">
-          {deferred && (
-            <button
-              onClick={install}
+          {kind === "android" && (
+            <a
+              href={PLAY_URL}
+              target="_blank"
+              rel="noopener"
               className="btn-cta !rounded-full px-4 py-2 text-xs flex items-center gap-1.5"
             >
               <Download size={13} />
-              {t("install.btn")}
-            </button>
+              {t("install.play")}
+            </a>
           )}
           <button
             onClick={dismiss}

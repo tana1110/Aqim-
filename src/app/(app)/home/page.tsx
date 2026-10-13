@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Logo, LogoLoader } from "@/components/Logo";
 import { InstallPrompt } from "@/components/InstallPrompt";
+import { NotifPrompt } from "@/components/NotifPrompt";
 import { PageLoader } from "@/components/Brand";
 import { ContentCard } from "@/components/ContentCard";
 import { PassageCard } from "@/components/PassageCard";
@@ -674,6 +675,7 @@ export default function HomePage() {
 
         {/* Install card — one tap to a real app on the home screen */}
         <InstallPrompt />
+        <NotifPrompt />
 
         {/* آية اليوم · دعاء اليوم · حديث اليوم — one card, three tabs */}
         {widgets.daily && <DailyCard daily={daily} extras={extras} />}
