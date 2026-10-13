@@ -92,7 +92,7 @@ export function PassageCard({
   // read standalone, not a full page, so the ultra-dense page spacing felt
   // cramped and let the last ayah's mark crowd whatever comes after it.
   const body = (
-    <div className={bare ? "px-1 py-2" : "px-5 py-6"}>
+    <div className={bare ? "px-1 py-2" : "px-4 py-5"}>
       {bism.line && (
         <p className="bismillah-line !border-b-0 !mb-2" dir="rtl">
           {bism.line}
@@ -101,7 +101,8 @@ export function PassageCard({
           )}
         </p>
       )}
-      <div className="passage-dense mb-4" style={{ fontSize: "1.7rem" }}>
+      {/* ~7 words a line on a phone: reads as a passage, not a scroll. */}
+      <div className="passage-dense mb-4" style={{ fontSize: "1.3rem" }}>
         <p className="quran-text" dir="rtl">
           {renderAyahs.map((a) => (
             <span key={a.ayahNumber}>

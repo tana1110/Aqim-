@@ -4,7 +4,14 @@
 // static data instead of Postgres. Kept in sync by hand: any change to the
 // picking logic in selection.ts should be mirrored here.
 import type { Mode } from "@/lib/prayers";
-import { passageKey, type FocusSpec, type LengthPref, type Passage } from "@/lib/passage";
+import {
+  basmalaWords,
+  chunkByWords,
+  passageKey,
+  type FocusSpec,
+  type LengthPref,
+  type Passage,
+} from "@/lib/passage";
 import { loadMemorization, loadHistoryLocal } from "@/lib/localMemo";
 import { ensureOfflineData, wordCountOffline } from "@/lib/offlineData";
 
@@ -18,27 +25,6 @@ interface Candidate extends Passage {
   words: number;
 }
 
-function chunkRange(
-  surahNumber: number,
-  from: number,
-  to: number,
-  surahAyahCount: number,
-  maxLen: number,
-): Passage[] {
-  const passages: Passage[] = [];
-  const isWholeSurah = from === 1 && to === surahAyahCount;
-  if (isWholeSurah && surahAyahCount <= maxLen) {
-    return [{ surahNumber, fromAyah: 1, toAyah: surahAyahCount }];
-  }
-  let start = from;
-  while (start <= to) {
-    const end = Math.min(start + maxLen - 1, to);
-    passages.push({ surahNumber, fromAyah: start, toAyah: end });
-    start = end + 1;
-  }
-  return passages;
-}
-
 async function buildCandidatesOffline(
   mode: Mode,
   settings: SelectionSettings,
@@ -48,10 +34,6 @@ async function buildCandidatesOffline(
   const d = await ensureOfflineData();
   const ayahCountBySurah = new Map(d.surahs.map((s) => [s.number, s.ayahCount]));
 
-  const prefLen =
-    lengthPref === "short" ? 5 : lengthPref === "long" ? 20 : settings.maxAyahShort;
-  const maxLen = mode === "qiyam" ? Math.max(30, prefLen) : prefLen;
-
   const candidates: Candidate[] = [];
   for (const m of memorization) {
     const count = ayahCountBySurah.get(m.surahNumber);
@@ -59,13 +41,12 @@ async function buildCandidatesOffline(
     const to = Math.min(m.toAyah, count);
     const from = Math.max(1, m.fromAyah);
     if (from > to) continue;
-    for (const ch of chunkRange(m.surahNumber, from, to, count, maxLen)) {
-      let words = 0;
-      for (let a = ch.fromAyah; a <= ch.toAyah; a++) {
-        const ayah = d.quranByKey.get(`${ch.surahNumber}:${a}`);
-        if (ayah) words += wordCountOffline(ayah.arabicText);
-      }
-      candidates.push({ ...ch, words: Math.max(1, words) });
+    const wordsOf = (a: number) => {
+      const ayah = d.quranByKey.get(`${m.surahNumber}:${a}`);
+      return (ayah ? wordCountOffline(ayah.arabicText) : 0) - basmalaWords(m.surahNumber, a);
+    };
+    for (const u of chunkByWords(m.surahNumber, from, to, wordsOf, lengthPref, mode === "qiyam")) {
+      candidates.push({ ...u.passage, words: Math.max(1, u.words) });
     }
   }
   return candidates;

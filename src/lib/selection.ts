@@ -1,6 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import type { Mode } from "@/lib/prayers";
-import { passageKey, type Passage, type FocusSpec, type LengthPref } from "@/lib/passage";
+import {
+  basmalaWords,
+  chunkByWords,
+  passageKey,
+  type Passage,
+  type FocusSpec,
+  type LengthPref,
+} from "@/lib/passage";
 
 export { passageKey, type Passage, type FocusSpec, type LengthPref };
 
@@ -21,40 +28,13 @@ function countWords(text: string): number {
     .replace(/^﻿/, "")
     .trim()
     .split(/\s+/)
-    .filter(Boolean).length;
+    // Words only — waqf signs (ۖ ۗ …) are separate tokens in the text.
+    .filter((t) => /\p{L}/u.test(t)).length;
 }
 
 // ---------------------------------------------------------------------------
 // Candidate generation
 // ---------------------------------------------------------------------------
-
-// Break a memorized [from,to] range into recitation-sized candidate passages.
-// - Fara'id/Nafl: short-to-medium units (whole short surahs, or chunks of the range).
-// - Qiyam: longer units allowed.
-function chunkRange(
-  surahNumber: number,
-  from: number,
-  to: number,
-  surahAyahCount: number,
-  maxLen: number,
-): Passage[] {
-  const passages: Passage[] = [];
-  const isWholeSurah = from === 1 && to === surahAyahCount;
-
-  // A whole surah at or under the length limit is a natural single unit.
-  if (isWholeSurah && surahAyahCount <= maxLen) {
-    return [{ surahNumber, fromAyah: 1, toAyah: surahAyahCount }];
-  }
-
-  // Otherwise split the memorized span into consecutive chunks of up to maxLen.
-  let start = from;
-  while (start <= to) {
-    const end = Math.min(start + maxLen - 1, to);
-    passages.push({ surahNumber, fromAyah: start, toAyah: end });
-    start = end + 1;
-  }
-  return passages;
-}
 
 async function buildCandidates(
   userId: number,
@@ -83,12 +63,8 @@ async function buildCandidates(
     wordsByAyah.set(`${r.surahNumber}:${r.ayahNumber}`, countWords(r.arabicText));
   }
 
-  // Fara'id/Nafl favour short-to-medium; Qiyam allows longer passages. The
-  // user's length preference widens or tightens the chunking.
-  const prefLen =
-    lengthPref === "short" ? 5 : lengthPref === "long" ? 20 : settings.maxAyahShort;
-  const maxLen = mode === "qiyam" ? Math.max(30, prefLen) : prefLen;
-
+  // Sized by reading length (words), not ayah count — see chunkByWords.
+  // Qiyam allows longer passages.
   const candidates: Candidate[] = [];
   for (const m of memorization) {
     const count = ayahCountBySurah.get(m.surahNumber);
@@ -96,12 +72,10 @@ async function buildCandidates(
     const to = Math.min(m.toAyah, count);
     const from = Math.max(1, m.fromAyah);
     if (from > to) continue;
-    for (const ch of chunkRange(m.surahNumber, from, to, count, maxLen)) {
-      let words = 0;
-      for (let a = ch.fromAyah; a <= ch.toAyah; a++) {
-        words += wordsByAyah.get(`${ch.surahNumber}:${a}`) ?? 0;
-      }
-      candidates.push({ ...ch, words: Math.max(1, words) });
+    const wordsOf = (a: number) =>
+      (wordsByAyah.get(`${m.surahNumber}:${a}`) ?? 0) - basmalaWords(m.surahNumber, a);
+    for (const u of chunkByWords(m.surahNumber, from, to, wordsOf, lengthPref, mode === "qiyam")) {
+      candidates.push({ ...u.passage, words: Math.max(1, u.words) });
     }
   }
   return candidates;

@@ -91,7 +91,8 @@ export function wordCountOffline(text: string): number {
     .replace(/^﻿/, "")
     .trim()
     .split(/\s+/)
-    .filter(Boolean).length;
+    // Words only — waqf signs (ۖ ۗ …) are separate tokens; matches selection.ts.
+    .filter((t) => /\p{L}/u.test(t)).length;
 }
 
 export interface OfflinePassage {
