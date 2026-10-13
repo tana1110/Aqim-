@@ -34,6 +34,19 @@ require("fs").mkdirSync(OUT, { recursive: true });
     await sleep(700);
     console.log("after 66:", JSON.stringify(await read()));
     await b.shot(OUT + "after-66.png");
+    // Jump to the 8th dhikr (last classic chip) and check the rotation
+    // continues into the salawat and then the longer adhkar.
+    await b.eval(`(() => { const chips = [...document.querySelectorAll("button.font-quran")]; chips[7].click(); })()`);
+    await sleep(500);
+    console.log("chip 8  :", JSON.stringify(await read()));
+    await tap(33);
+    await sleep(700);
+    console.log("then    :", JSON.stringify(await read()));
+    await b.shot(OUT + "salawat.png");
+    await tap(33);
+    await sleep(700);
+    console.log("then    :", JSON.stringify(await read()));
+    await b.shot(OUT + "long-dhikr.png");
   } catch (e) {
     console.log("FAILED", e.message);
   } finally {
