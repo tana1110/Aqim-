@@ -29,7 +29,7 @@ import {
   surahWirdProgress,
   type WirdConfig,
 } from "@/lib/wird";
-import { loadTasbih, tapTasbih, type TasbihState } from "@/lib/tasbih";
+import { effectiveTarget, loadTasbih, tapTasbih, type TasbihState } from "@/lib/tasbih";
 import { pushHistoryLocal } from "@/lib/localMemo";
 import type { LengthPref } from "@/lib/selection";
 import type { SuggestionRequest } from "@/lib/plan";
@@ -975,7 +975,7 @@ function MisbahaMini() {
           {s.phrase}
         </div>
         <div className="text-[11px] text-muted tabular-nums mt-0.5">
-          {s.target > 0 ? `${digits(s.count)} / ${digits(s.target)} · ` : ""}
+          {effectiveTarget(s) > 0 ? `${digits(s.count)} / ${digits(effectiveTarget(s))} · ` : ""}
           {t("tasbih.rounds")}: {digits(s.rounds)}
         </div>
       </div>

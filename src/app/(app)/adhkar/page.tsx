@@ -450,7 +450,7 @@ function ChapterView({
       {/* After-prayer adhkar pair naturally with the misbaha */}
       {isSalah && (
         <a
-          href="/tasbih"
+          href="/tasbih?sequence=1"
           className="tile tile-teal p-4 flex items-center justify-between gap-3 active:scale-[0.98] transition"
         >
           <span className="text-sm font-extrabold">{t("tasbih.title")}</span>

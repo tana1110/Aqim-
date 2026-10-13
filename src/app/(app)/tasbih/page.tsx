@@ -5,9 +5,12 @@ import { RotateCcw } from "lucide-react";
 import { useLang } from "@/components/LanguageProvider";
 import {
   TASBIH_PHRASES,
+  effectiveTarget,
   loadTasbih,
+  nextPhrase,
   resetTasbih,
   saveTasbih,
+  startSequence,
   tapTasbih,
   type TasbihState,
 } from "@/lib/tasbih";
@@ -21,9 +24,16 @@ export default function TasbihPage() {
   const [pulse, setPulse] = useState(false);
 
   useEffect(() => {
-    const st = loadTasbih();
+    let st = loadTasbih();
+    // From the after-prayer adhkar: start the one-after-another order.
+    try {
+      if (new URLSearchParams(window.location.search).get("sequence") === "1") {
+        st = startSequence(st);
+        window.history.replaceState(window.history.state, "", "/tasbih");
+      }
+    } catch {}
     setS(st);
-    setCustomOpen(!TASBIH_PHRASES.includes(st.phrase));
+    setCustomOpen(!st.sequence && !TASBIH_PHRASES.includes(st.phrase));
   }, []);
 
   if (!s) return null;
@@ -53,11 +63,36 @@ export default function TasbihPage() {
   // Progress ring
   const R = 88;
   const C = 2 * Math.PI * R;
-  const frac = s.target > 0 ? s.count / s.target : 0;
+  const target = effectiveTarget(s);
+  const frac = target > 0 ? s.count / target : 0;
 
   return (
     <div className="pt-2 max-w-md mx-auto space-y-5">
       <h1 className="text-xl font-bold text-center">{t("tasbih.title")}</h1>
+
+      {/* One dhikr, or one after another (moves on by itself) */}
+      <div className="flex gap-1 p-1 rounded-full bg-surface-2">
+        {([false, true] as const).map((seq) => (
+          <button
+            key={String(seq)}
+            onClick={() => {
+              if (seq === s.sequence) return;
+              setCustomOpen(false);
+              apply(
+                seq
+                  ? { ...s, sequence: true, phrase: TASBIH_PHRASES.includes(s.phrase) ? s.phrase : TASBIH_PHRASES[0], target: s.target || 33, count: 0, rounds: 0 }
+                  : { ...s, sequence: false, count: 0, rounds: 0 },
+              );
+            }}
+            aria-pressed={s.sequence === seq}
+            className={`flex-1 h-10 rounded-full text-sm font-bold transition ${
+              s.sequence === seq ? "bg-primary text-white" : "text-muted"
+            }`}
+          >
+            {seq ? t("tasbih.mode.sequence") : t("tasbih.mode.single")}
+          </button>
+        ))}
+      </div>
 
       {/* Phrase picker */}
       <div>
@@ -82,6 +117,7 @@ export default function TasbihPage() {
               {p}
             </button>
           ))}
+          {!s.sequence && (
           <button
             onClick={() => setCustomOpen(true)}
             className={`rounded-full px-3.5 py-1.5 text-sm transition ${
@@ -92,6 +128,7 @@ export default function TasbihPage() {
           >
             {t("tasbih.custom")}
           </button>
+          )}
         </div>
         {customOpen && (
           <input
@@ -111,13 +148,13 @@ export default function TasbihPage() {
       <div className="flex items-center gap-2">
         <span className="text-xs font-bold text-muted">{t("tasbih.target")}</span>
         <div className="inline-flex items-center rounded-lg border border-border bg-surface p-0.5 text-xs font-bold">
-          {TARGETS.map((v) => (
+          {TARGETS.filter((v) => !s.sequence || v > 0).map((v) => (
             <button
               key={v}
               onClick={() => apply({ ...s, target: v, count: 0, rounds: 0 })}
-              aria-pressed={s.target === v}
+              aria-pressed={target === v}
               className={`px-3 py-1 rounded-md transition-colors tabular-nums ${
-                s.target === v
+                target === v
                   ? "bg-primary text-white"
                   : "text-muted hover:text-foreground"
               }`}
@@ -130,9 +167,19 @@ export default function TasbihPage() {
 
       {/* The bead: one huge tap target */}
       <div className="flex flex-col items-center gap-4 pt-2">
-        <p className="font-quran text-2xl text-primary text-center" dir="rtl">
-          {s.phrase}
-        </p>
+        <div className="flex flex-col items-center gap-1">
+          <p key={s.phrase} className="font-quran text-2xl text-primary text-center animate-rise" dir="rtl">
+            {s.phrase}
+          </p>
+          {s.sequence && (
+            <p className="text-xs text-muted">
+              {t("tasbih.next")}{" "}
+              <span className="font-quran text-sm" dir="rtl">
+                {nextPhrase(s.phrase)}
+              </span>
+            </p>
+          )}
+        </div>
         <button
           onClick={tap}
           aria-label={t("tasbih.tap")}
@@ -154,7 +201,7 @@ export default function TasbihPage() {
               stroke="var(--color-border)"
               strokeWidth={10}
             />
-            {s.target > 0 && (
+            {target > 0 && (
               <circle
                 cx={112}
                 cy={112}
@@ -173,9 +220,9 @@ export default function TasbihPage() {
             <span className="block text-5xl font-bold tabular-nums text-primary">
               {digits(s.count)}
             </span>
-            {s.target > 0 && (
+            {target > 0 && (
               <span className="block text-sm text-muted tabular-nums mt-1">
-                / {digits(s.target)}
+                / {digits(target)}
               </span>
             )}
           </span>
